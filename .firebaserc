@@ -1,0 +1,26 @@
+{
+  "projects": {
+    "default": "catedral-connect-bf717",
+    "lausanne": "catedral-connect-6c55e"
+  },
+  "targets": {
+    "catedral-connect-bf717": {
+      "hosting": {
+        "site": [
+          "bulle-connect"
+        ],
+        "app": [
+          "catedral-connect-bf717"
+        ]
+      }
+    },
+    "catedral-connect-6c55e": {
+      "hosting": {
+        "admin-lausanne": [
+          "catedral-connect-6c55e"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

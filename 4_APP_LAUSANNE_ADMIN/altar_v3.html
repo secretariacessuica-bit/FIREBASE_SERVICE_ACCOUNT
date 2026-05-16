@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Altar Monitor | Catedral Lausanne</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;600;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.48"></script>
+    <script src="js/auth-manager.js?v=70.3.48"></script>
+
+    <style>
+        :root {
+            --gold: #C9A050;
+            --bg: #000000;
+            --card-bg: #0A0A0B;
+            --text: #E4E4E7;
+            --font: 'Outfit', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            background: var(--bg); color: var(--text); font-family: var(--font);
+            padding: 40px; overflow: hidden; height: 100vh;
+        }
+
+        /* HEADER AREA */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        
+        .header-left { display: flex; align-items: center; gap: 25px; }
+        .logo-altar { width: 120px; height: 120px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(201, 160, 80, 0.3)); }
+
+        .clock-area { display: flex; flex-direction: column; }
+        #clock { font-size: 5rem; font-weight: 800; line-height: 1; color: #FFF; }
+        #date { font-size: 1rem; font-weight: 100; color: var(--gold); text-transform: uppercase; letter-spacing: 5px; }
+
+        .stats-grid { display: flex; gap: 20px; justify-content: center; }
+        .stat-box {
+            background: var(--card-bg); border: 1.5px solid #222; border-radius: 25px;
+            padding: 20px; text-align: center; width: 180px; min-height: 120px;
+            display: flex; flex-direction: column; justify-content: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .stat-box { width: 110px; padding: 10px; }
+            .stat-value { font-size: 1.5rem !important; }
+            .stat-label { font-size: 0.5rem !important; }
+            .header { flex-direction: column; gap: 20px; align-items: center; }
+            #clock { font-size: 3rem !important; }
+        }
+        .stat-box.active { 
+            border-color: var(--gold); 
+            background: rgba(201,160,80,0.1);
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(201,160,80,0.2);
+        }
+        .stat-label { font-size: 0.7rem; font-weight: 800; color: #71717A; text-transform: uppercase; margin-bottom: 5px; pointer-events: none; }
+        .stat-value { font-size: 2.5rem; font-weight: 100; color: var(--gold); pointer-events: none; }
+
+        /* MAIN LIST */
+        .main-container {
+            background: var(--card-bg); border: 1.5px solid #222; border-radius: 30px;
+            height: calc(100vh - 250px); display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+
+        .list-header {
+            padding: 25px 40px; border-bottom: 1.5px solid #222;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .list-header h2 { font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: var(--gold); }
+
+        .list-content {
+            flex: 1; overflow-y: auto; padding: 20px 40px;
+            scrollbar-width: none; -ms-overflow-style: none;
+        }
+        .list-content::-webkit-scrollbar { display: none; }
+
+        .item-card {
+            background: #0D0D0D; border: 1px solid #222; border-radius: 20px;
+            padding: 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
+            animation: slideIn 0.4s ease;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+        .item-info h3 { font-size: 1.6rem; font-weight: 800; color: #FFF; margin-bottom: 5px; }
+        .item-info p { font-size: 1rem; color: #A1A1AA; font-weight: 400; }
+        .item-time { font-size: 0.9rem; font-weight: 700; color: var(--gold); background: rgba(201,160,80,0.1); padding: 5px 15px; border-radius: 10px; }
+
+        /* EXIT */
+        .footer-tools { position: fixed; bottom: 30px; left: 40px; right: 40px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+        .btn-exit { 
+            background: #222; color: #FFF; border: none; padding: 12px 25px; border-radius: 12px; 
+            font-weight: 800; font-size: 0.7rem; cursor: pointer; pointer-events: auto;
+            text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;
+        }
+        .btn-exit:hover { background: #EF4444; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <img src="assets/logo_3.png?v=70.3.48" class="logo-altar">
+            <div class="clock-area">
+                <div id="clock">00:00</div>
+                <div id="date">CARREGANDO...</div>
+            </div>
+        </div>
+        <div class="stats-grid">
+            <div id="box-visitante" class="stat-box active" onclick="setView('visitante')">
+                <div class="stat-label">Visitantes</div>
+                <div id="count-visitantes" class="stat-value">0</div>
+            </div>
+            <div id="box-oracao" class="stat-box" onclick="setView('oracao')">
+                <div class="stat-label">Orações</div>
+                <div id="count-oracoes" class="stat-value">0</div>
+            </div>
+            <div id="box-batismo" class="stat-box" onclick="setView('batismo')">
+                <div class="stat-label">Celebrações</div>
+                <div id="count-batismos" class="stat-value">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="list-header">
+            <h2 id="view-title">Monitor de Visitantes</h2>
+            <div id="sync-status" style="font-size: 0.65rem; font-weight: 800; color: #4ADE80;"><i class="fas fa-circle"></i> LIVE</div>
+        </div>
+        <div class="list-content" id="altar-list">
+            <div style="text-align:center; padding:50px; color:#555;">Iniciando monitoramento...</div>
+        </div>
+    </div>
+
+    <div class="footer-tools">
+        <button class="btn-exit" onclick="AuthManager.logout()">Sair</button>
+    </div>
+
+    <script>
+        // CLOCK LOGIC
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
+            document.getElementById('date').innerText = now.toLocaleDateString('pt-BR', options);
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // DATA LOGIC
+        const db = firebase.firestore();
+        let currentView = 'visitante';
+        let allDocs = [];
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.stat-box').forEach(b => b.classList.remove('active'));
+            document.getElementById('box-' + view).classList.add('active');
+            
+            const titles = { visitante: 'Monitor de Visitantes', oracao: 'Pedidos de Oração', batismo: 'Celebrações de Fé' };
+            document.getElementById('view-title').innerText = titles[view];
+            
+            renderList();
+        }
+
+        function initAltarMonitor() {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            db.collection('attendance')
+                .where('timestamp', '>=', today)
+                .orderBy('timestamp', 'desc')
+                .onSnapshot(snapshot => {
+                    allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    updateCounters();
+                    renderList();
+                }, err => {
+                    console.error("❌ Firestore Error:", err);
+                });
+        }
+
+        function updateCounters() {
+            let v = 0, p = 0, b = 0;
+            allDocs.forEach(data => {
+                const type = (data.type || '').toLowerCase();
+                const origin = (data.origin || '').toLowerCase();
+                if(type.includes('visitante') || type.includes('kids') || type.includes('visita')) v++;
+                if(type.includes('oracao') || type.includes('oração') || origin.includes('live_prayer')) p++;
+                if(type.includes('batismo') || type.includes('celebração') || type.includes('celebraçao')) b++;
+            });
+            document.getElementById('count-visitantes').innerText = v;
+            document.getElementById('count-oracoes').innerText = p;
+            document.getElementById('count-batismos').innerText = b;
+        }
+
+        function renderList() {
+            const list = document.getElementById('altar-list');
+            list.innerHTML = "";
+            
+            const filtered = allDocs.filter(data => {
+                const type = (data.type || '').toLowerCase();
+                const origin = (data.origin || '').toLowerCase();
+                if(currentView === 'visitante') return type.includes('visitante') || type.includes('kids') || type.includes('visita');
+                if(currentView === 'oracao') return type.includes('oracao') || type.includes('oração') || origin.includes('live_prayer');
+                if(currentView === 'batismo') return type.includes('batismo') || type.includes('celebração');
+                return false;
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<div style="text-align:center; padding:100px; color:#444; font-size:1.2rem; font-weight:600;">Nenhum registro de ${currentView} hoje.</div>`;
+                return;
+            }
+
+            filtered.forEach(data => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                const time = data.timestamp ? data.timestamp.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '--:--';
+                const detail = data.detail || (data.parent ? `Resp: ${data.parent}` : 'Atividade Registrada');
+
+                card.innerHTML = `
+                    <div class="item-info">
+                        <h3>${data.name}</h3>
+                        <p>${detail}</p>
+                    </div>
+                    <div class="item-time">${time}</div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        window.onload = initAltarMonitor;
+    </script>
+</body>
+</html>

@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Check-in Visitante | Bulle v51.3.1 Diamond Refresh</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/style-v2.css?v=51.3.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css?v=51.3.1">
+
+    <style>
+        :root {
+            --gold-primary: #D4AF37;
+            --gold-gradient: linear-gradient(to right, #cfaf5d 0%, #fcf6ba 25%, #d4af37 50%, #fcf6ba 75%, #cfaf5d 100%);
+            --bg-deep: #020617;
+            --card-glass: rgba(15, 23, 42, 0.7); /* Dark Glass 70% Opacity */
+            --text-white: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.7);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background: #020617; /* High-contrast navy black */
+            color: #ffffff; /* Global White Text */
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Video Background */
+        #splash-video {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            object-fit: cover;
+            z-index: -2;
+            opacity: 1; /* Start full brightness */
+            transition: opacity 1.5s ease, filter 1.5s ease;
+        }
+
+        #splash-video.bg-mode {
+            opacity: 0.2; /* Dim to background */
+            filter: blur(8px); /* Blur to make UI stand out */
+        }
+
+
+        .phone-container {
+            width: 100%;
+            max-width: 480px;
+            background: transparent;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            
+            /* Splash Logic */
+            opacity: 0; 
+            pointer-events: none;
+            transition: opacity 1.5s ease;
+        }
+
+        .phone-container.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Header */
+        .header {
+            padding: 25px 20px 15px;
+            text-align: center;
+            animation: fadeIn 0.8s ease;
+        }
+
+        .header img {
+            width: 85px;
+            height: 85px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.2);
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 900;
+            margin: 0;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+
+        .header p {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            margin: 5px 0 0 0;
+            font-weight: 500;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 10px 20px 100px;
+            overflow-y: auto;
+        }
+
+        .tab-section {
+            display: none;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .tab-section.active {
+            display: block;
+        }
+
+        /* Action Buttons */
+        .action-card {
+            background: var(--card-glass) !important;
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 22px;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .action-card.expanded {
+            box-shadow: 0 15px 35px rgba(212, 175, 55, 0.12);
+            border-color: var(--gold-primary);
+        }
+
+        .action-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .action-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .action-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--gold-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .action-card.primary {
+            background: rgba(212, 175, 55, 0.15) !important;
+            border: 2px solid var(--gold-primary);
+            box-shadow: 0 20px 50px rgba(212, 175, 55, 0.25);
+        }
+
+        .action-card.primary .action-icon {
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--gold-primary);
+        }
+
+        .action-details h3 {
+            margin: 0;
+            font-size: 1.15rem; 
+            font-weight: 800;
+            color: var(--text-white) !important;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .action-details p {
+            margin: 8px 0 12px 0;
+            font-size: 0.85rem; 
+            color: var(--text-dim) !important;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        .card-expand-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, padding 0.4s ease;
+            opacity: 0;
+            width: 100%;
+            padding-left: 65px; /* Alignment with title icon spacing */
+            box-sizing: border-box;
+        }
+
+        .expanded .card-expand-content {
+            max-height: 1000px;
+            opacity: 1;
+            padding-top: 10px;
+            padding-bottom: 5px;
+        }
+
+        .btn-call-action {
+            display: inline-block;
+            background: var(--gold-primary);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 15px rgba(212, 175, 55, 0.25);
+            transition: 0.3s;
+        }
+
+        .btn-call-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px rgba(212, 175, 55, 0.35);
+        }
+
+        .card-chevron {
+            margin-left: auto;
+            color: #cbd5e1;
+            transition: 0.4s;
+            font-size: 1rem;
+        }
+
+        .expanded .card-chevron {
+            transform: rotate(180deg);
+            color: var(--gold-primary);
+        }
+
+        /* Info Block */
+        .info-block {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .info-block h4 {
+            margin: 0 0 15px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--gold-primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-block p {
+            font-size: 0.95rem; /* Decreased from 1.05rem */
+            font-weight: 500;
+            color: var(--text-white);
+            margin: 8px 0;
+        }
+
+        .info-block h4 {
+            color: var(--gold-primary);
+            margin: 0 0 15px 0;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 800;
+        }
+
+        .info-block p {
+            margin: 5px 0;
+            font-size: 0.95rem; /* Decreased from 1.05rem */
+            font-weight: 600;
+            color: var(--text-white);
+        }
+
+        /* Social Row */
+        .social-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .social-btn {
+            width: 55px; height: 55px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; 
+            color: #ffffff;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.1) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .social-btn:hover { 
+            transform: translateY(-8px) scale(1.1); 
+            background: var(--gold-primary) !important;
+            border-color: var(--gold-primary);
+            box-shadow: 0 15px 30px rgba(212, 175, 55, 0.3);
+            color: #000;
+        }
+
+        /* Branding colors only on hover or keep it monochrome for sophistication */
+        .social-ig i, .social-fb i, .social-yt i { transition: 0.3s; }
+        
+
+
+        /* Bottom Navigation Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 480px;
+            background: rgba(15, 15, 15, 0.75);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 10px 25px;
+            box-sizing: border-box;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            color: #94a3b8;
+            text-decoration: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .nav-item i { font-size: 1.4rem; }
+        .nav-item span { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.3px; }
+
+        .nav-item.active {
+            color: var(--gold-primary);
+        }
+
+        /* Global Modals (Forms) */
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(5px);
+            z-index: 1000; align-items: flex-end; justify-content: center;
+            opacity: 0; transition: opacity 0.3s;
+        }
+
+        .modal-overlay.active { opacity: 1; display: flex; }
+
+        .modal-card {
+            background: rgba(10, 15, 25, 0.98); 
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.4);
+            width: 100%; max-width: 480px;
+            border-radius: 28px 28px 0 0; padding: 30px 25px 40px;
+            box-sizing: border-box;
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            color: #fff;
+        }
+
+        .modal-overlay.active .modal-card { transform: translateY(0); }
+
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 25px;
+        }
+        .modal-header h2 { margin: 0; font-size: 1.4rem; font-weight: 800; color: #fff; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; color: #cbd5e1; cursor: pointer; }
+
+        .input-group { margin-bottom: 18px; }
+        .input-group label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--gold-primary); margin-bottom: 8px; text-transform: uppercase;}
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%; padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(15, 23, 42, 0.9); font-size: 1rem; font-family: inherit; color: #fff; box-sizing: border-box;
+            appearance: none; -webkit-appearance: none;
+        }
+        .input-group select option {
+            background: #1e293b;
+            color: #fff;
+        }
+        .input-group input:focus, .input-group textarea:focus {
+            outline: none; border-color: var(--gold-primary); background: rgba(255,255,255,0.1);
+        }
+
+        .btn-submit {
+            width: 100%; padding: 18px; border-radius: 16px; border: none;
+            background: var(--gold-gradient); color: #fff; font-size: 1.1rem; font-weight: 800;
+            cursor: pointer; box-shadow: 0 10px 25px rgba(212, 175, 55, 0.3);
+            margin-top: 10px; display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+
+        #loading-ui {
+            display: none; text-align: center; padding: 40px 0;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* WIZARD STYLES (Member Full Registration) */
+        .wizard-progress {
+            display: flex; justify-content: center; gap: 10px; margin-bottom: 25px;
+        }
+        .wizard-dot {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem; font-weight: 800; border: 1px solid rgba(255,255,255,0.1);
+            transition: 0.3s;
+        }
+        .wizard-dot.active {
+            background: var(--gold-primary); color: #000;
+            border-color: var(--gold-primary); transform: scale(1.15); box-shadow: 0 0 15px rgba(212,175,55,0.4);
+        }
+        .wizard-step { display: none; animation: fadeIn 0.4s ease; }
+        .wizard-step.active { display: block; }
+        
+        .wizard-footer {
+            display: flex; gap: 10px; margin-top: 15px;
+        }
+        .btn-prev { flex: 1; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; font-weight: 700; cursor: pointer; }
+        .btn-next { flex: 2; background: var(--gold-gradient); color: #000; border: none; border-radius: 12px; padding: 12px; font-weight: 800; cursor: pointer; }
+        
+        .wizard-step label { display: block; font-size: 0.7rem; color: var(--gold-primary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 4px; }
+        .wizard-step input, .wizard-step select, .wizard-step textarea { 
+            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); 
+            background: rgba(255,255,255,0.05); color: #fff; margin-bottom: 12px; font-family: inherit; font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+        .wizard-step input:focus { border-color: var(--gold-primary); background: rgba(255,255,255,0.08); outline: none; }
+
+    </style>
+</head>
+
+<body>
+    <video id="splash-video" src="assets/logo_Ces Bulle_3d.mp4" playsinline autoplay muted loop preload="auto"></video>
+
+    <div class="phone-container" id="main-ui">
+        
+        <div class="header">
+            <!-- Header items here are visible over dark bg -->
+            <img src="assets/logo bulle.jpeg" alt="Logo Ces Bulle">
+            <h1>CES-BULLE</h1>
+            <p style="color: #cbd5e1;">Conectando Pessoas, Transformando Vidas.</p>
+        </div>
+
+        <div class="content-area">
+
+            <!-- TAB 1: ACOLHIMENTO -->
+            <div id="tab-visitor" class="tab-section active">
+                
+                <h3 id="welcome-title" style="margin: 5px 0 20px 5px; font-size:1.15rem; color:#cbd5e1; font-weight:800; letter-spacing:0.5px;">Oi amigo(a)</h3>
+
+                <div class="action-card primary" onclick="toggleCard(this)">
+                    <div class="action-header">
+                        <div class="action-details">
+                            <h3>Pedido de Oração</h3>
+                        </div>
+                        <i class="fas fa-chevron-down card-chevron"></i>
+                    </div>
+                    <div class="card-expand-content" style="padding-left: 0;">
+                        <p>Nós queremos lutar junto com você. Nossos intercessores clamarão a Deus pela sua vida e família.</p>
+                        <button class="btn-call-action" onclick="event.stopPropagation(); openModal('modal-oracao')">Fazer Pedido</button>
+                    </div>
+                </div>
+
+                <div class="action-card" onclick="toggleCard(this)">
+                    <div class="action-header">
+                        <div class="action-details">
+                            <h3>Equipe Acolher</h3>
+                        </div>
+                        <i class="fas fa-chevron-down card-chevron"></i>
+                    </div>
+                    <div class="card-expand-content" style="padding-left: 0;">
+                        <p>Nós queremos cuidar de você. Peça suporte da nossa equipe de acolhimento para qualquer necessidade ou dúvida.</p>
+                        <button class="btn-call-action" style="background: #3b82f6; box-shadow: 0 8px 15px rgba(59, 130, 246, 0.25);" onclick="event.stopPropagation(); openModal('modal-visita')">Chamar agora</button>
+                    </div>
+                </div>
+
+                <div class="action-card" onclick="toggleCard(this)">
+                    <div class="action-header">
+                        <div class="action-details">
+                            <h3>Nossos Cultos</h3>
+                        </div>
+                        <i class="fas fa-chevron-down card-chevron"></i>
+                    </div>
+                    <div class="card-expand-content" style="padding-left: 0; text-align: left;">
+                        <p style="margin-bottom: 8px;"><strong>Culto da Família</strong> | Domingo 10:00h</p>
+                        <div style="height: 1px; background: rgba(255,255,255,0.08); margin: 12px 0;"></div>
+                        <p style="font-size: 0.9rem; color: var(--text-dim); line-height: 1.5;">
+                            Temos células na semana! Entre em contato com nosso acolhimento para saber mais e encontrar a mais próxima de você.
+                        </p>
+                    </div>
+                </div>
+
+
+
+                <div class="info-block" style="margin-top: 15px; padding: 20px; cursor: pointer;" onclick="window.open('https://maps.google.com/?q=Rue+de+Vevey+136,+1630+Bulle', '_blank')">
+                    <h4>LOCALIZAÇÃO</h4>
+                    <p>Rue de Vevey 136</p>
+                    <p style="font-size: 0.9rem; color: var(--text-dim); margin-top:2px;">1630 Bulle</p>
+                    <div style="margin-top: 10px; font-size: 0.85rem; color:var(--gold-primary); font-weight:700;">COMO CHEGAR</div>
+                </div>
+
+                <div class="social-row">
+                    <a href="https://www.instagram.com/reel/DYAmEqouM7l/?igsh=eGt4eWtjaWNsenk5" target="_blank" class="social-btn social-ig" title="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://www.facebook.com/share/18ziwpnNwi/" target="_blank" class="social-btn social-fb" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://www.youtube.com/@igrejacme_oficial" target="_blank" class="social-btn social-yt" title="YouTube"><i class="fab fa-youtube"></i></a>
+                </div>
+
+            </div>
+
+            <!-- TAB 2: INTEGRAÇÃO -->
+            <div id="tab-integration" class="tab-section">
+                
+                <h3 style="margin: 5px 0 20px 5px; font-size:1.15rem; color:#cbd5e1; font-weight:800; letter-spacing:0.5px;">Membros CES</h3>
+
+                <div class="action-card" onclick="toggleCard(this)">
+                    <div class="action-header" style="justify-content: flex-start;">
+                        <div class="action-details">
+                            <h3>Agendamentos</h3>
+                        </div>
+                        <i class="fas fa-chevron-down card-chevron"></i>
+                    </div>
+                    <div class="card-expand-content" style="padding-left: 0;">
+                        <!-- Sub-Section: Bebê -->
+                        <div class="sub-action-box" style="margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+                            <p style="font-weight: 700; color: #ec4899; font-size: 0.8rem; text-transform: uppercase; margin-bottom:10px;">Apresentação de Bebê</p>
+                            <p>Deseja consagrar seu filho(a) ao Senhor? Preencha a ficha para o certificado.</p>
+                            <button class="btn-call-action" style="background: #ec4899; box-shadow: 0 8px 15px rgba(236, 72, 153, 0.25);" onclick="event.stopPropagation(); openModal('modal-baby')">Chamar agora</button>
+                        </div>
+
+                        <!-- Sub-Section: Batismo -->
+                        <div class="sub-action-box" style="margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+                            <p style="font-weight: 700; color: #3b82f6; font-size: 0.8rem; text-transform: uppercase; margin-bottom:10px;">Batismo</p>
+                            <p>Dê o passo público de fé! Inscreva-se para o nosso próximo batismo nas águas.</p>
+                            <button class="btn-call-action" style="background: #3b82f6; box-shadow: 0 8px 15px rgba(59, 130, 246, 0.25);" onclick="event.stopPropagation(); openModal('modal-baptism')">Quero me Batizar</button>
+                        </div>
+
+                        <!-- Sub-Section: Grupos -->
+                        <div class="sub-action-box">
+                            <p style="font-weight: 700; color: #f59e0b; font-size: 0.8rem; text-transform: uppercase; margin-bottom:10px;">Pequenos Grupos</p>
+                            <p>Participe de um pequeno grupo familiar perto de você.</p>
+                            <button class="btn-call-action" style="background: #f59e0b; box-shadow: 0 8px 15px rgba(245, 158, 11, 0.25);" onclick="event.stopPropagation(); openModal('modal-grupo')">Encontrar Grupo</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-card" style="margin-top: 35px;" onclick="toggleCard(this)">
+                    <div class="action-header" style="justify-content: flex-start;">
+                        <div class="action-details">
+                            <h3>Cadastro Completo</h3>
+                        </div>
+                        <i class="fas fa-chevron-down card-chevron"></i>
+                    </div>
+                    <div class="card-expand-content" style="padding-left: 0;">
+                        <p>Dê o seu próximo grande passo de aliança conosco preenchendo o seu Cadastro Nacional completo.</p>
+                        <button class="btn-call-action" style="background: #8b5cf6; box-shadow: 0 8px 15px rgba(139, 92, 246, 0.25);" onclick="event.stopPropagation(); openModal('modal-member-full')">Preencher Ficha</button>
+                    </div>
+                </div>
+
+                <div class="action-card" onclick="toggleCard(this)">
+                    <div class="action-header" style="justify-content: flex-start;">
+                        <div class="action-details">
+                            <h3>Servir no Reino</h3>
+                        </div>
+                        <i class="fas fa-chevron-down card-chevron"></i>
+                    </div>
+                    <div class="card-expand-content" style="padding-left: 0;">
+                        <p>Onde você gostaria de servir? Descubra o seu lugar no corpo de Cristo.</p>
+                        <button class="btn-call-action" style="background: #14b8a6; box-shadow: 0 8px 15px rgba(20, 184, 166, 0.25);" onclick="event.stopPropagation(); openModal('modal-servir')">Quero Servir</button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- BOTTOM NAV -->
+        <div class="bottom-nav">
+            <div class="nav-item active" id="nav-visitor" onclick="switchNav('visitor')">
+                <i class="fas fa-heart"></i>
+                <span>ACOLHIMENTO</span>
+            </div>
+            <div class="nav-item" id="nav-integration" onclick="switchNav('integration')">
+                <i class="fas fa-users"></i>
+                <span>MEMBROS</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Pedir Oração -->
+    <div id="modal-oracao" class="modal-overlay" onclick="closeModalsOuter(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Pedir Oração</h2>
+                <button class="close-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="oracao-form">
+                <div class="input-group">
+                    <label>Seu Nome (Opcional)</label>
+                    <input type="text" id="oracao-nome" placeholder="Nome em segredo se preferir...">
+                </div>
+                <div class="input-group">
+                    <label>Seu Pedido</label>
+                    <textarea id="oracao-pedido" rows="4" placeholder="Escreva aqui pelo que devemos orar..." required></textarea>
+                </div>
+                <button class="btn-submit" onclick="submitAcao('oracao', this)">ENVIAR AO ALTAR</button>
+            </div>
+            <div id="oracao-loading" id="loading-ui" style="display:none; text-align:center; padding: 20px;">
+                <i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--gold-primary); margin-bottom:15px;"></i>
+                <h3 style="color:#333;">Enviando ao Altar...</h3>
+            </div>
+            <div id="oracao-success" style="display:none; text-align:center; padding: 10px;">
+                <i class="fas fa-check-circle fa-4x" style="color:#10b981; margin-bottom:15px;"></i>
+                <h3 style="color:#333; margin-bottom: 5px;">Pedido Entregue!</h3>
+                <p style="color:#666; font-size:0.95rem;">Estaremos orando por você. Deus te abençoe poderosamente.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Equipe Acolher (Rebranded) -->
+    <div id="modal-visita" class="modal-overlay" onclick="closeModalsOuter(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Equipe Acolher</h2>
+                <button class="close-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="visita-form">
+                <div class="input-group">
+                    <label>Seu Nome Completo</label>
+                    <input type="text" id="visita-nome" placeholder="Digite seu nome..." required>
+                </div>
+                <div class="input-group">
+                    <label>Telefone / WhatsApp</label>
+                    <input type="tel" id="visita-fone" placeholder="+41 79 000 00 00" required>
+                </div>
+                <div class="input-group">
+                    <label>Assunto / Como podemos te ajudar?</label>
+                    <input type="text" id="visita-data" placeholder="Descreva brevemente...">
+                </div>
+                <button class="btn-submit" onclick="submitAcao('visita', this)">SOLICITAR SUPORTE</button>
+            </div>
+            <div id="visita-success" style="display:none; text-align:center; padding: 10px;">
+                <i class="fas fa-check-circle fa-4x" style="color:#10b981; margin-bottom:15px;"></i>
+                <h3 style="color:#333; margin-bottom: 5px;">Solicitação Enviada!</h3>
+                <p style="color:#666; font-size:0.95rem;">Nossa equipe de acolhimento entrará em contato com você em breve.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL: Apresentação de Bebê -->
+    <div id="modal-baby" class="modal-overlay" onclick="closeModalsOuter(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Apresentação de Bebê</h2>
+                <button class="close-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="baby-form">
+                <div class="input-group">
+                    <label>Nome da Criança*</label>
+                    <input type="text" id="baby-nome" placeholder="Nome Completo..." required>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div class="input-group" style="flex:1;">
+                        <label>Nascimento</label>
+                        <input type="date" id="baby-nasc">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Nome do Pai</label>
+                    <input type="text" id="baby-pai">
+                </div>
+                <div class="input-group">
+                    <label>Nome da Mãe</label>
+                    <input type="text" id="baby-mae">
+                </div>
+                <div class="input-group">
+                    <label>WhatsApp Contato*</label>
+                    <input type="tel" id="baby-fone" placeholder="+41 79 000 00 00" required>
+                </div>
+                <button class="btn-submit" onclick="submitAcao('baby', this)">SOLICITAR AGENDAMENTO</button>
+            </div>
+            <div id="baby-success" style="display:none; text-align:center; padding: 10px;">
+                <i class="fas fa-check-circle fa-4x" style="color:#10b981; margin-bottom:15px;"></i>
+                <h3 style="color:#fff; margin-bottom: 5px;">Pedido Enviado!</h3>
+                <p style="color:#cbd5e1; font-size:0.95rem;">A secretaria entrará em contato para confirmar a data da apresentação.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Batismo -->
+    <div id="modal-baptism" class="modal-overlay" onclick="closeModalsOuter(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Próximo Batismo</h2>
+                <button class="close-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="baptism-form">
+                <div class="input-group">
+                    <label>Nome do Candidato*</label>
+                    <input type="text" id="baptism-nome" placeholder="Nome Completo..." required>
+                </div>
+                <div class="input-group">
+                    <label>WhatsApp Contato*</label>
+                    <input type="tel" id="baptism-fone" placeholder="+41 79 000 00 00" required>
+                </div>
+                <button class="btn-submit" onclick="submitAcao('baptism', this)">QUERO ME BATIZAR</button>
+            </div>
+            <div id="baptism-success" style="display:none; text-align:center; padding: 10px;">
+                <i class="fas fa-check-circle fa-4x" style="color:#10b981; margin-bottom:15px;"></i>
+                <h3 style="color:#fff; margin-bottom: 5px;">Inscrição Realizada!</h3>
+                <p style="color:#cbd5e1; font-size:0.95rem;">Glória a Deus por este passo! Entraremos em contato com detalhes sobre o curso e a data.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Servir no Reino -->
+    <div id="modal-servir" class="modal-overlay" onclick="closeModalsOuter(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Servir no Reino</h2>
+                <button class="close-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="servir-form">
+                <div class="input-group">
+                    <label>Seu Nome*</label>
+                    <input type="text" id="servir-nome" placeholder="Nome Completo..." required>
+                </div>
+                <div class="input-group">
+                    <label>WhatsApp Contato*</label>
+                    <input type="tel" id="servir-fone" placeholder="+41 79 000 00 00" required>
+                </div>
+                <div class="input-group">
+                    <label>Onde gostaria de servir?*</label>
+                    <select id="servir-area">
+                        <option value="">Selecione uma área...</option>
+                        <option value="KIDS">KIDS</option>
+                        <option value="RECEPÇÃO">RECEPÇÃO</option>
+                        <option value="LOUVOR">LOUVOR</option>
+                        <option value="MÍDIA">MÍDIA</option>
+                        <option value="INFRAESTRUTURA">INFRAESTRUTURA / LIMPEZA</option>
+                        <option value="OUTROS">OUTRAS ÁREAS</option>
+                    </select>
+                </div>
+                <button class="btn-submit" onclick="submitAcao('servir', this)">ENVIAR INTERESSE</button>
+            </div>
+            <div id="servir-success" style="display:none; text-align:center; padding: 10px;">
+                <i class="fas fa-heart fa-4x" style="color:#14b8a6; margin-bottom:15px;"></i>
+                <h3 style="color:#fff; margin-bottom: 5px;">Que Alegria!</h3>
+                <p style="color:#cbd5e1; font-size:0.95rem;">Recebemos seu interesse em servir. Um líder de área entrará em contato em breve!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Ficha Completa de Membro (42 Fields) -->
+    <div id="modal-member-full" class="modal-overlay" onclick="closeModalsOuter(event)">
+        <div class="modal-card" style="max-height: 90vh; overflow-y: auto; padding: 25px;">
+            <div class="modal-header">
+                <h2>Ficha de Membro</h2>
+                <button class="close-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div id="member_full-form">
+                <!-- Wizard Progress -->
+                <div class="wizard-progress">
+                    <div class="wizard-dot active" id="wizard-dot-1">1</div>
+                    <div class="wizard-dot" id="wizard-dot-2">2</div>
+                    <div class="wizard-dot" id="wizard-dot-3">3</div>
+                    <div class="wizard-dot" id="wizard-dot-4">4</div>
+                </div>
+
+                <!-- STEP 1 -->
+                <div class="wizard-step active" id="wizard-step-1">
+                    <label>1. Nome Completo*</label>
+                    <input type="text" id="m-field-1" placeholder="Seu nome completo">
+                    
+                    <label>2. Igreja*</label>
+                    <input type="text" id="m-field-2" value="CES-BULLE">
+
+                    <label>3. Gênero*</label>
+                    <select id="m-field-3">
+                        <option value="">Selecione...</option>
+                        <option value="Masculino">Masculino</option>
+                        <option value="Feminino">Feminino</option>
+                    </select>
+
+                    <label>4. Nome do Pai</label>
+                    <input type="text" id="m-field-4">
+
+                    <label>5. Nome da Mãe</label>
+                    <input type="text" id="m-field-5">
+
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;">
+                            <label>6. Nascimento*</label>
+                            <input type="date" id="m-field-6">
+                        </div>
+                        <div style="flex:1;">
+                            <label>7. Estado Civil</label>
+                            <select id="m-field-7">
+                                <option value="Solteiro(a)">Solteiro(a)</option>
+                                <option value="Casado(a)">Casado(a)</option>
+                                <option value="Divorciado(a)">Divorciado(a)</option>
+                                <option value="Viúvo(a)">Viúvo(a)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label>11. Grau Acadêmico</label>
+                    <select id="m-field-11">
+                        <option value="Superior">Superior</option>
+                        <option value="Médio">Médio</option>
+                        <option value="Fundamental">Fundamental</option>
+                        <option value="Pós">Pós-Graduação</option>
+                    </select>
+
+                    <label>12. Profissão</label>
+                    <input type="text" id="m-field-12">
+
+                    <div class="wizard-footer">
+                        <button class="btn-next" onclick="changeWizardStep(2)">PRÓXIMO <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- STEP 2 -->
+                <div class="wizard-step" id="wizard-step-2">
+                    <label>18. Endereço Completo*</label>
+                    <textarea id="m-field-18" rows="2"></textarea>
+                    
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;">
+                            <label>20. Cidade*</label>
+                            <input type="text" id="m-field-20">
+                        </div>
+                        <div style="flex:1;">
+                            <label>19. Cod. Postal</label>
+                            <input type="text" id="m-field-19">
+                        </div>
+                    </div>
+
+                    <label>21. WhatsApp*</label>
+                    <input type="tel" id="m-field-21" placeholder="+41...">
+
+                    <label>22. Email*</label>
+                    <input type="email" id="m-field-22">
+
+                    <!-- Hidden padding fields -->
+                    <input type="hidden" id="m-field-8"> <input type="hidden" id="m-field-9"> <input type="hidden" id="m-field-10">
+                    <input type="hidden" id="m-field-13"> <input type="hidden" id="m-field-14"> <input type="hidden" id="m-field-15">
+                    <input type="hidden" id="m-field-16"> <input type="hidden" id="m-field-17">
+
+                    <div class="wizard-footer">
+                        <button class="btn-prev" onclick="changeWizardStep(1)"><i class="fas fa-arrow-left"></i></button>
+                        <button class="btn-next" onclick="changeWizardStep(3)">PRÓXIMO <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- STEP 3 -->
+                <div class="wizard-step" id="wizard-step-3">
+                    <label>23. Data 1ª Visita</label>
+                    <input type="date" id="m-field-23">
+
+                    <label>24. Igreja Anterior</label>
+                    <input type="text" id="m-field-24">
+
+                    <label>27. Data de Batismo</label>
+                    <input type="date" id="m-field-27">
+
+                    <label>29. Função na Igreja</label>
+                    <input type="text" id="m-field-29" placeholder="Ex: Membro, Diácono...">
+
+                    <!-- Hidden padding fields -->
+                    <input type="hidden" id="m-field-25"> <input type="hidden" id="m-field-26"> <input type="hidden" id="m-field-28">
+                    <input type="hidden" id="m-field-30"> <input type="hidden" id="m-field-31">
+
+                    <div class="wizard-footer">
+                        <button class="btn-prev" onclick="changeWizardStep(2)"><i class="fas fa-arrow-left"></i></button>
+                        <button class="btn-next" onclick="changeWizardStep(4)">PRÓXIMO <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- STEP 4 -->
+                <div class="wizard-step" id="wizard-step-4">
+                    <label>33. Membro CME desde</label>
+                    <input type="date" id="m-field-33">
+
+                    <label>Observações / Outros Cursos</label>
+                    <textarea id="m-field-42" rows="3" placeholder="Algo mais que gostaria de nos contar?"></textarea>
+
+                    <!-- Hidden padding fields -->
+                    <input type="hidden" id="m-field-32"> <input type="hidden" id="m-field-34"> <input type="hidden" id="m-field-35">
+                    <input type="hidden" id="m-field-36"> <input type="hidden" id="m-field-37"> <input type="hidden" id="m-field-38">
+                    <input type="hidden" id="m-field-39"> <input type="hidden" id="m-field-40"> <input type="hidden" id="m-field-41">
+
+                    <div class="wizard-footer">
+                        <button class="btn-prev" onclick="changeWizardStep(3)"><i class="fas fa-arrow-left"></i></button>
+                        <button class="btn-submit" onclick="submitAcao('member_full', this)">FINALIZAR CADASTRO</button>
+                    </div>
+                </div>
+
+                <!-- Auto-save status Indicator -->
+                <div id="draft-status" style="text-align: center; color: #94a3b8; font-size: 0.75rem; margin-top: 15px; font-weight: 600; opacity: 0; transition: opacity 0.5s;">
+                   <i class="fas fa-check-circle"></i> Rascunho salvo no dispositivo
+                </div>
+            </div>
+
+            <div id="member_full-success" style="display:none; text-align:center; padding: 20px;">
+                <i class="fas fa-certificate fa-4x" style="color:var(--gold-primary); margin-bottom:15px;"></i>
+                <h3 style="color:#fff; margin-bottom: 5px;">Ficha Recebida!</h3>
+                <p style="color:#cbd5e1; font-size:0.95rem;">Sua ficha está em processamento pela secretaria. Bem-vindo oficial à família!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Grupos Escola -->
+    <div id="modal-grupo" class="modal-overlay" onclick="closeModalsOuter(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Encontrar um Grupo</h2>
+                <button class="close-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="grupo-form">
+                <div class="input-group">
+                    <label>Seu Nome Completo</label>
+                    <input type="text" id="grupo-nome" placeholder="Digite seu nome..." required>
+                </div>
+                <div class="input-group">
+                    <label>Telefone / WhatsApp</label>
+                    <input type="tel" id="grupo-fone" placeholder="+41 79 000 00 00" required>
+                </div>
+                <div class="input-group">
+                    <label>Área de Interesse</label>
+                    <select id="grupo-tipo">
+                        <option value="Jovens">Rede de Jovens</option>
+                        <option value="Homens">Rede de Homens</option>
+                        <option value="Mulheres">Rede de Mulheres</option>
+                        <option value="Familia">Casais / Família</option>
+                        <option value="Kids">Ministério Infantil</option>
+                        <option value="Nao Sei">Quero me envolver, mas não sei onde</option>
+                    </select>
+                </div>
+                <button class="btn-submit" onclick="submitAcao('grupo', this)">QUERO PARTICIPAR</button>
+            </div>
+            <div id="grupo-success" style="display:none; text-align:center; padding: 10px;">
+                <i class="fas fa-check-circle fa-4x" style="color:#10b981; margin-bottom:15px;"></i>
+                <h3 style="color:#333; margin-bottom: 5px;">Inscrição Realizada!</h3>
+                <p style="color:#666; font-size:0.95rem;">O líder responsável pela rede falará com você em breve.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=51.3.1"></script>
+
+    <script>
+        // PERSONALIZED GREETING & CONTEXT
+        function personalizeGreeting() {
+            // 1. Name injection
+            const savedName = localStorage.getItem('visitor_first_name');
+            const titleEl = document.getElementById('welcome-title');
+            if (savedName && titleEl) {
+                titleEl.innerHTML = `Oi amigo(a), <span style="color:var(--gold-primary);">${savedName}</span>!`;
+            }
+
+            // 2. Acolhedor Origin (Persistent Reference)
+            const urlParams = new URLSearchParams(window.location.search);
+            const ref = urlParams.get('ref');
+            if (ref) {
+                localStorage.setItem('acolhedor_origem', ref);
+                console.log("📍 Hub: Acolhedor de origem detectado:", ref);
+            }
+        }
+
+        // SPLASH SCREEN LOGIC
+        window.addEventListener('DOMContentLoaded', () => {
+            personalizeGreeting(); // Call immediately on load
+
+            setTimeout(() => {
+                const vid = document.getElementById('splash-video');
+                const ui = document.getElementById('main-ui');
+                if(vid) vid.classList.add('bg-mode');
+                if(ui) ui.classList.add('active');
+            }, 1000); // 1 Second exact foreground
+        });
+
+        // NAVIGATION LOGIC
+        function switchNav(id) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-' + id).classList.add('active');
+
+            document.querySelectorAll('.tab-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + id).classList.add('active');
+        }
+
+        // MODAL LOGIC
+        function toggleCard(element) {
+            const isExpanded = element.classList.contains('expanded');
+            
+            // Close other cards for a clean accordion effect
+            document.querySelectorAll('.action-card.expanded').forEach(card => {
+                if(card !== element) card.classList.remove('expanded');
+            });
+            
+            // Toggle the clicked card
+            element.classList.toggle('expanded');
+            
+            // Slight delay scroll to element if expanding to ensure it's visible on smaller screens
+            if(!isExpanded) {
+                setTimeout(() => {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 300);
+            }
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+            document.body.style.overflow = 'hidden';
+            // Reset wizard and load draft if member modal
+            if(id === 'modal-member-full') {
+                changeWizardStep(1);
+                loadWizardDraft();
+            }
+        }
+
+        function changeWizardStep(n) {
+            document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.wizard-dot').forEach(d => d.classList.remove('active'));
+            
+            const stepEl = document.getElementById('wizard-step-' + n);
+            const dotEl = document.getElementById('wizard-dot-' + n);
+            
+            if(stepEl) stepEl.classList.add('active');
+            if(dotEl) dotEl.classList.add('active');
+            
+            // Scroll modal to top
+            const modalBody = document.querySelector('#modal-member-full .modal-card');
+            if(modalBody) modalBody.scrollTop = 0;
+        }
+
+        // --- SAVE DRAFT LOGIC ---
+        function saveWizardDraft() {
+            const draft = {};
+            for (let i = 1; i <= 42; i++) {
+                const el = document.getElementById('m-field-' + i);
+                if (el) draft['field_' + i] = el.value;
+            }
+            localStorage.setItem('ces_wizard_draft', JSON.stringify(draft));
+            
+            // Show indicator
+            const status = document.getElementById('draft-status');
+            if(status) {
+                status.style.opacity = '1';
+                setTimeout(() => { status.style.opacity = '0'; }, 2000);
+            }
+        }
+
+        function loadWizardDraft() {
+            const raw = localStorage.getItem('ces_wizard_draft');
+            if (!raw) return;
+            try {
+                const draft = JSON.parse(raw);
+                for (let i = 1; i <= 42; i++) {
+                    const el = document.getElementById('m-field-' + i);
+                    if (el && draft['field_' + i] !== undefined) {
+                        el.value = draft['field_' + i];
+                    }
+                }
+                console.log("💾 Draft loaded from device.");
+            } catch (e) {
+                console.error("Draft load error:", e);
+            }
+        }
+        
+        // Listen for all inputs in the member form
+        document.getElementById('member_full-form').addEventListener('input', (e) => {
+            if (e.target.id && e.target.id.startsWith('m-field-')) {
+                saveWizardDraft();
+            }
+        });
+
+        function closeModals() {
+            document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('open', 'active'));
+            document.body.style.overflow = 'auto';
+            // Reset forms softly
+            setTimeout(() => {
+                document.querySelectorAll('input, textarea').forEach(inpt => inpt.value = '');
+                ['oracao', 'visita', 'grupo', 'baby', 'baptism', 'servir', 'member_full'].forEach(k => {
+                    const frm = document.getElementById(k + '-form');
+                    const succ = document.getElementById(k + '-success');
+                    if(frm) frm.style.display = 'block';
+                    if(succ) succ.style.display = 'none';
+                });
+            }, 400);
+        }
+
+        function closeModalsOuter(e) {
+            if (e.target.classList.contains('modal-overlay')) closeModals();
+        }
+
+        // --- DUPLICATE PREVENTION UTILITY ---
+        async function findExistingPerson(phone) {
+            const normPhone = (phone || '').replace(/[^\d]/g, '');
+            if (!normPhone || normPhone.length < 8) return null;
+            
+            try {
+                const snap = await db.collection('people').where('field_21', '==', phone).get();
+                if (!snap.empty) return { id: snap.docs[0].id, data: snap.docs[0].data() };
+                
+                const snap2 = await db.collection('people').limit(300).get(); 
+                let matched = null;
+                snap2.forEach(doc => {
+                    const d = doc.data();
+                    const p = (d.phone || d.field_21 || '').replace(/[^\d]/g, '');
+                    if (p === normPhone) matched = { id: doc.id, data: d };
+                });
+                return matched;
+            } catch(e) { 
+                console.error("Duplicate check error:", e);
+                return null; 
+            }
+        }
+
+        // FIREBASE SUBMIT LOGIC
+        async function submitAcao(tipo, btnEl) {
+            try {
+                if (!window.db) throw new Error("Sistema offline no momento.");
+                
+                let dataToSave = {
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'pending' // Standard for backend reading
+                };
+
+                let originalBtnText = btnEl.innerHTML;
+
+                if (tipo === 'oracao') {
+                    const nome = document.getElementById('oracao-nome').value.trim() || "Anônimo";
+                    const pedido = document.getElementById('oracao-pedido').value.trim();
+                    if (!pedido) return alert("Por favor, escreva o pedido de oração.");
+                    
+                    dataToSave.type = 'oracao';
+                    dataToSave.action = 'Pedido Público de Oração';
+                    dataToSave.person_name = nome;
+                    dataToSave.message = pedido;
+
+                } else if (tipo === 'visita') {
+                    const nome = document.getElementById('visita-nome').value.trim();
+                    const fone = document.getElementById('visita-fone').value.trim();
+                    const dt = document.getElementById('visita-data').value.trim() || 'Não informado';
+                    
+                    if (!nome || !fone) return alert("Nome e Telefone são obrigatórios.");
+
+                    // DUPLICATE CHECK
+                    const existing = await findExistingPerson(fone);
+                    if (existing) {
+                        if (!confirm(`⚠️ Você parece já estar cadastrado como ${existing.data.type}. Deseja enviar o pedido mesmo assim?`)) return;
+                    }
+                    
+                    dataToSave.type = 'visita';
+                    dataToSave.action = 'Solicitação de Acolhimento';
+                    dataToSave.person_name = nome;
+                    dataToSave.contact = fone;
+                    dataToSave.preferred_date = dt;
+                    
+                    // Logic: Link to the person who registered them if known
+                    const ref = localStorage.getItem('acolhedor_origem') || 'Geral';
+                    dataToSave.acolhedor_origem = ref;
+                    dataToSave.assigned_to = ref; // Auto-assign to the origin receptionist
+
+                } else if (tipo === 'grupo') {
+                    const nome = document.getElementById('grupo-nome').value.trim();
+                    const fone = document.getElementById('grupo-fone').value.trim();
+                    const red = document.getElementById('grupo-tipo').value;
+                    
+                    if (!nome || !fone) return alert("Nome e Telefone são obrigatórios.");
+                    
+                    dataToSave.type = 'grupo';
+                    dataToSave.action = 'Interesse em Grupo';
+                    dataToSave.person_name = nome;
+                    dataToSave.contact = fone;
+                    dataToSave.group_interest = red;
+
+                } else if (tipo === 'baby') {
+                    const nome = document.getElementById('baby-nome').value.trim();
+                    const fone = document.getElementById('baby-fone').value.trim();
+                    const nasc = document.getElementById('baby-nasc').value;
+                    const pai = document.getElementById('baby-pai').value.trim();
+                    const mae = document.getElementById('baby-mae').value.trim();
+
+                    if (!nome || !fone) return alert("Nome da criança e WhatsApp são obrigatórios.");
+
+                    dataToSave.type = 'Apresentação de Bebê';
+                    dataToSave.action = 'Registro de Consagração';
+                    dataToSave.person_name = nome;
+                    dataToSave.contact = fone;
+                    dataToSave.details = `Nasc: ${nasc}, Pai: ${pai}, Mãe: ${mae}`;
+
+                } else if (tipo === 'baptism') {
+                    const nome = document.getElementById('baptism-nome').value.trim();
+                    const fone = document.getElementById('baptism-fone').value.trim();
+
+                    if (!nome || !fone) return alert("Nome e WhatsApp são obrigatórios.");
+
+                    dataToSave.type = 'Batismo';
+                    dataToSave.action = 'Inscrição para Batismo';
+                    dataToSave.person_name = nome;
+                    dataToSave.contact = fone;
+
+                } else if (tipo === 'servir') {
+                    const nome = document.getElementById('servir-nome').value.trim();
+                    const fone = document.getElementById('servir-fone').value.trim();
+                    const area = document.getElementById('servir-area').value;
+                    
+                    if (!nome || !fone || !area) return alert("Por favor, preencha todos os campos obrigatórios.");
+                    
+                    dataToSave.type = 'Servir no Reino';
+                    dataToSave.action = 'Interesse em Voluntariado';
+                    dataToSave.person_name = nome;
+                    dataToSave.contact = fone;
+                    dataToSave.message = `Interesse na área: ${area}`;
+
+                } else if (tipo === 'member_full') {
+                    const nome = document.getElementById('m-field-1').value.trim();
+                    const fone = document.getElementById('m-field-21').value.trim();
+                    
+                    if (!nome || !fone) return alert("Pelo menos Nome (Passo 1) e WhatsApp (Passo 2) são obrigatórios.");
+
+                    // DUPLICATE CHECK
+                    const existing = await findExistingPerson(fone);
+                    if (existing) {
+                        if (!confirm(`⚠️ Você já possui um cadastro conosco como ${existing.data.type}. Deseja enviar esta nova ficha mesmo assim?`)) return;
+                    }
+                    
+                    dataToSave.type = 'membro_completo';
+                    dataToSave.action = 'Cadastro Nacional de Membros';
+                    dataToSave.person_name = nome;
+                    dataToSave.contact = fone;
+                    dataToSave.name = nome;
+                    dataToSave.phone = fone;
+                    
+                    // Collect all 42 fields
+                    for (let i = 1; i <= 42; i++) {
+                        const val = document.getElementById('m-field-' + i)?.value;
+                        if (val !== undefined) dataToSave['field_' + i] = val;
+                    }
+                }
+
+                // Loading State
+                btnEl.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> ENVIANDO...';
+                btnEl.style.opacity = '0.7';
+                btnEl.style.pointerEvents = 'none';
+
+                // Send to Firebase 'schedule_requests' (The unified public requests bucket)
+                await db.collection('schedule_requests').add(dataToSave);
+                
+                // Greeting Personalization Data Save
+                if (dataToSave.person_name && dataToSave.person_name !== "Anônimo") {
+                    const firstName = dataToSave.person_name.split(' ')[0];
+                    localStorage.setItem('visitor_first_name', firstName);
+                    personalizeGreeting(); // Instant UI update
+                }
+
+                // Success State!
+                if(tipo === 'member_full') {
+                    localStorage.removeItem('ces_wizard_draft');
+                }
+                
+                document.getElementById(tipo + '-form').style.display = 'none';
+                document.getElementById(tipo + '-success').style.display = 'block';
+
+            } catch (err) {
+                console.error(err);
+                alert("Ocorreu um erro. Tente novamente: " + err.message);
+                btnEl.innerHTML = originalBtnText;
+                btnEl.style.opacity = '1';
+                btnEl.style.pointerEvents = 'auto';
+            }
+        }
+    </script>
+</body>
+
+</html>

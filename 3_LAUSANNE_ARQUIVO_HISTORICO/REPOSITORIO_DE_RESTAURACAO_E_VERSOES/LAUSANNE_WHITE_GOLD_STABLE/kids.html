@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=51.2.4"></script>
+    <script src="js/auth-manager.js?v=51.2.4"></script>
+    <script>
+        // SECURITY GUARD v48.5
+        // Acesso direto → redireciona para mobile.html
+        // Dentro de iframe → confia no shell pai que já autenticou
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile.html?v=48.12.27';
+            }
+        })();
+    </script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kids - Catedral Lausanne | v51.2.4</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css?v=48.12.27">
+    <!-- REUSE MOBILE CSS STYLE -->
+    <link rel="stylesheet" href="css/style-v2.css?v=48.12.27">
+    <link rel="stylesheet" href="css/mobile-v2.css?v=48.12.27">
+    <style>
+        body {
+            background-color: #fff9f0;
+            /* Soft creamy yellow */
+            background-image: radial-gradient(#ffe4e6 20%, transparent 20%), radial-gradient(#e0f2fe 20%, transparent 20%);
+            background-position: 0 0, 25px 25px;
+            background-size: 50px 50px;
+            color: #1a1a1a;
+            font-family: 'Outfit', sans-serif;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #ec4899;
+            /* Vibrant Pink */
+            margin: 0;
+            font-size: 2.2rem;
+            font-weight: 800;
+            text-shadow: 2px 2px 0px #fff, 4px 4px 0px rgba(236, 72, 153, 0.1);
+        }
+
+        .header p {
+            color: #831843;
+            margin: 5px 0 0 0;
+            font-size: 0.9rem;
+        }
+
+        .kid-card {
+            background: white;
+            border-radius: 25px;
+            /* Even rounder */
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 8px 0px rgba(236, 72, 153, 0.1);
+            border: 3px solid #fce7f3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .kid-card:active {
+            transform: scale(0.98);
+        }
+
+        .kid-info h3 {
+            margin: 0;
+            color: #1a1a1a;
+            font-size: 1.1rem;
+        }
+
+        .kid-info p {
+            margin: 5px 0 0 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-confirm {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-cancel {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* DISCRETE PRESENCE LIST STYLES */
+        .presence-container {
+            background: #fff;
+            border-radius: 25px;
+            padding: 25px;
+            border: 3px solid #e0f2fe;
+            /* Light Blue border */
+            box-shadow: 0 8px 0px rgba(14, 165, 233, 0.1);
+            color: #555;
+            margin-top: 40px;
+        }
+
+        .presence-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            font-size: 0.95rem;
+        }
+
+        .presence-item:last-child {
+            border-bottom: none;
+        }
+
+        .presence-number {
+            color: #0ea5e9;
+            /* Blue */
+            font-weight: 800;
+            min-width: 35px;
+            font-size: 0.9rem;
+        }
+
+        .presence-name {
+            font-weight: 500;
+            color: #333;
+            margin-right: 10px;
+        }
+
+        .presence-age {
+            color: #999;
+            font-size: 0.8rem;
+        }
+
+        /* TABS STYLING */
+        .tabs-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: #fff;
+            border: 2px solid #fce7f3;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: #ec4899;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 0px rgba(236, 72, 153, 0.05);
+            font-size: 0.9rem;
+        }
+
+        .tab-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0px rgba(236, 72, 153, 0.1);
+        }
+
+        .tab-btn.active {
+            background: #ec4899 !important;
+            color: white !important;
+            border-color: #ec4899 !important;
+            box-shadow: 0 4px 0px rgba(131, 24, 67, 0.2) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <i class="fas fa-child"
+            style="font-size: 3rem; color: #fbbf24; margin-bottom: 10px; filter: drop-shadow(2px 2px 0 #fff);"></i>
+        <h1>Catedral Lausanne (Kids)</h1>
+        <p style="color: #6366f1; font-weight: 700;">Conectando e Cuidando (v51.2.4)</p>
+    </div>
+
+    <div style="max-width: 800px; margin: 0 auto;">
+
+        <!-- TABS FOR AGE FILTERING -->
+        <div class="tabs-container">
+            <button class="tab-btn active" id="tab-bercario" onclick="setAgeFilter('0-3')">
+                <i class="fas fa-baby"></i> Berçário (0-3)
+            </button>
+            <button class="tab-btn" id="tab-kids" onclick="setAgeFilter('4+')">
+                <i class="fas fa-child"></i> Kids (4+)
+            </button>
+        </div>
+
+        <!-- WAITING COLUMN -->
+        <div>
+            <h2
+                style="color: #6366f1; font-size: 1.4rem; border-bottom: 4px dashed #6366f1; padding-bottom: 10px; margin-bottom: 25px; font-weight: 800;">
+                <i class="fas fa-star" style="color:#fbbf24;"></i> Aguardando Chegada
+            </h2>
+            <div id="kids-list-waiting">
+                <div style="text-align:center; color:#999; margin-top:50px;">
+                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                </div>
+            </div>
+        </div>
+
+        <!-- PRESENT LIST (Confirmed) - DISCRETE THEME -->
+        <div class="presence-container">
+            <h2 onclick="togglePresenceList()"
+                style="color: #db2777; font-size: 1.3rem; margin: 0 0 15px 0; display:flex; align-items:center; gap:10px; font-weight: 800; cursor:pointer;">
+                <i class="fas fa-gift" style="color:#ec4899;"></i>
+                Lista de Presentes
+                <span
+                    style="font-size:0.9rem; font-weight:600; color:#db2777; margin-left:auto; background:#fce7f3; padding:4px 12px; border-radius:20px;">
+                    Total: <strong id="kids-count-active">0</strong>
+                    <i id="presence-toggle-icon" class="fas fa-chevron-down" style="margin-left:5px;"></i>
+                </span>
+            </h2>
+
+            <div id="presence-list-content" style="display:none;">
+                <div id="kids-list-active">
+                    <div style="text-align:center; color:#444; margin-top:20px; font-size:0.9rem;">
+                        <i class="fas fa-spinner fa-spin"></i> Carregando...
+                    </div>
+                </div>
+
+                <button onclick="endKidsSession()"
+                    style="margin-top:20px; width:100%; background:transparent; border:1px solid #db2777; color:#db2777; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">
+                    <i class="fas fa-door-closed"></i> Encerrar Sala (Limpar Lista)
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- DIAGNOSTIC PANEL v48.12.17 -->
+    <div id="diagnostic-panel" style="position:fixed; bottom:0; width:100%; background:rgba(0,0,0,0.8); color:#0f0; font-family:monospace; font-size:10px; padding:5px; z-index:10000; border-top:1px solid #0f0; display:flex; justify-content:space-between; left:0;">
+        <span>V: v48.12.17</span>
+        <span id="diag-project-id">Proj: ---</span>
+        <span id="diag-auth-status">Status: ...</span>
+        <span id="diag-user-email">Email: ---</span>
+    </div>
+
+    <script>
+        // Diagnostic Update Logic
+        setInterval(() => {
+            const user = firebase.auth().currentUser;
+            const projEl = document.getElementById('diag-project-id');
+            const statusEl = document.getElementById('diag-auth-status');
+            const emailEl = document.getElementById('diag-user-email');
+            if (projEl) projEl.innerText = "Proj: " + (firebase.app().options.projectId || "???");
+            if (statusEl) {
+                statusEl.innerText = user ? "SESSAO ATIVA" : "SEM SESSAO";
+                statusEl.style.color = user ? "#0f0" : "#f00";
+            }
+            if (emailEl) {
+                emailEl.innerText = "Email: " + (user ? user.email : "---");
+            }
+        }, 2000);
+    </script>
+
+    <script>
+        // --- PREMIUM UI HELPERS ---
+        function _alert(msg, title) {
+            try {
+                if (window.parent && window.parent.showAlert) { window.parent.showAlert(msg, title); return; }
+            } catch (e) {
+                // cross-origin wrapper err
+            }
+            alert(msg);
+        }
+        function _confirm(msg, callback, title) {
+            try {
+                if (window.parent && window.parent.showConfirm) { window.parent.showConfirm(msg, callback, title); return; }
+            } catch (e) {
+                // cross-origin wrapper err
+            }
+            if (confirm(msg)) callback();
+        }
+
+        var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+        // --- IFRAME-AWARE AUTH v48.6 ---
+        var isInsideIframe = window.self !== window.top;
+
+        // --- AUTH SYNC v48.14.4 ---
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                console.log("Kids Auth: OK", user.email);
+                initKidsMonitor();
+            } else {
+                console.log("Kids: Aguardando Auth do Shell...");
+            }
+        });
+
+        let lastWaitingCount = -1; 
+        const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg'); 
+
+        let currentAgeFilter = '0-3';
+
+        function setAgeFilter(filter) {
+            currentAgeFilter = filter;
+            
+            // Update UI tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (filter === '0-3') document.getElementById('tab-bercario').classList.add('active');
+            else if (filter === '4+') document.getElementById('tab-kids').classList.add('active');
+
+            // Trigger re-render
+            if (window._lastDocs) renderLists(window._lastDocs);
+        }
+
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        function togglePresenceList() {
+            const content = document.getElementById('presence-list-content');
+            const icon = document.getElementById('presence-toggle-icon');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            } else {
+                content.style.display = 'none';
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            }
+        }
+
+        function endKidsSession() {
+            _confirm("Tem certeza que deseja encerrar a sala? Isso arquivará a lista de hoje.", () => {
+                const SW_VERSION = 'v48.12.0';
+                // Security v48.12.0 Enforce
+                navigator.serviceWorker.register('sw-v3.js?v=' + SW_VERSION).then(reg => {
+                    console.log('🚀 SW ' + SW_VERSION + ' Registered (Mobile-v48.12.0)');
+                });
+                
+                const batch = db.batch();
+                let count = 0;
+                document.querySelectorAll('.presence-item').forEach(el => {
+                    const id = el.getAttribute('data-id');
+                    if (id) {
+                        batch.update(db.collection('attendance').doc(id), { status: 'finished' });
+                        count++;
+                    }
+                });
+                if (count === 0) return _alert("Nenhuma criança ativa para encerrar.");
+
+                batch.commit().then(() => {
+                    _alert("Sala encerrada com sucesso!");
+                    togglePresenceList();
+                }).catch(e => _alert("Erro: " + e.message));
+            });
+        }
+
+        // Function to start the main monitor logic AFTER auth is ready
+        function initKidsMonitor() {
+            console.log("Kids: Iniciando monitoramento de dados...");
+            db.collection('attendance')
+                .where('type', '==', 'kids')
+                .onSnapshot(snap => {
+                    let docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    window._lastDocs = docs;
+                    renderLists(docs);
+                }, error => {
+                    console.error("Erro Kids Monitor:", error);
+                    document.body.innerHTML += `<div style="color:red; text-align:center;">Erro: ${error.message}</div>`;
+                });
+        }
+
+        function renderLists(docs) {
+            const listWaiting = document.getElementById('kids-list-waiting');
+            const listActive = document.getElementById('kids-list-active');
+
+            if (listWaiting) listWaiting.innerHTML = '';
+            if (listActive) listActive.innerHTML = '';
+
+            // 1. FILTER BY AGE GROUP (IF SELECTED)
+            let filteredDocs = docs;
+            if (currentAgeFilter === '0-3') {
+                filteredDocs = docs.filter(d => {
+                    const ag = (d.age_group || '').toLowerCase();
+                    return ag.includes('0-3') || ag.includes('berçário') || ag.includes('bebe') || ag.includes('baby');
+                });
+            } else if (currentAgeFilter === '4+') {
+                filteredDocs = docs.filter(d => {
+                    const ag = (d.age_group || '').toLowerCase();
+                    const isBercario = ag.includes('0-3') || ag.includes('berçário') || ag.includes('bebe') || ag.includes('baby');
+                    return !isBercario;
+                });
+            }
+
+            // 2. SEPARATE INTO WAITING AND ACTIVE
+            const waiting = filteredDocs.filter(d => d.status === 'waiting_kids_confirm');
+            const active = filteredDocs.filter(d => {
+                if (d.status !== 'confirmed' && d.status !== 'present') return false;
+                if (!d.timestamp) return false;
+                return d.timestamp.toDate() >= todayStart; // ONLY TODAY
+            });
+
+            // 3. SORT BY TIMESTAMP (Newest First)
+            const sorter = (a, b) => {
+                const t1 = a.timestamp ? a.timestamp.seconds : 0;
+                const t2 = b.timestamp ? b.timestamp.seconds : 0;
+                return t2 - t1;
+            };
+            waiting.sort(sorter);
+            active.sort(sorter);
+
+            // 4. RENDER WAITING
+            if (listWaiting) {
+                if (waiting.length === 0) {
+                    listWaiting.innerHTML = '<div style="text-align:center; color:#aaa; margin-top:20px; font-style:italic;">Ninguém aguardando.</div>';
+                } else {
+                    // Alert logic for new kids in waiting list
+                    if (lastWaitingCount !== -1 && waiting.length > lastWaitingCount) {
+                        document.body.style.backgroundColor = "#ffe4e6";
+                        setTimeout(() => document.body.style.backgroundColor = "#fce7f3", 500);
+                    }
+                    lastWaitingCount = waiting.length;
+
+                    waiting.forEach(data => {
+                        const div = createCard(data, 'waiting');
+                        listWaiting.appendChild(div);
+                    });
+                }
+            }
+
+            // 5. RENDER ACTIVE (Presentes)
+            const countEl = document.getElementById('kids-count-active');
+            if (listActive) {
+                if (active.length === 0) {
+                    listActive.innerHTML = '<div style="text-align:center; color:#aaa; margin-top:20px; font-style:italic;">Ninguém na lista de presentes.</div>';
+                    if (countEl) countEl.innerText = '0';
+                } else {
+                    if (countEl) countEl.innerText = active.length;
+                    active.forEach((data, index) => {
+                        const div = createCard(data, 'active', index + 1);
+                        listActive.appendChild(div);
+                    });
+                }
+            }
+        }
+
+        function createCard(data, type, index = 0) {
+            const div = document.createElement('div');
+
+            // SIMPLE LIST FOR ACTIVE (DARK THEME)
+            if (type === 'active') {
+                div.className = 'presence-item';
+                div.setAttribute('data-id', data.id); // Add ID for session control
+                div.innerHTML = `
+                <div class="presence-number">#${index}</div>
+                <div class="presence-name">${data.name}</div>
+                <div class="presence-age">${data.age_group || '?'}</div>
+            `;
+                return div;
+            }
+
+            // CARD FOR WAITING
+            div.className = 'kid-card';
+
+            const buttons = `
+            <button class="btn-cancel" onclick="updateStatus('${data.id}', 'return_urgent')" title="Não Veio/Cancelado" style="padding: 10px;"><i class="fas fa-times"></i></button>
+            <button class="btn-confirm" onclick="updateStatus('${data.id}', 'confirmed')" style="flex:1;">Confirmar Entrada</button>
+        `;
+
+            div.innerHTML = `
+            <div class="kid-info" style="flex:1;">
+                <h3>${data.name}</h3>
+                <p style="font-size:0.85rem;">
+                    ${data.age_group ? '<span style="background:#eee; padding:2px 6px; border-radius:4px;">' + data.age_group + '</span>' : ''}
+                    ${data.parent_name ? '<br>Resp: <strong>' + data.parent_name + '</strong>' : ''}
+                </p>
+                ${data.detail && !data.parent_name ? '<p style="font-size:0.8rem;">' + data.detail + '</p>' : ''}
+            </div>
+            <div class="actions" style="flex-direction:column; min-width:120px; margin-left:10px;">
+                ${buttons}
+            </div>
+        `;
+            return div;
+        }
+
+        function updateStatus(id, status) {
+            if (status === 'returned') {
+                _confirm("Confirmar que a criança foi entregue aos pais?", () => {
+                    db.collection('attendance').doc(id).update({
+                        status: status
+                    }).catch(err => _alert("Erro ao atualizar: " + err.message));
+                });
+            } else {
+                db.collection('attendance').doc(id).update({
+                    status: status
+                }).catch(err => _alert("Erro ao atualizar: " + err.message));
+            }
+        }
+    </script>
+</body>
+
+</html>

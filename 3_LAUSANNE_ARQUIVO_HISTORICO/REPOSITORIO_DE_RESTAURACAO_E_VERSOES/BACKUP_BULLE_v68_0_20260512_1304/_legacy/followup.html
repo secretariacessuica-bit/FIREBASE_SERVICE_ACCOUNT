@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INTEGRAÇÃO | CES Bulle</title>
+    
+    <!-- SEO & Meta Tags -->
+    <meta name="description" content="Painel de Integração e Follow-up - Catedral da Esperança Bulle">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+    
+    <!-- Core Styling -->
+    <link rel="stylesheet" href="css/style-v2.css?v=64.0.0">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=63.1.3"></script>
+
+    <script>
+        // SECURITY GUARD v47.2 - iframe-safe
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile.html';
+            }
+        })();
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            padding-top: 100px;
+            color: #fff;
+            background-image: radial-gradient(circle at top center, #1a1a1a 0%, #000000 80%);
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .glass-card-premium {
+            background: rgba(15, 15, 15, 0.45);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 24px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 15px 25px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.4);
+            cursor: pointer;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            border-bottom: 2px solid transparent;
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab-btn.active {
+            color: var(--gold-primary);
+            border-bottom-color: var(--gold-primary);
+        }
+
+        .list-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: 0.3s;
+        }
+
+        .list-card:hover {
+            border-color: var(--gold-primary);
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .tab-badge {
+            background: var(--primary-gold);
+            color: #000;
+            border-radius: 50px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            margin-left: 8px;
+        }
+
+        .btn-action {
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.3s;
+            text-decoration: none;
+        }
+
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+        }
+
+        .btn-outline-gold {
+            background: transparent;
+            border: 1px solid var(--gold-primary);
+            color: var(--gold-primary);
+        }
+
+        .btn-outline-gold:hover {
+            background: var(--gold-primary);
+            color: #000;
+        }
+
+        /* Tabs Scrollable */
+        .tabs-wrapper {
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 30px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            scrollbar-width: none;
+        }
+        .tabs-wrapper::-webkit-scrollbar { display: none; }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .status-info h1 {
+            font-size: 1.8rem;
+            margin: 0;
+            color: #fff;
+        }
+
+        .status-info p {
+            color: var(--gold-primary);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            font-weight: 600;
+            margin: 5px 0 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="container nav-container">
+            <div class="logo-wrapper">
+                <img src="assets/logo_3d.png" alt="CES Bulle" style="height: 50px; border-radius: 50%; border: 1px solid var(--gold-primary); box-shadow: 0 0 15px rgba(212,175,55,0.3);">
+                <div class="brand-text">
+                    <span class="brand-top" style="color:rgba(255,255,255,0.7); font-size:0.6rem; letter-spacing:2px;">CATEDRAL DA</span>
+                    <span class="brand-main" style="display:block; font-weight:900; color:#fff; letter-spacing:1px;">ESPERANÇA</span>
+                    <span class="brand-sub" style="color:var(--gold-primary); font-size:0.7rem; font-weight:800; letter-spacing:1px;">INTEGRAÇÃO</span>
+                </div>
+            </div>
+
+            <div class="nav-actions">
+                <a href="obreiros.html" class="btn-member">
+                    <i class="fas fa-chevron-left"></i> VOLTAR
+                </a>
+                <button onclick="logout()" class="btn-cta-gold">
+                    SAIR <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        
+        <!-- Header Info -->
+        <div class="status-header">
+            <div class="status-info">
+                <h1>EQUIPE DE INTEGRAÇÃO</h1>
+                <p>CUIDADO E CONSOLIDAÇÃO</p>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs-wrapper">
+            <button class="tab-btn active" onclick="switchTab('contato', this)">
+                <i class="fas fa-clock"></i> NOVOS AMIGOS <span id="badge-contato" class="tab-badge" style="display:none; background:var(--gold-primary); color:#000;">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('evento', this)">
+                <i class="fas fa-calendar-star"></i> EVENTO <span id="badge-evento" class="tab-badge" style="display:none;">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('curso', this)">
+                <i class="fas fa-graduation-cap"></i> PCE <span id="badge-curso" class="tab-badge" style="display:none;">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('grupo', this)">
+                <i class="fas fa-users-rays"></i> PG OU GG <span id="badge-grupo" class="tab-badge" style="display:none;">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('monitoramento', this)">
+                <i class="fas fa-eye"></i> MONITORAMENTO <span id="badge-monitor" class="tab-badge" style="display:none;">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('finalizados', this)">
+                <i class="fas fa-check-double"></i> CONCLUÍDO
+            </button>
+        </div>
+
+        <!-- Tab Contents -->
+        <div id="tab-contato" class="tab-content active">
+            <div class="glass-card-premium">
+                <h3 style="color: var(--primary-gold);"><i class="fas fa-clock"></i> 1. NOVOS AMIGOS (3M)</h3>
+                <p style="font-size:0.85rem; color:rgba(255,255,255,0.5); margin-bottom:20px;">Fase de recepção, diagnóstico de necessidades e primeiro contato.</p>
+                <div id="list-contato">Carregando...</div>
+            </div>
+        </div>
+
+        <div id="tab-evento" class="tab-content" style="display:none;">
+            <div class="glass-card-premium">
+                <h3 style="color: var(--primary-gold);"><i class="fas fa-calendar-star"></i> 2. EVENTO</h3>
+                <p style="font-size:0.85rem; color:rgba(255,255,255,0.5); margin-bottom:20px;">Pessoas aguardando ou participando do evento oficial de boas-vindas.</p>
+                <div id="list-evento">Carregando...</div>
+            </div>
+        </div>
+
+        <div id="tab-curso" class="tab-content" style="display:none;">
+            <div class="glass-card-premium">
+                <h3 style="color: var(--primary-gold);"><i class="fas fa-graduation-cap"></i> 3. PCE</h3>
+                <p style="font-size:0.85rem; color:rgba(255,255,255,0.5); margin-bottom:20px;">Crescimento espiritual e ensino básico sobre a visão da igreja.</p>
+                <div id="list-curso">Carregando...</div>
+            </div>
+        </div>
+
+        <div id="tab-grupo" class="tab-content" style="display:none;">
+            <div class="glass-card-premium">
+                <h3 style="color: var(--primary-gold);"><i class="fas fa-users-rays"></i> 4. PG OU GG</h3>
+                <p style="font-size:0.85rem; color:rgba(255,255,255,0.5); margin-bottom:20px;">Início da caminhada com o líder do grupo local.</p>
+                <div id="list-grupo">Carregando...</div>
+            </div>
+        </div>
+
+        <div id="tab-monitoramento" class="tab-content" style="display:none;">
+            <div class="glass-card-premium">
+                <h3 style="color: var(--primary-gold);"><i class="fas fa-eye"></i> 5. MONITORAMENTO</h3>
+                <p style="font-size:0.85rem; color:rgba(255,255,255,0.5); margin-bottom:20px;">Acompanhamento do integrador junto ao líder do grupo.</p>
+                <div id="list-monitoramento">Carregando...</div>
+            </div>
+        </div>
+
+        <div id="tab-finalizados" class="tab-content" style="display:none;">
+            <div class="glass-card-premium">
+                <h3 style="color: var(--primary-gold);"><i class="fas fa-check-double"></i> 6. CONCLUÍDO</h3>
+                <p style="font-size:0.85rem; color:rgba(255,255,255,0.5); margin-bottom:20px;">Histórico de pessoas plenamente integradas.</p>
+                <div id="list-finalizados">Carregando...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modals -->
+    <div id="followup-modal" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-card-historia" onclick="event.stopPropagation()" style="max-width: 500px; height: auto; padding: 40px;">
+            <button class="close-modal" onclick="closeModal()">&times;</button>
+            <h2 class="gold-text" style="margin-bottom: 20px;">REGISTRAR AÇÃO</h2>
+            
+            <input type="hidden" id="fu-id">
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <label style="font-size:0.8rem; letter-spacing: 1px; opacity: 0.7;">AÇÃO REALIZADA</label>
+                <select id="fu-action" style="background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 10px;">
+                    <option value="Ligação Realizada">Ligação Realizada</option>
+                    <option value="Agendou Visita">Agendou Visita</option>
+                    <option value="Mensagem Enviada">Mensagem Enviada</option>
+                    <option value="Mudança de Etapa">Apenas Mudar de Etapa</option>
+                    <option value="Cancelado/Arquivado">Interrompeu Processo</option>
+                </select>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                    <div>
+                        <label style="font-size:0.8rem; opacity: 0.7;">ACOMPANHANTE</label>
+                        <input type="text" id="fu-helper" style="width:100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 10px;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem; opacity: 0.7;">LÍDER</label>
+                        <input type="text" id="fu-leader" style="width:100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 10px;">
+                    </div>
+                </div>
+
+                <label style="font-size:0.8rem; opacity: 0.7;">NECESSIDADE ATUAL</label>
+                <input type="text" id="fu-need" style="background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 10px;">
+
+                <label style="font-size:0.8rem; opacity: 0.7;">OBSERVAÇÕES</label>
+                <textarea id="fu-notes" rows="4" style="background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 10px;"></textarea>
+
+                <label style="font-size:0.8rem; opacity: 0.7;">MOVER PARA ETAPA</label>
+                <select id="fu-status-stage" style="background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 10px;">
+                    <option value="Novos Amigos (3m)">1. Novos Amigos (3m)</option>
+                    <option value="Evento">2. Evento</option>
+                    <option value="PCE">3. PCE</option>
+                    <option value="PG ou GG">4. PG ou GG</option>
+                    <option value="Monitoramento (3m)">5. Monitoramento (3m)</option>
+                    <option value="Concluído">✅ 6. Concluído</option>
+                    <option value="Arquivado">❌ Arquivar (Desistência)</option>
+                </select>
+
+                <button onclick="saveFollowUp()" class="btn btn-primary" style="width:100%; margin-top:10px;">SALVAR REGISTRO</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Overlay (Premium) -->
+    <div id="login-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; background-image: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);">
+        <div class="glass-card-premium" style="width: 340px; text-align: center; padding: 40px; border: 1px solid rgba(212,175,55,0.2);">
+            <img src="assets/logo_3d.png" style="width:80px; height:80px; margin-bottom:20px; border-radius:50%; border:2px solid var(--gold-primary); box-shadow: 0 0 20px rgba(212,175,55,0.3);">
+            <h2 class="gold-text" style="margin-bottom: 5px; font-family:'Outfit'; font-weight:900; letter-spacing:1px;">INTEGRAÇÃO</h2>
+            <p style="opacity:0.5; font-size:0.7rem; margin-bottom:30px; letter-spacing:2px;">ACESSO RESTRITO À EQUIPE</p>
+            
+            <div style="display:flex; flex-direction:column; gap:15px;">
+                <input type="email" id="login-email" placeholder="E-MAIL" style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:15px; border-radius:12px; color:#fff; font-family:'Outfit'; outline:none;">
+                <input type="password" id="login-pass" placeholder="SENHA" style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:15px; border-radius:12px; color:#fff; font-family:'Outfit'; outline:none;">
+                
+                <button onclick="doLogin()" class="btn btn-primary" style="width:100%; padding:15px; font-weight:900; letter-spacing:1px; margin-top:10px;">ACESSAR PAINEL</button>
+            </div>
+            <p id="login-msg" style="color:#ef4444; margin-top:20px; font-size:0.8rem; font-weight:600;"></p>
+        </div>
+    </div>
+
+    <script>
+        var db = firebase.firestore();
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+            btn.classList.add('active');
+            document.getElementById('tab-' + tabId).style.display = 'block';
+        }
+
+        firebase.auth().onAuthStateChanged(user => {
+            const overlay = document.getElementById('login-overlay');
+            if (user) {
+                overlay.style.display = 'none';
+                initData();
+            } else {
+                overlay.style.display = 'flex';
+            }
+        });
+
+        function doLogin() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            if (!email || !pass) return;
+            firebase.auth().signInWithEmailAndPassword(email.trim(), pass)
+                .catch(e => document.getElementById('login-msg').innerText = "ERRO: " + e.message);
+        }
+
+        function logout() { firebase.auth().signOut().then(() => window.location.reload()); }
+
+        function initData() {
+            const stages = [
+                { stage: 'Novos Amigos (3m)', cont: 'list-contato', badge: 'badge-contato' },
+                { stage: 'Evento', cont: 'list-evento', badge: 'badge-evento' },
+                { stage: 'PCE', cont: 'list-curso', badge: 'badge-curso' },
+                { stage: 'PG ou GG', cont: 'list-grupo', badge: 'badge-grupo' },
+                { stage: 'Monitoramento (3m)', cont: 'list-monitoramento', badge: 'badge-monitor' },
+                { stage: 'Concluído', cont: 'list-finalizados', badge: null }
+            ];
+
+            stages.forEach(s => {
+                db.collection('integracao')
+                    .where('status', '==', 'em_integracao')
+                    .where('integ_stage', '==', s.stage)
+                    .onSnapshot(snap => {
+                        renderList(snap, s.cont, s.stage);
+                        if (s.badge) {
+                            const b = document.getElementById(s.badge);
+                            b.innerText = snap.size;
+                            b.style.display = snap.size > 0 ? 'inline-block' : 'none';
+                        }
+                    });
+            });
+        }
+
+        function renderList(snap, containerId, listType) {
+            const list = document.getElementById(containerId);
+            if (snap.empty) {
+                list.innerHTML = `<div style="text-align:center; padding:30px; opacity:0.3;"><i class="fas fa-check-circle" style="font-size:2rem; margin-bottom:10px;"></i><br>Nenhum registro encontrado</div>`;
+                return;
+            }
+
+            let html = '';
+            let docsData = [];
+            snap.forEach(doc => docsData.push({ id: doc.id, data: doc.data() }));
+            
+            docsData.sort((a,b) => {
+                const tA = a.data.last_update || a.data.timestamp;
+                const tB = b.data.last_update || b.data.timestamp;
+                return (tB ? tB.seconds : 0) - (tA ? tA.seconds : 0);
+            });
+
+            docsData.forEach(item => {
+                const d = item.data;
+                const id = item.id;
+                const isConvert = (d.type || '').toLowerCase() === 'conversao';
+                
+                let contact = (d.contact || '').replace(/\D/g, '');
+                let waUrl = contact ? `https://wa.me/${contact.length <= 10 ? '41'+contact : contact}` : '#';
+
+                html += `
+                <div class="list-card">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <strong style="font-size:1.2rem; color:var(--primary-gold);">${d.name || 'SEM NOME'}</strong>
+                            <p style="font-size:0.8rem; opacity:0.6; margin-top:5px;">${d.contact || 'S/ CONTATO'} ${isConvert ? '• <span style="color:#22c55e; font-weight:800;">CONGREGADO</span>' : ''}</p>
+                        </div>
+                        <div style="font-size:0.7rem; background:rgba(212,175,55,0.1); color:var(--primary-gold); padding:4px 10px; border-radius:50px;">
+                            ${d.dispatched_at ? calculateDays(d.dispatched_at.toDate()) : 'NOVO'}
+                        </div>
+                    </div>
+                    
+                    <div style="margin: 15px 0; font-size:0.85rem; opacity:0.8;">
+                        <p><i class="fas fa-user-check" style="width:20px;"></i> CUIDADO: <strong>${d.helper || '-'}</strong></p>
+                        <p><i class="fas fa-shield-halved" style="width:20px;"></i> LÍDER: <strong>${d.leader || '-'}</strong></p>
+                        ${d.need ? `<p style="margin-top:10px; color:var(--primary-gold);"><strong>NECESSIDADE:</strong> ${d.need}</p>` : ''}
+                    </div>
+
+                    ${listType !== 'Concluído' ? `
+                    <div style="display:flex; gap:10px; margin-top:15px; border-top:1px solid rgba(255,255,255,0.05); padding-top:15px;">
+                        <a href="${waUrl}" target="_blank" class="btn-action btn-whatsapp" style="flex:1;">
+                            <i class="fab fa-whatsapp"></i> WHATSAPP
+                        </a>
+                        <button onclick="openModal('${id}', \`${JSON.stringify({ helper: d.helper||'', leader: d.leader||'', need: d.need||'' }).replace(/"/g, '&quot;')}\`, '${listType}')" class="btn-action btn-outline-gold" style="flex:1;">
+                            <i class="fas fa-edit"></i> REGISTRAR
+                        </button>
+                    </div>` : ''}
+                </div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        function calculateDays(dateObj) {
+            const diffDays = Math.floor(Math.abs(new Date() - dateObj) / (1000 * 60 * 60 * 24)); 
+            return diffDays === 0 ? "HOJE" : `HÁ ${diffDays} DIAS`;
+        }
+
+        function openModal(id, metaJson, currentStage) {
+            const meta = JSON.parse(metaJson.replace(/&quot;/g, '"'));
+            document.getElementById('fu-id').value = id;
+            document.getElementById('fu-helper').value = meta.helper;
+            document.getElementById('fu-leader').value = meta.leader;
+            document.getElementById('fu-need').value = meta.need;
+            document.getElementById('fu-status-stage').value = currentStage;
+            document.getElementById('followup-modal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('followup-modal').style.display = 'none'; }
+
+        async function saveFollowUp() {
+            const id = document.getElementById('fu-id').value;
+            const action = document.getElementById('fu-action').value;
+            const newStage = document.getElementById('fu-status-stage').value;
+            const helper = document.getElementById('fu-helper').value;
+            const leader = document.getElementById('fu-leader').value;
+
+            if (!helper || !leader) return alert("INFORME O ACOMPANHANTE E O LÍDER!");
+
+            try {
+                await db.collection('integracao').doc(id).update({
+                    integ_stage: newStage,
+                    status: newStage === 'Arquivado' ? 'arquivado' : 'em_integracao',
+                    helper: helper,
+                    leader: leader,
+                    need: document.getElementById('fu-need').value,
+                    last_update: firebase.firestore.FieldValue.serverTimestamp(),
+                    history: firebase.firestore.FieldValue.arrayUnion({
+                        action: action,
+                        notes: document.getElementById('fu-notes').value,
+                        timestamp: firebase.firestore.Timestamp.now()
+                    })
+                });
+                closeModal();
+            } catch(e) { alert("ERRO: " + e.message); }
+        }
+    </script>
+</body>
+</html>

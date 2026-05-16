@@ -1,0 +1,364 @@
+<!-- 
+  🛡️ PROTOCOLO DE SEGURANÇA SFP - APP BULLE OPERACIONAL
+  Este arquivo pertence EXCLUSIVAMENTE ao ecossistema do Aplicativo.
+  NÃO MESCLAR com o Site Institucional (.ch) ou Lausanne.
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>CES Mobile | Bulle</title>
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json?v=70.3.31">
+    <meta name="theme-color" content="#D4AF37">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="assets/logo_3d.png?v=70.3.31">
+
+    <!-- Antigravity 2.4 - Unified Mobile v70.3.31 Diamond Core -->
+    <link rel="stylesheet" href="css/style-v2.css?v=70.3.31">
+    <link rel="stylesheet" href="css/mobile-v2.css?v=70.3.31">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css?v=70.3.31">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=64.0.0"></script>
+    <script src="js/auth-manager.js?v=64.0.0"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding-bottom: 0;
+            background: #ffffff;
+            font-family: sans-serif;
+            height: 100vh;
+            height: calc(var(--vh, 1vh) * 100);
+            width: 100vw;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: "CES BULLE";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 15vw;
+            font-weight: 900;
+            color: rgba(0, 0, 0, 0.01);
+            z-index: -3;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .app-background {
+            display: none;
+        }
+
+        .app-shell {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* LOGIN VIEW */
+        #view-login {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px;
+            padding-top: 10vh;
+        }
+
+        .login-logo {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 35px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-logo img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: contain; 
+            filter: drop-shadow(0 15px 25px rgba(0,0,0,0.25)); 
+        }
+
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 160px);
+            gap: 16px;
+        }
+
+        .role-card {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 16px;
+            padding: 25px 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+            transform: translateY(0);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .role-card span { font-size: 0.95rem; font-weight: 800; color: #111; text-transform: uppercase; letter-spacing: 1px;}
+
+        .role-card.special {
+            grid-column: span 2;
+            background: rgba(212, 175, 55, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.4);
+        }
+        
+        .role-card.special span { color: #d4af37; }
+
+        /* PIN SCREEN */
+        #pin-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .pin-input-container input {
+            width: 260px;
+            background: #f8f9fa;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 1.2rem;
+            text-align: center;
+            letter-spacing: 3px;
+            margin: 20px 0;
+        }
+
+        .btn-confirm {
+            width: 260px;
+            background: #1e293b;
+            color: #fff;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 700;
+        }
+
+        /* HEADER */
+        .app-header {
+            background: #fff;
+            padding: 0 15px;
+            height: 60px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #efefef;
+        }
+
+        .app-container {
+            display: none;
+            flex: 1;
+            position: relative;
+        }
+
+        .app-view { width: 100%; height: 100%; display: none; }
+        .app-view.active { display: block; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* MODAL */
+        .premium-modal {
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        .premium-modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 300px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-background"></div>
+    <div class="app-shell">
+        <div id="app-header" class="app-header">
+            <span style="font-weight:800;">CES Bulle</span>
+            <i class="fas fa-power-off" style="color:#ef4444;" onclick="logout()"></i>
+        </div>
+
+        <div id="view-login">
+            <div id="role-selection">
+                <div class="login-logo"><img src="assets/logo bulle.jpeg"></div>
+                <div class="role-grid">
+                    <div class="role-card special" onclick="selectRole('altar')"><span>LIVE (Altar)</span></div>
+                    <div class="role-card" onclick="selectRole('reception')"><span>Recepção</span></div>
+                    <div class="role-card" onclick="selectRole('integracao')"><span>Integração</span></div>
+                    <div class="role-card" onclick="selectRole('kids')"><span>Kids</span></div>
+                    <div class="role-card" onclick="selectRole('admin')"><span>Secretaria</span></div>
+                </div>
+            </div>
+
+            <div id="pin-screen">
+                <h2 id="pin-title">Senha</h2>
+                <div class="pin-input-container"><input type="password" id="pin-input" placeholder="••••••••"></div>
+                
+                <div style="margin: 10px 0 20px 0; display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 0.9rem;">
+                    <input type="checkbox" id="stay-logged-in" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="stay-logged-in" style="cursor: pointer;">Permanecer Logado</label>
+                </div>
+
+                <button class="btn-confirm" onclick="validatePin()">Confirmar</button>
+                <p onclick="showRoles()" style="margin-top:15px; color:#666; font-size:0.8rem;">Voltar</p>
+            </div>
+        </div>
+
+        <div id="app-container" class="app-container">
+            <div id="view-reception" class="app-view"><iframe id="iframe-reception" data-src="recepcao.html"></iframe></div>
+            <div id="view-kids" class="app-view"><iframe id="iframe-kids" data-src="kids.html"></iframe></div>
+            <div id="view-admin" class="app-view"><iframe id="iframe-admin" data-src="admin.html"></iframe></div>
+            <div id="view-integracao" class="app-view"><iframe id="iframe-integracao" data-src="integracao_v2.html"></iframe></div>
+            <div id="view-altar" class="app-view"><iframe id="iframe-altar" data-src="altar.html"></iframe></div>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div id="premium-modal" class="premium-modal">
+        <div class="premium-modal-content">
+            <h3 id="modal-title">Aviso</h3>
+            <p id="modal-message"></p>
+            <button onclick="closeModal()" style="width:100%; border:none; padding:10px; background:#1e293b; color:#fff; border-radius:10px;">OK</button>
+        </div>
+    </div>
+
+    <script>
+        let currentRole = null;
+        function setDocHeight() { document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`); }
+        window.addEventListener('resize', setDocHeight);
+        setDocHeight();
+
+        function selectRole(role) {
+            if(role === 'altar'){
+                AuthManager.login('altar', 'Catedral@2025!').then(res => {
+                    if(res.success){
+                        localStorage.setItem('current_session_pin', 'Catedral@2025!');
+                        enterApp('altar');
+                    }
+                });
+                return;
+            }
+            currentRole = role;
+            document.getElementById('role-selection').style.display='none';
+            document.getElementById('pin-screen').style.display='flex';
+            document.getElementById('pin-input').value='';
+            document.getElementById('pin-input').focus();
+        }
+
+        function showRoles() {
+            document.getElementById('app-header').style.display='none';
+            document.getElementById('app-container').style.display='none';
+            document.getElementById('view-login').style.display='flex';
+            document.getElementById('pin-screen').style.display='none';
+            document.getElementById('role-selection').style.display='block';
+        }
+
+        async function validatePin() {
+            const pin = document.getElementById('pin-input').value.trim();
+            if(!pin) return;
+            const stayLogged = document.getElementById('stay-logged-in').checked;
+            const res = await AuthManager.login(currentRole, pin);
+            if(res.success){
+                if (stayLogged) {
+                    localStorage.setItem('session_role_persistent', currentRole);
+                    localStorage.setItem('session_pin_persistent', pin);
+                }
+                localStorage.setItem('current_session_pin', pin);
+                enterApp(currentRole);
+            } else {
+                showAlert("Senha incorreta!");
+            }
+        }
+
+        function enterApp(role) {
+            document.getElementById('view-login').style.display='none';
+            document.getElementById('app-header').style.display='flex';
+            document.getElementById('app-container').style.display='block';
+            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+            const pin = localStorage.getItem('current_session_pin');
+            if(pin){
+                setTimeout(() => {
+                    document.querySelectorAll('iframe').forEach(i => {
+                        i.contentWindow.postMessage({type:'MASTER_BYPASS_SIGNAL', pin:pin}, '*');
+                    });
+                }, 1500);
+            }
+            const frameId = 'iframe-' + role;
+            const viewId = 'view-' + role;
+            if(document.getElementById(viewId)){
+                document.getElementById(viewId).classList.add('active');
+                _loadIframe(frameId);
+            }
+            if(role === 'altar') document.getElementById('app-header').style.display='none';
+        }
+
+        function _loadIframe(id) {
+            const f = document.getElementById(id);
+            if(!f || !f.dataset.src) return;
+            if(f.src) return;
+            f.src = f.dataset.src + "?v=" + new Date().getTime();
+        }
+
+        function logout() { AuthManager.logout(); }
+        function showAlert(m) { document.getElementById('modal-message').innerText=m; document.getElementById('premium-modal').style.display='flex'; }
+        function closeModal() { document.getElementById('premium-modal').style.display='none'; }
+
+        // SW
+        if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+            navigator.serviceWorker.register('/sw-v4.js?v=64.1.0');
+        }
+
+        // Auto-login logic
+        window.addEventListener('load', () => {
+            const persistentRole = localStorage.getItem('session_role_persistent');
+            const persistentPin = localStorage.getItem('session_pin_persistent');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const roleParam = urlParams.get('role');
+            
+            if (persistentRole && persistentPin) {
+                console.log("👷 Mobile: Login persistente detectado. Autenticando...");
+                currentRole = persistentRole;
+                AuthManager.login(persistentRole, persistentPin).then(res => {
+                    if (res.success) {
+                        localStorage.setItem('current_session_pin', persistentPin);
+                        enterApp(persistentRole);
+                    }
+                });
+            } else if (roleParam) {
+                console.log("👷 Mobile: Role pré-selecionada via URL:", roleParam);
+                selectRole(roleParam);
+            }
+        });
+    </script>
+</body>
+</html>

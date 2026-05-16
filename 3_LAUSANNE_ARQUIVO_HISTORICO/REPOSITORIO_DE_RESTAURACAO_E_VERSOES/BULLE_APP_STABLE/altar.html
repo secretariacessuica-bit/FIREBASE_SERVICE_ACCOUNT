@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=51.3.1"></script>
+    <script src="js/auth-manager.js?v=51.3.1"></script>
+    <script>
+        // SECURITY GUARD v51.2.26 - iframe-safe
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile.html?v=51.3.1';
+            }
+        })();
+    </script>
+    <link rel="icon" type="image/jpeg" href="assets/logo bulle.jpeg?v=3">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Painel do Altar | Bulle v51.3.1 Diamond Refresh</title>
+    <!-- 
+        ANTIGRAVITY 2.4 - COMMAND CENTER (ESTABILIZAÇÃO v51.2.26 Diamond)
+        - Instant Connect (Auto-Login Sync)
+        - Shared Session Persistence
+    -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/style-v2.css?v=51.3.1">
+    <link rel="stylesheet" href="css/mobile-v2.css?v=51.3.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css?v=51.3.1">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --gold: #C9A050;
+            --gold-dim: rgba(201, 160, 80, 0.15);
+            --gold-glow: rgba(201, 160, 80, 0.3);
+            --bg: #060608;
+            --bg-card: rgba(12, 12, 16, 0.92);
+            --border: rgba(201, 160, 80, 0.12);
+            --border-soft: rgba(255,255,255,0.05);
+            --text: #e8dcc8;
+            --text-dim: rgba(232, 220, 200, 0.45);
+            --amber: #D4922A;
+            --blue: #5b8fd4;
+            --pink: #c46b9a;
+            --green: #5aaa7a;
+            --font: 'Outfit', sans-serif;
+            /* dim mode vars */
+            --screen-brightness: 1;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            filter: brightness(var(--screen-brightness));
+            transition: filter 0.8s ease;
+        }
+
+        /* ── BACKGROUND ── */
+        .app-background {
+            position: fixed; inset: 0; z-index: -2;
+            background: radial-gradient(ellipse at 30% 0%, #0d0c10 0%, #060608 70%);
+        }
+        .ambient-light {
+            position: fixed; top: -30%; left: -20%;
+            width: 60vw; height: 60vw;
+            background: radial-gradient(circle, rgba(201,160,80,0.05) 0%, transparent 70%);
+            z-index: -1; filter: blur(80px);
+            animation: pulse 14s infinite alternate;
+        }
+        .ambient-light-2 {
+            position: fixed; bottom: -30%; right: -20%;
+            width: 70vw; height: 70vw;
+            background: radial-gradient(circle, rgba(91,143,212,0.03) 0%, transparent 70%);
+            z-index: -1; filter: blur(100px);
+            animation: pulse 18s infinite alternate-reverse;
+        }
+        .bg-watermark {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            width: 120vw; height: 120vh;
+            background: url('assets/logo bulle.jpeg') center/cover no-repeat;
+            opacity: 0.025; filter: grayscale(100%) blur(8px);
+            z-index: -1; pointer-events: none;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.4; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+
+        /* ── LAYOUT ── */
+        .container {
+            display: flex; flex-direction: column; gap: 12px;
+            padding: 12px 16px 8px;
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+        }
+
+        /* ── TOP BAR ── */
+        .topbar {
+            display: flex; align-items: center; gap: 12px;
+            width: 100%; flex-wrap: nowrap;
+        }
+
+        .clock-container {
+            display: flex; flex-direction: column;
+            padding-right: 16px;
+            border-right: 1px solid var(--border);
+            min-width: fit-content;
+            cursor: pointer;
+        }
+        #clock {
+            font-size: 3.8rem; font-weight: 200;
+            letter-spacing: -2px; line-height: 1;
+            color: rgba(232,220,200,0.9);
+        }
+        #timer-display {
+            font-size: 0.7rem; font-weight: 700;
+            color: var(--gold); letter-spacing: 2px;
+            text-transform: uppercase; margin-top: 4px;
+            background: var(--gold-dim);
+            padding: 2px 8px; border-radius: 6px;
+            display: inline-block;
+        }
+
+        /* ── TAB CARDS ── */
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            padding: 10px 14px;
+            min-width: 90px; flex: 1;
+            display: flex; flex-direction: column; align-items: center;
+            cursor: pointer;
+            transition: border-color 0.3s, background 0.3s;
+            position: relative; overflow: hidden;
+        }
+        .stat-card::before {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+        }
+        .stat-card.active-tab {
+            border-color: var(--gold);
+            background: rgba(201,160,80,0.07);
+            box-shadow: 0 0 20px rgba(201,160,80,0.12), inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+        .stat-card h3 {
+            font-size: 0.62rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--text-dim); margin: 0;
+        }
+        .stat-card .value {
+            font-size: 2.4rem; font-weight: 200;
+            line-height: 1.1; margin-top: 2px;
+            color: var(--text);
+        }
+        .stat-card.active-tab .value { color: var(--gold); }
+
+        /* dim control */
+        .dim-btn {
+            background: rgba(201,160,80,0.08);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 8px 14px;
+            color: var(--gold);
+            font-family: var(--font);
+            font-size: 0.7rem; font-weight: 800;
+            letter-spacing: 1px; text-transform: uppercase;
+            cursor: pointer;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 4px;
+            min-width: 70px;
+            transition: 0.3s;
+        }
+        .dim-btn i { font-size: 1.1rem; }
+        .dim-btn:hover { background: rgba(201,160,80,0.15); }
+
+        /* ── FEED ── */
+        .feed-grid {
+            flex: 1; display: flex;
+            align-items: stretch;
+            overflow: hidden;
+        }
+        .feed-column {
+            display: none; flex-direction: column;
+            border-radius: 16px; overflow: hidden;
+            width: 100%; max-width: 900px;
+            margin: 0 auto;
+            background: rgba(8,8,10,0.6);
+            border: 1px solid var(--border-soft);
+            animation: fadeUp 0.35s ease;
+        }
+        .feed-column.active { display: flex; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .column-header {
+            padding: 14px 20px;
+            font-size: 0.75rem; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 3px;
+            color: var(--text-dim);
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border-soft);
+            background: rgba(5,5,7,0.8);
+            flex-shrink: 0;
+        }
+        .column-header .tab-label {
+            font-size: 0.65rem;
+            background: var(--gold-dim);
+            color: var(--gold);
+            border: 1px solid rgba(201,160,80,0.3);
+            padding: 3px 10px; border-radius: 20px; font-weight: 900;
+        }
+        .column-header .tab-accent {
+            width: 28px; height: 2px; border-radius: 2px;
+            background: var(--gold); margin-top: 2px;
+        }
+
+        .column-content {
+            flex: 1; overflow-y: auto; padding: 14px;
+            scrollbar-width: none;
+        }
+        .column-content::-webkit-scrollbar { display: none; }
+
+        /* ── CARDS ── */
+        .list-item {
+            background: rgba(14,14,18,0.8);
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            padding: 16px 20px;
+            margin-bottom: 10px;
+            animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) forwards;
+            transition: border-color 0.2s;
+        }
+        .list-item:hover { border-color: rgba(201,160,80,0.2); }
+
+        .item-row {
+            display: flex; justify-content: space-between;
+            align-items: flex-start; gap: 12px;
+        }
+        .item-name {
+            font-size: 1.3rem; font-weight: 700;
+            color: var(--text); letter-spacing: 0.2px; line-height: 1.2;
+        }
+        .item-time {
+            font-size: 0.7rem; color: var(--gold); font-weight: 700;
+            letter-spacing: 1px;
+            background: var(--gold-dim);
+            padding: 3px 8px; border-radius: 6px;
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .item-detail {
+            display: block; margin-top: 8px;
+            font-size: 0.95rem; color: rgba(232,220,200,0.65);
+            line-height: 1.5;
+        }
+
+        /* ── VISITOR CARD ── */
+        .visitor-card {
+            border-left: 3px solid var(--gold);
+            background: linear-gradient(100deg, rgba(201,160,80,0.06) 0%, rgba(14,14,18,0.9) 60%);
+        }
+        .visitor-card .item-name { font-size: 1.5rem; color: #fff; }
+        .visitor-card .item-detail { font-size: 1rem; color: rgba(232,220,200,0.8); }
+
+        /* ── PRAYER CARD ── */
+        .detail-prayer {
+            color: #d4c068; padding-left: 12px;
+            border-left: 2px solid rgba(212,192,104,0.5);
+            font-weight: 500; font-size: 1rem;
+        }
+
+        /* ── CELEBRATION CARD ── */
+        .detail-decision {
+            color: var(--blue); padding-left: 12px;
+            border-left: 2px solid rgba(91,143,212,0.4);
+            font-weight: 700; font-size: 0.9rem;
+            letter-spacing: 1px; text-transform: uppercase;
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 50px 20px; gap: 12px;
+            opacity: 0.25;
+        }
+        .empty-state i { font-size: 2rem; color: var(--gold); }
+        .empty-state p { font-size: 0.85rem; font-weight: 600; letter-spacing: 1px; }
+
+        /* ── WARNING BANNER ── */
+        #warning-banner {
+            position: fixed; bottom: 28vh; left: 50%;
+            transform: translateX(-50%);
+            width: 88%; max-width: 1100px;
+            background: rgba(6,6,8,0.98);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--gold);
+            border-top: 2px solid rgba(255,255,255,0.15);
+            border-radius: 18px;
+            padding: 22px 40px; text-align: center;
+            z-index: 10000; display: none;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 40px rgba(201,160,80,0.1);
+        }
+        #warning-text {
+            font-size: 1.7rem; font-weight: 800;
+            color: var(--text); line-height: 1.4;
+        }
+
+        /* ── EXIT BTN ── */
+        .btn-exit {
+            position: fixed; bottom: 20px; left: 20px;
+            z-index: 10001;
+            background: rgba(6,6,8,0.8);
+            color: rgba(232,220,200,0.4);
+            padding: 10px 20px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+            text-decoration: none;
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.7rem; font-weight: 800; letter-spacing: 1px;
+            text-transform: uppercase;
+            backdrop-filter: blur(10px);
+            transition: 0.3s;
+        }
+        .btn-exit:hover { color: var(--text); border-color: var(--border); }
+
+        /* ── CELEBRATION ── */
+        #celebration-overlay {
+            position: fixed; inset: 0;
+            pointer-events: none; z-index: 99999;
+            display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(circle, rgba(201,160,80,0.08) 0%, transparent 70%);
+            opacity: 0; transition: opacity 0.5s;
+        }
+        .celebration-active #celebration-overlay { opacity: 1; }
+        #celebration-text {
+            color: #fff; font-size: 4.5rem; font-weight: 900;
+            text-shadow: 0 0 40px var(--gold), 0 0 80px var(--gold-glow);
+            text-align: center;
+            transform: scale(0.6);
+            transition: transform 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+        }
+        .celebration-active #celebration-text { transform: scale(1); }
+
+        .timer-badge {
+            font-size: 0.68rem; background: var(--gold-dim);
+            color: var(--gold); padding: 2px 8px;
+            border-radius: 6px; font-weight: 700;
+            display: inline-block; margin-top: 4px;
+        }
+
+        /* ── SIDEBAR ALIAS (keep JS working) ── */
+        .sidebar { display: contents; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 900px) {
+            body { overflow-y: auto; }
+            .container { height: auto; min-height: 100vh; overflow: visible; padding: 8px; gap: 8px; }
+            .topbar { flex-wrap: nowrap; gap: 6px; }
+            .clock-container { display: none; }
+            .stat-card { padding: 8px 4px; border-radius: 10px; min-width: 0; }
+            .stat-card h3 { font-size: 0.52rem; letter-spacing: 0; }
+            .stat-card .value { font-size: 1.8rem; }
+            .dim-btn { padding: 8px 10px; min-width: 52px; font-size: 0.6rem; }
+            .feed-grid { height: auto; overflow: visible; }
+            .feed-column { display: none; width: 100%; margin: 0; min-height: 200px; }
+            .feed-column.active { display: flex !important; }
+            .feed-grid { flex-direction: column; gap: 10px; padding-bottom: 70px; }
+            .item-name { font-size: 1.1rem; }
+            .visitor-card .item-name { font-size: 1.3rem; }
+            .btn-exit { left: 8px; bottom: 8px; padding: 8px 14px; }
+        }
+        @media (max-width: 480px) {
+            .item-name { font-size: 1rem; }
+        }
+
+        /* === SUPERNOVA CELEBRATION === */
+        .accent-pink { --accent-pink: #c46b9a; }
+        @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+
+        body {
+            background: var(--bg-deep);
+            color: var(--text-main);
+            overflow: hidden;
+            font-family: var(--font-main);
+            margin: 0;
+            height: 100vh;
+        }
+
+        .app-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: radial-gradient(circle at 50% 0%, #1a1a24 0%, #030303 60%);
+            background-size: cover;
+        }
+
+        .ambient-light {
+            position: fixed;
+            top: -20%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.08) 0%, transparent 70%);
+            z-index: -1;
+            filter: blur(80px);
+            animation: pulseLight 10s infinite alternate;
+        }
+
+        .ambient-light-2 {
+            position: fixed;
+            bottom: -20%;
+            right: -10%;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+            z-index: -1;
+            filter: blur(100px);
+            animation: pulseLight 12s infinite alternate-reverse;
+        }
+
+        .bg-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120vw;
+            height: 120vh;
+            background: url('assets/logo bulle.jpeg') center/cover no-repeat;
+            opacity: 0.04;
+            filter: grayscale(100%) blur(5px);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes pulseLight {
+            0% { opacity: 0.5; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1.1); }
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 5px 20px 10px 20px;
+            height: 100vh;
+            width: 100vw;
+            max-width: 100vw;
+            overflow-x: hidden;
+            overflow-y: hidden;
+            justify-content: flex-start;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 15px;
+            width: 100%;
+            margin-top: -5px;
+            flex-wrap: wrap;
+        }
+
+        .clock-container {
+            text-align: left;
+            padding: 0 15px 0 0;
+            position: relative;
+            min-width: fit-content;
+        }
+
+        .clock-container::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 10%;
+            height: 80%;
+            width: 1px;
+            background: linear-gradient(180deg, transparent, var(--gold-primary), transparent);
+            opacity: 0.5;
+        }
+
+        #clock {
+            font-size: 4.5rem;
+            font-weight: 300;
+            line-height: 0.8;
+            letter-spacing: -2px;
+            background: linear-gradient(180deg, #ffffff 0%, #b3b3b3 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+
+        .date-display {
+            font-size: 0.9rem;
+            color: var(--gold-primary);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        .stat-card {
+            background: var(--glass-panel);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            border-top: 1px solid var(--glass-highlight);
+            border-radius: 18px;
+            padding: 8px 15px;
+            min-width: 110px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .stat-card.active-tab {
+            background: rgba(40, 40, 50, 0.8);
+            border-color: var(--gold-primary);
+            box-shadow: 0 0 20px var(--gold-glow), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-card h3 {
+            margin: 0;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 700;
+        }
+
+        .stat-card .value {
+            font-size: 2.8rem;
+            font-weight: 300;
+            line-height: 1;
+            margin-top: 5px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+        }
+
+        .feed-grid {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex: 1;
+            height: 100%;
+            width: 100%;
+        }
+
+        .feed-column {
+            display: none;
+            flex-direction: column;
+            border-radius: 20px;
+            overflow: hidden;
+            width: 95%;
+            max-width: 1200px;
+            margin: 0 auto;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .feed-column.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .column-header {
+            background: rgba(20, 20, 25, 0.6);
+            padding: 12px 20px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--glass-border);
+            backdrop-filter: blur(15px);
+            border-radius: 20px 20px 0 0;
+            position: relative;
+        }
+
+        .column-header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 30%;
+            height: 1px;
+            background: var(--gold-primary);
+            box-shadow: 0 0 10px var(--gold-glow);
+        }
+
+        .column-header span {
+            font-size: 0.7rem; /* Slightly larger for visibility */
+            background: rgba(255, 215, 0, 0.2); 
+            color: var(--gold-primary);
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 900;
+            white-space: nowrap; /* Prevent breaking */
+        }
+
+        .column-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            scrollbar-width: none;
+        }
+
+        .column-content::-webkit-scrollbar { display: none; }
+
+        .list-item {
+            background: rgba(20, 20, 25, 0.5);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 15px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            animation: cardAppear 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .list-item:hover {
+            transform: translateY(-2px);
+            background: rgba(30, 30, 35, 0.7);
+        }
+
+        @keyframes cardAppear {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .item-name {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
+            line-height: 1.2;
+        }
+
+        .item-time {
+            font-size: 0.75rem;
+            color: var(--gold-primary);
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            background: rgba(255, 215, 0, 0.1);
+            padding: 3px 8px;
+            border-radius: 8px;
+        }
+
+        .item-detail {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.75);
+            display: block;
+            margin-top: 8px;
+        }
+
+        .visitor-card {
+            border-left: 4px solid var(--gold-primary);
+            background: linear-gradient(90deg, rgba(255, 215, 0, 0.08) 0%, rgba(20, 20, 25, 0.6) 100%);
+            padding: 20px 25px;
+        }
+
+        .visitor-card .item-name { font-size: 1.7rem; }
+        .visitor-card .item-detail { font-size: 1.2rem; color: rgba(255, 255, 255, 0.9); }
+
+        .detail-prayer { color: #fde047; padding-left: 12px; border-left: 2px solid #fde047; font-weight: 500; }
+        .detail-decision { color: #60a5fa; padding-left: 12px; border-left: 2px solid #60a5fa; font-weight: 500; font-size: 0.8rem; letter-spacing: 1px; }
+
+        #warning-banner {
+            position: fixed;
+            bottom: 30vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            max-width: 1200px;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid var(--gold-primary);
+            border-top: 2px solid #fff;
+            border-radius: 20px;
+            padding: 20px 40px;
+            text-align: center;
+            z-index: 10000;
+            display: none;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
+        }
+
+        #warning-text { font-size: 1.8rem; font-weight: 900; color: #fff; line-height: 1.3; }
+
+        .btn-exit {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 10001;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            backdrop-filter: blur(10px);
+            transition: 0.3s;
+        }
+
+        @media (max-width: 900px) {
+            body { overflow-y: auto; }
+            .container { padding: 8px; height: auto; min-height: 100vh; width: 100%; overflow: visible; display: flex; flex-direction: column; }
+            .sidebar { 
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                width: 100% !important;
+                justify-content: space-between !important;
+                align-items: stretch !important;
+                gap: 5px !important;
+            }
+            .clock-container { display: none !important; }
+            #clock { display: none !important; }
+            .date-display { display: none !important; }
+            
+            .stat-card { 
+                width: 32% !important;
+                flex: 1 1 32% !important;
+                box-sizing: border-box !important;
+                padding: 10px 2px !important;
+                min-width: 0 !important; 
+                border-radius: 10px !important;
+                text-align: center;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            .stat-card .value { font-size: 1.6rem; }
+            .stat-card h3 { font-size: 0.55rem; letter-spacing: 0px; margin-bottom:4px; }
+            
+            .feed-grid { 
+                display: flex !important;
+                flex-direction: column !important; 
+                height: auto;
+                width: 100%;
+                margin-top: 10px;
+                padding-bottom: 80px;
+                gap: 15px;
+            }
+            
+            .feed-column { 
+                display: none; 
+                width: 100% !important;
+                margin: 0 !important;
+                min-height: 250px;
+            }
+            .feed-column.active { display: flex !important; }
+            
+            .feed-column .column-header {
+                font-size: 0.9rem;
+                padding: 12px 20px;
+            }
+            .feed-column .column-header span { display: inline-block; }
+
+            
+            .btn-exit { left: 10px; bottom: 10px; font-size: 0.7rem; padding: 8px 15px;}
+        }
+
+        @media (max-width: 480px) {
+            .sidebar { gap: 4px; }
+            .item-name { font-size: 1rem; }
+            .visitor-card .item-name { font-size: 1.3rem; }
+        }
+
+        /* === SUPERNOVA CELEBRATION v60.0 === */
+        #celebration-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .celebration-active #celebration-overlay {
+            opacity: 1;
+        }
+
+        #celebration-text {
+            color: #fff;
+            font-size: 5rem;
+            font-weight: 900;
+            text-shadow: 0 0 50px var(--gold-primary), 0 0 100px var(--gold-glow);
+            text-align: center;
+            transform: scale(0.5);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .celebration-active #celebration-text {
+            transform: scale(1);
+        }
+
+        .timer-badge {
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-weight: 800;
+            margin-top: 5px;
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- AUTH LOADING OVERLAY v49.2 -->
+    <div id="auth-loading-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:50000; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; transition: 0.5s;">
+        <div style="width:50px; height:50px; border:3px solid rgba(212,175,55,0.1); border-top:3px solid #d4af37; border-radius:50%; animation:spin 1s linear infinite;"></div>
+        <p id="auth-status-msg" style="margin-top:20px; font-weight:800; letter-spacing:1px; color:#d4af37; font-size:0.8rem; text-align:center; padding:0 30px;">VALIDANDO ACESSO ESTRATÉGICO...</p>
+        
+        <div id="auth-retry-area" style="display:none; margin-top:30px; flex-direction:column; gap:15px; align-items:center;">
+             <button onclick="manualLoginPrompt()" style="background:#d4af37; color:#000; border:none; padding:10px 25px; border-radius:10px; font-weight:800; cursor:pointer; font-size:0.85rem;">DIGITAR PIN MANUAL</button>
+             <button onclick="resetServiceWorker()" style="background:#444; color:#fff; border:none; padding:10px 20px; border-radius:10px; font-weight:700; cursor:pointer; font-size:0.75rem; opacity:0.8;"><i class="fas fa-tools"></i> RESETAR MOTOR DO APP (LIMPAR CACHE)</button>
+             <button onclick="window.location.reload(true)" style="background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.3); padding:10px 20px; border-radius:10px; font-weight:700; cursor:pointer; font-size:0.75rem;"><i class="fas fa-sync"></i> RECARREGAR PÁGINA</button>
+        </div>
+    </div>
+    <script>
+        function resetServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                        console.log('Motor Desligado.');
+                    }
+                    alert("Motor Resetado! O app vai recarregar agora.");
+                    window.location.reload(true);
+                });
+            } else {
+                window.location.reload(true);
+            }
+        }
+
+        function tryLogout() {
+            try {
+                if (window.parent && window.parent.logout) {
+                    window.parent.logout();
+                } else {
+                    window.location.href = 'mobile.html';
+                }
+            } catch(e) {
+                // Ignore CORS origin block when testing locally
+                window.location.href = 'mobile.html';
+            }
+        }
+    </script>
+    <style> @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } </style>
+
+    <div class="app-background"></div>
+    <div class="ambient-light"></div>
+    <div class="ambient-light-2"></div>
+    <div class="bg-watermark"></div>
+
+    <a href="#" onclick="tryLogout()" class="btn-exit">
+        <i class="fas fa-sign-out-alt"></i> SAIR
+    </a>
+
+    <div id="warning-banner">
+        <span id="warning-text">AVISO IMPORTANTE</span>
+    </div>
+
+    <div id="celebration-overlay">
+        <div id="celebration-text">UMA NOVA DECISÃO!</div>
+    </div>
+
+    <div class="container">
+        <div class="topbar">
+            <div class="clock-container" onclick="toggleTimer()" title="Clique para iniciar/resetar cronômetro">
+                <div id="clock">00:00</div>
+                <div id="timer-display" class="timer-badge">CULTO</div>
+            </div>
+            <div class="stat-card active-tab" id="tab-btn-visitors" onclick="showTab('visitors')">
+                <h3>Visitantes</h3>
+                <div class="value" id="count-visitors">0</div>
+            </div>
+            <div class="stat-card" id="tab-btn-prayer" onclick="showTab('prayer')">
+                <h3 style="color:rgba(212,192,104,0.8);">Orações</h3>
+                <div class="value" id="count-prayer">0</div>
+            </div>
+            <div class="stat-card" id="tab-btn-celebration" onclick="showTab('celebration')">
+                <h3 style="color:rgba(91,143,212,0.8);">Celebrações</h3>
+                <div class="value" id="count-baptism">0</div>
+            </div>
+            <button class="dim-btn" onclick="toggleDim()" id="dim-btn" title="Modo escuro máximo para culto">
+                <i class="fas fa-moon"></i>
+                <span id="dim-label">DIM</span>
+            </button>
+        </div>
+
+        <!-- URGENT SYNC UI -->
+        <div id="dashboard-error-ui" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:90%; max-width:600px; padding:40px; text-align:center; background:#0a0a0c; border:1px solid #C9A050; border-radius:20px; z-index:20000; box-shadow:0 30px 100px rgba(0,0,0,0.95);">
+            <i class="fas fa-lock" style="font-size:2.5rem; color:#C9A050; margin-bottom:20px; display:block;"></i>
+            <h2 style="color:#e8dcc8; margin-bottom:15px; font-weight:800; font-size:1.5rem;">Acesso do Altar Bloqueado</h2>
+            <p id="sync-msg" style="color:rgba(232,220,200,0.6); margin-bottom:30px; font-size:1rem; line-height:1.6;">O banco de dados ainda não liberou seu acesso para este módulo.</p>
+            <button onclick="fixFirestorePermissions()" style="background:#C9A050; color:#000; border:none; padding:14px 35px; border-radius:12px; font-weight:800; cursor:pointer; font-size:1rem;">
+                <i class="fas fa-bolt" style="margin-right:8px;"></i> ATIVAR ALTAR
+            </button>
+        </div>
+
+        <div class="feed-grid">
+            <div class="feed-column active" id="col-visitors">
+                <div class="column-header">
+                    <span>Visitantes</span>
+                    <span class="tab-label">HOJE</span>
+                </div>
+                <div class="column-content" id="list-visitors"></div>
+            </div>
+            <div class="feed-column" id="col-prayer">
+                <div class="column-header">
+                    <span>Pedidos de Oração</span>
+                    <span class="tab-label">HOJE</span>
+                </div>
+                <div class="column-content" id="list-prayer"></div>
+            </div>
+            <div class="feed-column" id="col-celebration">
+                <div class="column-header">
+                    <span>Celebrações</span>
+                    <span class="tab-label">HOJE</span>
+                </div>
+                <div class="column-content" id="list-celebration"></div>
+                <div class="column-content" id="list-birthdays" style="border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Singleton pattern to prevent "already declared" errors
+        window.db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+        var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+
+        // --- INSTANT CONNECT v50.2 GOLD (Resilient Sync) ---
+        var isInsideIframe = window.self !== window.top;
+        var hasInitialized = false;
+        
+        // IMMEDIATE BYPASS SENSOR
+        (function checkForBypass() {
+            const isBypass = localStorage.getItem('current_session_pin') === 'Catedral@2025!';
+            if (isBypass) {
+                console.log("Altar: SENSOR GOLD detectou Chave Mestra. Iniciando monitoramento...");
+                const overlay = document.getElementById('auth-loading-overlay');
+                if(overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => { overlay.style.display = 'none'; }, 500);
+                }
+                if (!hasInitialized) {
+                    hasInitialized = true;
+                    initAltarMonitor();
+                }
+            }
+        })();
+
+        // --- AUTH FALLBACK v50.2 ---
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user && !hasInitialized) {
+                console.log("Altar Auth: Acesso validado via Firebase");
+                const overlay = document.getElementById('auth-loading-overlay');
+                if(overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => { overlay.style.display = 'none'; }, 500);
+                }
+                hasInitialized = true;
+                initAltarMonitor();
+            } else if (!user && !localStorage.getItem('current_session_pin')) {
+                console.log("Altar: Aguardando Sessão do Administrador...");
+                const statusMsg = document.getElementById('auth-status-msg');
+                const retryArea = document.getElementById('auth-retry-area');
+                if (statusMsg) statusMsg.innerText = "SESSÃO DESCONECTADA";
+                if (retryArea) retryArea.style.display = 'flex';
+            }
+        });
+
+        function attemptRescueLogin() {
+            const ssoPin = localStorage.getItem('current_session_pin');
+            const shellEmail = localStorage.getItem('last_logged_email') || 'pastor@catedral.ch';
+
+            if (ssoPin) {
+                // IMPORTANT: Do NOT set persistence to NONE. Share current session.
+                firebase.auth().signInWithEmailAndPassword(shellEmail, ssoPin)
+                    .then(() => { console.log("Altar: Resgate Sucesso."); })
+                    .catch(err => {
+                        console.warn("Altar: Resgate falhou:", err.code);
+                        if (err.code === 'auth/internal-error' || err.code === 'auth/network-request-failed') {
+                            // Possible network issue, user might need to retry manual login
+                        }
+                    });
+            }
+        }
+
+        function manualLoginPrompt() {
+            const pin = (prompt("Digite o PIN de Segurança (Secretaria/Altar):") || "").trim();
+            if (!pin) {
+                alert("O PIN não pode ser vazio.");
+                return;
+            }
+            
+            document.getElementById('auth-status-msg').innerText = "RESETANDO SESSÃO E AUTENTICANDO...";
+            document.getElementById('auth-retry-area').style.display = 'none';
+            
+            // Clean logout to avoid "Internal Error (400)" conflicts
+            firebase.auth().signOut().catch(() => {});
+            
+            const email = localStorage.getItem('last_logged_email') || 'pastor@catedral.ch';
+            console.log("Altar Manual Auth Reset:", email);
+
+            // Wait a moment for signout to propagate then login
+            setTimeout(() => {
+                firebase.auth().signInWithEmailAndPassword(email, pin)
+                    .then(() => {
+                        console.log("Login Manual OK");
+                    })
+                    .catch(err => {
+                        console.error("Login Manual Fail:", err.code);
+                        let userMsg = "Erro no PIN";
+                        if (err.code === 'auth/wrong-password') userMsg = "PIN INCORRETO.";
+                        if (err.code === 'auth/user-not-found') userMsg = "USUÁRIO NÃO ENCONTRADO.";
+                        if (err.code === 'auth/internal-error' || err.code === 'auth/network-request-failed') 
+                            userMsg = "CONEXÃO INSTÁVEL. Tente novamente.";
+                        
+                        document.getElementById('auth-status-msg').innerHTML = `<span style='color:#ff4444'>${userMsg}</span><br><small>${err.code}</small>`;
+                        document.getElementById('auth-retry-area').style.display = 'flex';
+                    });
+            }, 300);
+        }
+
+        async function fixFirestorePermissions() {
+            const SW_VERSION = 'v48.12.8';
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ATIVANDO...';
+            btn.disabled = true;
+
+            try {
+                const user = firebase.auth().currentUser;
+                if (!user) throw new Error("Usuário não autenticado");
+                const email = user.email || "pastor@catedral.ch";
+                const role = email.includes('pastor') ? 'pastor' : 'admin';
+
+                await window.db.collection('users').doc(user.uid).set({
+                    email: email,
+                    role: role,
+                    dept: role,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                btn.style.background = "#22c55e";
+                btn.innerHTML = '<i class="fas fa-check"></i> SUCESSO! REINICIANDO...';
+                
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (e) {
+                console.error("Sync Error:", e);
+                alert("Falha na ativação: " + e.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function isWithinCurrentServiceWindow(dateObj) {
+            if (!dateObj) return false;
+            const now = new Date();
+            const day = now.getDay();
+            const hour = now.getHours();
+            const d = new Date(dateObj);
+
+            if (day === 0 || (day === 1 && hour < 22)) {
+                let startOfShift = new Date(now);
+                startOfShift.setDate(now.getDate() - (day === 1 ? 1 : 0));
+                startOfShift.setHours(0, 0, 0, 0);
+                let endOfShift = new Date(startOfShift);
+                endOfShift.setDate(startOfShift.getDate() + 1);
+                endOfShift.setHours(22, 0, 0, 0);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            if (day === 2 || (day === 3 && hour < 15)) {
+                let startOfShift = new Date(now);
+                startOfShift.setDate(now.getDate() - (day === 3 ? 1 : 0));
+                startOfShift.setHours(0, 0, 0, 0);
+                let endOfShift = new Date(startOfShift);
+                endOfShift.setDate(startOfShift.getDate() + 1);
+                endOfShift.setHours(15, 0, 0, 0);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            if ((day === 3 && hour >= 15) || day === 4) {
+                let startOfShift = new Date(now);
+                startOfShift.setDate(now.getDate() - (day === 4 ? 1 : 0));
+                startOfShift.setHours(15, 0, 0, 0);
+                let endOfShift = new Date(startOfShift);
+                endOfShift.setDate(startOfShift.getDate() + 1);
+                endOfShift.setHours(20, 59, 59, 999);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            if (day === 5 || (day === 6 && hour < 12)) {
+                let startOfShift = new Date(now);
+                startOfShift.setDate(now.getDate() - (day === 6 ? 1 : 0));
+                startOfShift.setHours(0, 0, 0, 0);
+                let endOfShift = new Date(startOfShift);
+                endOfShift.setDate(startOfShift.getDate() + 1);
+                endOfShift.setHours(12, 0, 0, 0);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            if (day === 6 && hour >= 14 && hour < 23) {
+                let startOfShift = new Date(now);
+                startOfShift.setHours(14, 0, 0, 0);
+                let endOfShift = new Date(now);
+                endOfShift.setHours(23, 0, 0, 0);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            let fallbackStart = new Date();
+            fallbackStart.setHours(0, 0, 0, 0);
+            return d >= fallbackStart;
+        }
+
+        let currentKidsCount = 0;
+        let globalBirthdaysCount = 0;
+
+        let timerSeconds = 0;
+        let timerInterval = null;
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            // Update timer display
+            const hours = Math.floor(timerSeconds / 3600);
+            const minutes = Math.floor((timerSeconds % 3600) / 60);
+            const seconds = timerSeconds % 60;
+            document.getElementById('timer-display').innerText = 
+                (hours > 0 ? String(hours).padStart(2, '0') + ':' : '') + 
+                String(minutes).padStart(2, '0') + ':' + 
+                String(seconds).padStart(2, '0');
+        }
+
+        function toggleTimer() {
+            if (timerInterval) {
+                if (confirm("Deseja resetar o cronômetro do culto?")) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    timerSeconds = 0;
+                    updateTime();
+                }
+            } else {
+                timerInterval = setInterval(() => {
+                    timerSeconds++;
+                    updateTime();
+                }, 1000);
+            }
+        }
+        setInterval(updateTime, 1000); updateTime();
+
+        let _dimLevel = 0;
+        const _dimLevels = [1, 0.65, 0.4];
+        const _dimLabels = ['DIM', 'ESCURO', 'MÍNIMO'];
+        const _dimIcons = ['fa-moon', 'fa-moon', 'fa-circle'];
+        function toggleDim() {
+            _dimLevel = (_dimLevel + 1) % _dimLevels.length;
+            document.documentElement.style.setProperty('--screen-brightness', _dimLevels[_dimLevel]);
+            document.getElementById('dim-label').innerText = _dimLabels[_dimLevel];
+            const btn = document.getElementById('dim-btn');
+            btn.style.background = _dimLevel === 0 ? 'rgba(201,160,80,0.08)' : _dimLevel === 1 ? 'rgba(201,160,80,0.2)' : 'rgba(201,160,80,0.35)';
+            btn.querySelector('i').className = 'fas ' + _dimIcons[_dimLevel];
+        }
+
+        function showTab(tabName) {
+            document.querySelectorAll('.stat-card').forEach(s => s.classList.remove('active-tab'));
+            document.querySelectorAll('.feed-column').forEach(c => c.classList.remove('active'));
+            
+            const targetBtn = document.getElementById('tab-btn-' + tabName);
+            if(targetBtn) targetBtn.classList.add('active-tab');
+            
+            const targetCol = document.getElementById('col-' + tabName);
+            if(targetCol) {
+                targetCol.classList.add('active');
+                if (window.innerWidth <= 900) {
+                    targetCol.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        }
+
+        function initAltarMonitor() {
+            console.log("Altar: Iniciando monitoramento de dados...");
+            
+            db.collection('attendance').orderBy('timestamp', 'desc').limit(100).onSnapshot(snap => {
+                let stats = { visitors: 0, prayer: 0, kids: 0 };
+                let html = { visitors: '', prayer: '', celebration: '' };
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    if (!d.timestamp) return;
+                    const t = d.timestamp.toDate();
+                    if (!isWithinCurrentServiceWindow(t)) return;
+
+                    const time = t.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    const interests = Array.isArray(d.interests) ? d.interests : [];
+
+                    if (d.type === 'visitante') {
+                        stats.visitors++;
+                        let details = d.extra || d.detail || 'Primeira Visita';
+                        html.visitors += `<div class="list-item visitor-card"><div class="item-row"><span class="item-name">${d.name}</span><span class="item-time">${time}</span></div><span class="item-detail">${details}</span></div>`;
+                    }
+                    if (d.origin === 'reception_live_prayer') {
+                        stats.prayer++;
+                        html.prayer += `<div class="list-item"><div class="item-row"><span class="item-name">${d.name}</span><span class="item-time">${time}</span></div><span class="item-detail detail-prayer">${d.detail || d.obs || 'Pedido de Oração'}</span></div>`;
+                    }
+                    let celebs = [];
+                    if (interests.some(i => i.includes('Batismo'))) { celebs.push('Batismo'); stats.kids++; }
+                    if (interests.some(i => i.includes('Bebê')) || d.is_presentation || (d.detail && d.detail.includes('[BABY]'))) {
+                        celebs.push('Apresentação'); stats.kids++;
+                    }
+                    if (d.type === 'convert' || interests.some(i => i.includes('Jesus'))) {
+                        celebs.push('Nova Decisão'); stats.kids++;
+                        // Trigger Supernova Celebration
+                        if (!_knownDecisions.has(doc.id)) {
+                            _knownDecisions.add(doc.id);
+                            triggerCelebration(d.name || 'Alguém');
+                        }
+                    }
+
+                    if (celebs.length > 0) {
+                        let detailText = d.detail || '';
+                        if (detailText.includes('[BABY]')) detailText = detailText.replace('[BABY]', '').trim();
+                        const detailDisplay = detailText ? `<br><small style="color:rgba(255,255,255,0.5); font-weight:400;">${detailText}</small>` : '';
+                        html.celebration += `<div class="list-item"><div class="item-row"><span class="item-name">${d.name}</span><span class="item-time">${time}</span></div><span class="item-detail detail-decision">${celebs.join(' + ')}${detailDisplay}</span></div>`;
+                    }
+                });
+
+                document.getElementById('list-visitors').innerHTML = html.visitors || '<p style="text-align:center; opacity:0.3;">Nenhum visitante</p>';
+                document.getElementById('list-prayer').innerHTML = html.prayer || '<p style="text-align:center; opacity:0.3;">Nenhum pedido</p>';
+                document.getElementById('list-celebration').innerHTML = html.celebration || '<p style="text-align:center; opacity:0.3;">Sem celebração de hoje</p>';
+                document.getElementById('count-visitors').innerText = stats.visitors;
+                document.getElementById('count-prayer').innerText = stats.prayer;
+                currentKidsCount = stats.kids;
+                document.getElementById('count-baptism').innerText = currentKidsCount + globalBirthdaysCount;
+            });
+
+            db.collection('warnings').where('active', '==', true).limit(1).onSnapshot(snap => {
+                const banner = document.getElementById('warning-banner');
+                if (!snap.empty) {
+                    document.getElementById('warning-text').innerText = snap.docs[0].data().message;
+                    banner.style.display = 'block';
+                } else { banner.style.display = 'none'; }
+            });
+
+            loadBirthdays();
+        }
+
+        function triggerCelebration(name, type = 'DECISÃO') {
+            const overlay = document.body;
+            overlay.classList.add('celebration-active');
+            document.getElementById('celebration-text').innerHTML = `CELEBRAÇÃO:<br>${name.split(' ')[0]}<br><span style="font-size:2rem; opacity:0.8;">ACEITOU A JESUS!</span>`;
+            
+            // Confetti Blast
+            const duration = 5 * 1000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100000 };
+
+            function randomInRange(min, max) {
+              return Math.random() * (max - min) + min;
+            }
+
+            const interval = setInterval(function() {
+              const timeLeft = animationEnd - Date.now();
+
+              if (timeLeft <= 0) {
+                return clearInterval(interval);
+              }
+
+              const particleCount = 50 * (timeLeft / duration);
+              // since particles fall down, start a bit higher than random
+              confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+              confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+
+            setTimeout(() => {
+                overlay.classList.remove('celebration-active');
+            }, 6000);
+        }
+
+        let _knownDecisions = new Set();
+
+        function loadBirthdays() {
+            const now = new Date();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const matchToday = `${dd}/${mm}`;
+            const monthTag = `/${mm}`;
+
+            db.collection('people').get().then(snap => {
+                let todayHtml = '<p style="font-size:0.9rem; color:var(--accent-pink); font-weight:800; text-transform:uppercase; margin-bottom:10px;"><i class="fas fa-star"></i> Aniversariantes de HOJE</p>';
+                let monthHtml = '<p style="font-size:0.9rem; color:var(--gold-primary); font-weight:800; text-transform:uppercase; margin-top:20px; margin-bottom:10px;"><i class="fas fa-calendar-alt"></i> No Mês</p>';
+                let todayCount = 0; let monthCount = 0;
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const bday = d.data_nascimento || '';
+                    if (!bday) return;
+                    if (bday.startsWith(matchToday)) {
+                        todayCount++;
+                        todayHtml += `<div class="list-item" style="padding:15px; border-left:4px solid var(--accent-pink); background:rgba(236,72,153,0.1);"><div class="item-row"><span class="item-name" style="font-size:1.4rem; color:#fff;">${d.name || d.nome_completo}</span><span class="item-time" style="background:var(--accent-pink); color:#fff; border-radius:4px; padding:2px 6px;">HOJE!</span></div></div>`;
+                    } else if (bday.includes(monthTag)) {
+                        monthCount++;
+                        monthHtml += `<div class="list-item" style="padding:12px; opacity:0.8;"><div class="item-row"><span class="item-name" style="font-size:1.1rem; color:#ccc;">${d.name || d.nome_completo}</span><span class="item-time" style="color:var(--gold-primary);">${bday.substring(0, 5)}</span></div></div>`;
+                    }
+                });
+                let finalHtml = '';
+                if (todayCount > 0) finalHtml += todayHtml;
+                if (monthCount > 0) finalHtml += monthHtml;
+                if (todayCount + monthCount > 0) {
+                    globalBirthdaysCount = todayCount + monthCount; 
+                    document.getElementById('list-birthdays').innerHTML = finalHtml;
+                    document.getElementById('count-baptism').innerText = currentKidsCount + globalBirthdaysCount;
+                } else {
+                    document.getElementById('list-birthdays').innerHTML = '<p style="text-align:center; opacity:0.3; margin-top:20px;">Nenhum aniversariante</p>';
+                }
+            }).catch(e => console.warn(e));
+        }
+    </script>
+</body>
+</html>

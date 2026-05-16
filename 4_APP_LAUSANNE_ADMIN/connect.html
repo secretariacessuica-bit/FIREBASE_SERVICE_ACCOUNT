@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hub Connect | Lausanne v51.2.4 Diamond Phoenix</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs (Compat v8.10.1) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=51.2.4"></script>
+
+    <style>
+        :root {
+            --gold-primary: #D4AF37;
+            --gold-gradient: linear-gradient(to right, #cfaf5d 0%, #fcf6ba 25%, #d4af37 50%, #fcf6ba 75%, #cfaf5d 100%);
+            --bg-deep: #060608;
+            --card-glass: rgba(20, 20, 25, 0.8);
+            --text-white: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.6);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-deep);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        .phone-container {
+            width: 100%;
+            max-width: 480px;
+            background: transparent;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            padding: 40px 20px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 900;
+            margin: 0;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+
+        .header p {
+            font-size: 0.8rem;
+            color: var(--gold-primary);
+            margin: 5px 0 0 0;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 10px 20px 100px;
+            overflow-y: auto;
+        }
+
+        .tab-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .tab-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Action Cards */
+        .action-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: 0.3s;
+        }
+
+        .action-card:hover {
+            border-color: var(--gold-primary);
+            transform: translateY(-2px);
+        }
+
+        .action-card h3 {
+            margin: 0 0 10px;
+            font-size: 1.2rem;
+            color: var(--gold-primary);
+        }
+
+        .action-card p {
+            margin: 0 0 15px;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .btn-prime {
+            background: var(--gold-gradient);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* Bottom Nav - 4 Pillars */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 480px;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0 25px;
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: 0.3s;
+            flex: 1;
+        }
+
+        .nav-item i { font-size: 1.2rem; }
+        .nav-item span { font-size: 0.65rem; font-weight: 700; }
+
+        .nav-item.active {
+            color: var(--gold-primary);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px);
+            z-index: 2000; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal-card {
+            background: #121218;
+            border: 1px solid var(--gold-primary);
+            border-radius: 24px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.7rem; color: var(--gold-primary); margin-bottom: 5px; text-transform: uppercase; font-weight: 800; }
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05); color: #fff; font-family: inherit; box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="phone-container">
+        <header class="header">
+            <h1>CATEDRAL LAUSANNE</h1>
+            <p>Diamond Phoenix v51.2.4</p>
+        </header>
+
+        <div class="content-area">
+            <!-- TAB: INÍCIO -->
+            <div id="tab-home" class="tab-section active">
+                <div class="action-card">
+                    <h3>Pedido de Oração</h3>
+                    <p>Nós queremos lutar junto com você. Seus pedidos serão levados ao altar.</p>
+                    <button class="btn-prime" onclick="openModal('modal-oracao')">Fazer Pedido</button>
+                </div>
+                <div class="action-card">
+                    <h3>Equipe Acolher</h3>
+                    <p>Precisa de uma palavra, visita ou suporte? Nossa equipe está aqui.</p>
+                    <button class="btn-prime" onclick="openModal('modal-acolher')">Chamar Acolhimento</button>
+                </div>
+            </div>
+
+            <!-- TAB: BÍBLIA -->
+            <div id="tab-bible" class="tab-section">
+                <div style="height: 60vh; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                    <iframe src="https://www.bibliaonline.com.br/nvi/gn/1" style="width:100%; height:100%; border:none;"></iframe>
+                </div>
+            </div>
+
+            <!-- TAB: AGENDA -->
+            <div id="tab-agenda" class="tab-section">
+                <h2 style="color: var(--gold-primary); font-size: 1.2rem; margin-bottom: 20px;">Agenda da Semana</h2>
+                <div class="action-card">
+                    <p style="color: #fff; font-weight: 700; margin-bottom: 5px;">Culto da Família</p>
+                    <p style="margin: 0;">Domingos às 10h00</p>
+                </div>
+                <div class="action-card">
+                    <p style="color: #fff; font-weight: 700; margin-bottom: 5px;">Células / Grupos</p>
+                    <p style="margin: 0;">Diversos horários durante a semana.</p>
+                    <button class="btn-prime" style="margin-top: 10px;" onclick="openModal('modal-celula')">Encontrar Célula</button>
+                </div>
+            </div>
+
+            <!-- TAB: MEMBROS -->
+            <div id="tab-members" class="tab-section">
+                <div class="action-card">
+                    <h3>Cadastro de Membro</h3>
+                    <p>Dê o seu próximo passo de aliança com a nossa família.</p>
+                    <button class="btn-prime" onclick="openModal('modal-cadastro')">Preencher Ficha</button>
+                </div>
+                <div class="action-card">
+                    <h3>Batismo</h3>
+                    <p>Inscrições abertas para o próximo batismo nas águas.</p>
+                    <button class="btn-prime" onclick="openModal('modal-batismo')">Quero me Batizar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4-PILLAR NAV -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" id="nav-home" onclick="switchTab('home')">
+                <i class="fas fa-home"></i>
+                <span>INÍCIO</span>
+            </div>
+            <div class="nav-item" id="nav-bible" onclick="switchTab('bible')">
+                <i class="fas fa-book-open"></i>
+                <span>BÍBLIA</span>
+            </div>
+            <div class="nav-item" id="nav-agenda" onclick="switchTab('agenda')">
+                <i class="fas fa-calendar-alt"></i>
+                <span>AGENDA</span>
+            </div>
+            <div class="nav-item" id="nav-members" onclick="switchTab('members')">
+                <i class="fas fa-users"></i>
+                <span>MEMBROS</span>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Modals (Simple Implementations) -->
+    <div id="modal-oracao" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-card">
+            <h2 style="color: #fff; margin: 0 0 20px;">Pedir Oração</h2>
+            <div class="input-group">
+                <label>Seu Nome</label>
+                <input type="text" id="o-nome">
+            </div>
+            <div class="input-group">
+                <label>Pedido</label>
+                <textarea id="o-pedido" rows="4"></textarea>
+            </div>
+            <button class="btn-prime" onclick="submitForm('oracao')">Enviar ao Altar</button>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(id) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+            
+            document.getElementById('nav-' + id).classList.add('active');
+            document.getElementById('tab-' + id).classList.add('active');
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('active');
+            }
+        }
+
+        async function submitForm(type) {
+            alert("Solicitação enviada com sucesso! (v51.2.4 Logic)");
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+        }
+    </script>
+</body>
+</html>

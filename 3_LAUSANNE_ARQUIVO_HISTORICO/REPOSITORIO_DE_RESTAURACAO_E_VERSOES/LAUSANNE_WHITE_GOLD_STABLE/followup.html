@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INTEGRAÇÃO | JORNADA BULLE</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=63.1.3"></script>
+    
+    <script>
+        // SECURITY GUARD v47.2 - iframe-safe
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile.html';
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="css/style-v2.css?v=48.12.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css?v=48.12.0">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            color: #1a1a1a;
+            font-family: 'Outfit', sans-serif;
+            padding: 20px;
+        }
+
+        .card-floating {
+            background: #fff;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 20px;
+            font-weight: 700;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 1.1rem;
+            border-bottom: 3px solid transparent;
+            min-width: 150px;
+        }
+
+        .tab-btn.active {
+            color: #3b82f6; /* Blue for Follow-up */
+            border-bottom-color: #3b82f6;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .list-card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 15px;
+            padding: 18px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .list-card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .list-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid #f8fafc;
+            padding-bottom: 10px;
+        }
+
+        .btn-action {
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+        }
+        
+        .btn-whatsapp:hover {
+            background: #128C7E;
+        }
+
+        .btn-outline-blue {
+            background: transparent;
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+        }
+        .btn-outline-blue:hover {
+            background: #eff6ff;
+        }
+
+        .btn-finish {
+            background: #fff;
+            border: 1px solid #10b981;
+            color: #10b981;
+        }
+        .btn-finish:hover {
+            background: #ecfdf5;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
+        }
+
+        .modal-card {
+            background: #fff; padding: 25px; border-radius: 20px;
+            width: 100%; max-width: 450px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-card input, .modal-card select, .modal-card textarea {
+            width: 100%; padding: 12px; border: 1px solid #ddd;
+            border-radius: 10px; margin-bottom: 15px; font-family: inherit; font-size:1rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="background:#f0f7ff; padding:12px; border-radius:15px; color:#2563eb; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.1);">
+                <i class="fas fa-users-gear" style="font-size: 1.8rem;"></i>
+            </div>
+            <div>
+                <h1 style="margin: 0; font-size: 1.8rem; letter-spacing: -0.5px; color:#1e40af; font-weight:800;">Equipe de Integração</h1>
+                <p style="margin:0; color:#64748b; font-size:0.9rem; font-weight:500;">Cuidado, Follow-up e Consolidação</p>
+            </div>
+        </div>
+        <button onclick="logout()" class="btn-action" style="background:#f1f5f9; color:#475569;">
+            Sair <i class="fas fa-sign-out-alt"></i>
+        </button>
+    <!-- TABS (Scrollable on mobile) -->
+    <div style="display: flex; gap: 10px; border-bottom: 2px solid #e2e8f0; margin-bottom: 25px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch;">
+        <button class="tab-btn active" onclick="switchTab('contato', this)" data-stage="Novos Amigos (3m)">
+            <i class="fas fa-clock"></i> Novos Amigos (3m)
+            <span id="badge-contato" class="tab-badge" style="background:#3b82f6;">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('evento', this)" data-stage="Evento">
+            <i class="fas fa-calendar-star"></i> Evento
+            <span id="badge-evento" class="tab-badge" style="background:#f59e0b;">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('curso', this)" data-stage="PCE">
+            <i class="fas fa-graduation-cap"></i> PCE
+            <span id="badge-curso" class="tab-badge" style="background:#8b5cf6;">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('grupo', this)" data-stage="PG ou GG">
+            <i class="fas fa-users-rays"></i> PG ou GG
+            <span id="badge-grupo" class="tab-badge" style="background:#10b981;">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('monitoramento', this)" data-stage="Monitoramento (3m)">
+            <i class="fas fa-eye"></i> Monitoramento (3m)
+            <span id="badge-monitor" class="tab-badge" style="background:#ec4899;">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('finalizados', this)" data-stage="Concluído">
+            <i class="fas fa-check-double"></i> Concluído
+        </button>
+    </div>
+
+    <style>
+        .tab-badge {
+            color: white; border-radius: 20px; padding: 2px 8px; font-size: 0.75rem; margin-left: 5px; display: none;
+        }
+    </style>
+
+    <div id="tab-contato" class="tab-content active">
+        <div class="card-floating" style="border-left: 5px solid #3b82f6;">
+            <h3 style="margin-top:0; color:#1e293b;"><i class="fas fa-clock"></i> 1. Novos Amigos (3m)</h3>
+            <p style="font-size:0.9rem; color:#64748b; margin-bottom:20px;">Fase de recepção, diagnóstico de necessidades e primeiro contato.</p>
+            <div id="list-contato">Carregando...</div>
+        </div>
+    </div>
+
+    <div id="tab-evento" class="tab-content">
+        <div class="card-floating" style="border-left: 5px solid #f59e0b;">
+            <h3 style="color:#1e293b; margin-top:0;"><i class="fas fa-calendar-star"></i> 2. Evento</h3>
+            <p style="font-size:0.9rem; color:#64748b; margin-bottom:20px;">Pessoas aguardando ou participando do evento oficial de boas-vindas.</p>
+            <div id="list-evento">Carregando...</div>
+        </div>
+    </div>
+
+    <div id="tab-curso" class="tab-content">
+        <div class="card-floating" style="border-left: 5px solid #8b5cf6;">
+            <h3 style="color:#1e293b; margin-top:0;"><i class="fas fa-graduation-cap"></i> 3. PCE (Módulo Eletivo)</h3>
+            <p style="font-size:0.9rem; color:#64748b; margin-bottom:20px;">Crescimento espiritual e ensino básico sobre a visão da igreja.</p>
+            <div id="list-curso">Carregando...</div>
+        </div>
+    </div>
+
+    <div id="tab-grupo" class="tab-content">
+        <div class="card-floating" style="border-left: 5px solid #10b981;">
+            <h3 style="color:#1e293b; margin-top:0;"><i class="fas fa-users-rays"></i> 4. PG ou GG (Módulo Eletivo)</h3>
+            <p style="font-size:0.9rem; color:#64748b; margin-bottom:20px;">Início da caminhada com o líder do grupo local.</p>
+            <div id="list-grupo">Carregando...</div>
+        </div>
+    </div>
+
+    <div id="tab-monitoramento" class="tab-content">
+        <div class="card-floating" style="border-left: 5px solid #ec4899;">
+            <h3 style="color:#1e293b; margin-top:0;"><i class="fas fa-eye"></i> 5. Monitoramento (3m)</h3>
+            <p style="font-size:0.9rem; color:#64748b; margin-bottom:20px;">Acompanhamento do integrador junto ao líder do grupo (Cuidado contínuo).</p>
+            <div id="list-monitoramento">Carregando...</div>
+        </div>
+    </div>
+
+    <div id="tab-finalizados" class="tab-content">
+        <div class="card-floating" style="border-left: 5px solid #64748b;">
+            <h3 style="color:#1e293b; margin-top:0;"><i class="fas fa-check-double"></i> 6. Concluído</h3>
+            <p style="font-size:0.9rem; color:#64748b; margin-bottom:20px;">Histórico de pessoas plenamente integradas ao corpo local.</p>
+            <div id="list-finalizados">Carregando...</div>
+        </div>
+    </div>
+
+    <!-- MODAL: REGISTER FOLLOW UP -->
+    <div id="followup-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="margin:0; color:#1a1a1a;"><i class="fas fa-clipboard-check"></i> Registrar Ação</h3>
+                <button onclick="closeModal()" style="background:none; border:none; font-size:1.5rem; color:#aaa; cursor:pointer;">&times;</button>
+            </div>
+            
+            <input type="hidden" id="fu-id">
+            
+            <label style="font-size:0.85rem; color:#666; font-weight:bold;">O que aconteceu?</label>
+            <select id="fu-action">
+                <option value="Ligação Realizada">Ligação Realizada</option>
+                <option value="Agendou Visita">Agendou Visita</option>
+                <option value="Mensagem Enviada">Mensagem Enviada</option>
+                <option value="Mudança de Etapa">Apenas Mudar de Etapa</option>
+                <option value="Cancelado/Arquivado">Interrompeu Processo</option>
+            </select>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                    <label style="font-size:0.85rem; color:#666; font-weight:bold;">Acompanhante (Voluntário)</label>
+                    <input type="text" id="fu-helper" placeholder="Quem está cuidando?">
+                </div>
+                <div>
+                    <label style="font-size:0.85rem; color:#666; font-weight:bold;">Responsável (Líder)</label>
+                    <input type="text" id="fu-leader" placeholder="Líder supervisor">
+                </div>
+            </div>
+
+            <label style="font-size:0.85rem; color:#666; font-weight:bold;">Necessidade Atual da Pessoa</label>
+            <input type="text" id="fu-need" placeholder="Ex: Cura emocional, Libertação, etc">
+
+            <label style="font-size:0.85rem; color:#666; font-weight:bold;">Resumo/Observações da Conversa</label>
+            <textarea id="fu-notes" rows="4" placeholder="Detalhes do contato..."></textarea>
+
+            <label style="font-size:0.85rem; color:#666; font-weight:bold;">Mover para Etapa:</label>
+            <select id="fu-status-stage">
+                <option value="Novos Amigos (3m)">1. Novos Amigos (3m)</option>
+                <option value="Evento">2. Evento</option>
+                <option value="PCE">3. PCE</option>
+                <option value="PG ou GG">4. PG ou GG</option>
+                <option value="Monitoramento (3m)">5. Monitoramento (3m)</option>
+                <option value="Concluído">✅ 6. Concluído</option>
+                <option value="Arquivado">❌ Arquivar (Desistência)</option>
+            </select>
+
+            <button onclick="saveFollowUp()" class="btn-action" style="width:100%; background:#3b82f6; color:white; font-size:1.1rem; margin-top:10px;">
+                Salvar Registro
+            </button>
+        </div>
+    </div>
+
+    <!-- SCRIPT -->
+    <script>
+        var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+
+        // 1. TABS
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+
+        // --- AUTH SYNC v48.14.4 ---
+        document.addEventListener("DOMContentLoaded", () => {
+            firebase.auth().onAuthStateChanged(user => {
+                const overlay = document.getElementById('login-overlay');
+                if (user) {
+                    console.log("Follow-up Auth: OK", user.email);
+                    if (overlay) overlay.style.display = 'none';
+                    initData();
+                } else {
+                    const isInsideIframe = window.self !== window.top;
+                    if (!isInsideIframe && overlay) {
+                        overlay.style.display = 'flex';
+                    }
+                }
+            });
+        });
+
+        function doLogin() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            const msg = document.getElementById('login-msg');
+            if (!email || !pass) return;
+            msg.innerText = "Verificando...";
+            firebase.auth().signInWithEmailAndPassword(email.trim(), pass)
+                .catch(error => msg.innerText = "Erro: " + error.message);
+        }
+
+        function logout() {
+            firebase.auth().signOut().then(() => window.location.href = "index.html");
+        }
+
+        // 3. LISTENERS (6 STAGES)
+        function initData() {
+            const stages = [
+                { stage: 'Novos Amigos (3m)', cont: 'list-contato', badge: 'badge-contato' },
+                { stage: 'Evento', cont: 'list-evento', badge: 'badge-evento' },
+                { stage: 'PCE', cont: 'list-curso', badge: 'badge-curso' },
+                { stage: 'PG ou GG', cont: 'list-grupo', badge: 'badge-grupo' },
+                { stage: 'Monitoramento (3m)', cont: 'list-monitoramento', badge: 'badge-monitor' },
+                { stage: 'Concluído', cont: 'list-finalizados', badge: null }
+            ];
+
+            stages.forEach(s => {
+                db.collection('integracao')
+                  .where('status', '==', 'em_integracao')
+                  .where('integ_stage', '==', s.stage)
+                  .onSnapshot(snap => {
+                    renderList(snap, s.cont, s.stage);
+                    if (s.badge) {
+                        const b = document.getElementById(s.badge);
+                        b.innerText = snap.size;
+                        b.style.display = snap.size > 0 ? 'inline-block' : 'none';
+                    }
+                });
+            });
+
+            // Fallback for old status if any
+            db.collection('integracao').where('status', '==', 'enviado_secretaria').onSnapshot(snap => {
+                if(!snap.empty) {
+                    snap.forEach(doc => doc.ref.update({ status: 'em_integracao', integ_stage: 'Novos Amigos (3m)' }));
+                }
+            });
+        }
+
+        // 4. RENDER
+        function renderList(snap, containerId, listType) {
+            const list = document.getElementById(containerId);
+            if (snap.empty) {
+                list.innerHTML = `<div style="text-align:center; padding:30px; color:#94a3b8;"><i class="fas fa-check-circle" style="font-size:2rem; margin-bottom:10px;"></i><br>Nenhum registro encontrado nesta etapa!</div>`;
+                return;
+            }
+
+            let html = '';
+            // Process to array so we can sort manually (Firestore UI indexes might not be built if we sort by date out of the box with `where`)
+            let docsData = [];
+            snap.forEach(doc => docsData.push({ id: doc.id, data: doc.data() }));
+            
+            // Sort by latest action or initial timestamp
+            docsData.sort((a,b) => {
+                const tA = a.data.last_update || a.data.dispatched_at || a.data.timestamp;
+                const tB = b.data.last_update || b.data.dispatched_at || b.data.timestamp;
+                return (tB ? tB.seconds : 0) - (tA ? tA.seconds : 0);
+            });
+
+            docsData.forEach(item => {
+                const id = item.id;
+                const d = item.data;
+
+                const isConvert = (d.type || '').toLowerCase() === 'conversao';
+                let ageStr = d.dispatched_at ? calculateDays(d.dispatched_at.toDate()) : 'Novo';
+                
+                // Construct history snippet if available
+                let historyHtml = '';
+                if (d.history && d.history.length > 0) {
+                    const lastAction = d.history[d.history.length - 1];
+                    historyHtml = `<div style="background:#f8fafc; padding:10px; border-radius:8px; border-left:3px solid #3b82f6; margin-top:10px; font-size:0.85rem;">
+                        <span style="font-size:0.75rem; color:#64748b; font-weight:700;">ÚLTIMA AÇÃO: ${lastAction.action || 'Atualização'}</span>
+                        <div style="color:#334155; margin-top:2px;">${lastAction.notes || ''}</div>
+                    </div>`;
+                }
+
+                let metaHtml = `
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; font-size:0.85rem;">
+                    <div style="color:#64748b;"><i class="fas fa-user-check"></i> Cuidado: <span style="color:#1e293b; font-weight:600;">${d.helper || '-'}</span></div>
+                    <div style="color:#64748b;"><i class="fas fa-shield-halved"></i> Líder: <span style="color:#1e293b; font-weight:600;">${d.leader || '-'}</span></div>
+                </div>
+                ${d.need ? `<div style="font-size:0.85rem; color:#475569; background:#f1f5f9; padding:8px; border-radius:6px; margin-top:8px;"><strong>Necessidade:</strong> ${d.need}</div>` : ''}
+                `;
+
+                let extraHtml = '';
+                if (d.extra) {
+                    extraHtml = `<div style="font-size:0.85rem; color:#854d0e; background:#fefce8; padding:8px; border-radius:6px; margin-top:8px;"><strong>Nota Acolhimento:</strong> ${d.extra}</div>`;
+                }
+
+                // WhatsApp Link preparation
+                let contact = (d.contact || '').replace(/\D/g, '');
+                let waUrl = '#';
+                if (contact) {
+                    if (contact.length <= 10) contact = '41' + contact; // Guessing swiss defaults if short
+                    waUrl = `https://wa.me/${contact}`;
+                }
+
+                html += `
+                <div class="list-card" style="border-left: 6px solid ${isConvert ? '#22c55e' : (listType==='Novos Amigos (3m)' ? '#3b82f6' : '#10b981')};">
+                    <div class="list-card-header">
+                        <div style="width:100%;">
+                            <strong style="font-size:1.4rem; color:#1e293b; display:block;">${d.name || 'Sem Nome'}</strong>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                                <div style="font-size:0.9rem; color:#64748b;">
+                                    <i class="fas fa-phone-alt" style="width:15px;"></i> ${d.contact || 'S/ telefone'}
+                                    ${isConvert ? `<span style="background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:6px; margin-left:8px; font-weight:700; font-size:0.75rem;">NOVO CONGREGADO</span>` : ''}
+                                </div>
+                                <div style="background:#fff7ed; border:1px solid #ffedd5; color:#c2410c; padding:3px 8px; border-radius:10px; font-size:0.75rem; font-weight:700;">${ageStr}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        ${metaHtml}
+                        ${extraHtml}
+                        ${historyHtml}
+                    </div>
+
+                    ${listType !== 'Concluído' ? `
+                    <div style="display:flex; justify-content:space-between; gap:10px; margin-top:10px; border-top:1px dashed #e2e8f0; padding-top:15px;">
+                        <a href="${waUrl}" target="_blank" class="btn-action btn-whatsapp" style="flex:1; text-decoration:none;">
+                            <i class="fab fa-whatsapp" style="font-size:1.2rem;"></i> Iniciar WhatsApp
+                        </a>
+                        
+                        <button onclick="openModal('${id}', \`${JSON.stringify({ helper: d.helper||'', leader: d.leader||'', need: d.need||'' }).replace(/"/g, '&quot;')}\`, '${listType}')" class="btn-action btn-outline-blue" style="flex:1;">
+                            <i class="fas fa-edit"></i> Registrar Ação
+                        </button>
+                    </div>` : `
+                    <div style="text-align:right; font-size:0.85rem; color:#94a3b8; margin-top:10px;">Status Finalizado: ${d.leader || 'Equipe Integração'} ✅</div>
+                    `}
+                </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+        // Helper time calculation
+        function calculateDays(dateObj) {
+            const now = new Date();
+            const diffTime = Math.abs(now - dateObj);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+            
+            if (diffDays === 0) return "Recebido Hoje";
+            if (diffDays === 1) return "Há 1 dia";
+            return `Há ${diffDays} dias`;
+        }
+
+        // 5. UPDATE MODAL
+        function openModal(id, metaJson, currentStage) {
+            const meta = JSON.parse(metaJson.replace(/&quot;/g, '"'));
+            document.getElementById('fu-id').value = id;
+            document.getElementById('fu-notes').value = '';
+            document.getElementById('fu-helper').value = meta.helper || '';
+            document.getElementById('fu-leader').value = meta.leader || '';
+            document.getElementById('fu-need').value = meta.need || '';
+            
+            document.getElementById('fu-action').value = "Ligação Realizada";
+            document.getElementById('fu-status-stage').value = currentStage;
+
+            document.getElementById('followup-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('followup-modal').style.display = 'none';
+        }
+
+        async function saveFollowUp() {
+            const id = document.getElementById('fu-id').value;
+            const action = document.getElementById('fu-action').value;
+            const notes = document.getElementById('fu-notes').value;
+            const newStage = document.getElementById('fu-status-stage').value;
+            const helper = document.getElementById('fu-helper').value;
+            const leader = document.getElementById('fu-leader').value;
+            const need = document.getElementById('fu-need').value;
+
+            if (!helper || !leader) {
+                return alert("⚠️ É OBRIGATÓRIO informar quem é o Acompanhante e o Líder Responsável para a Secretaria!");
+            }
+
+            const historyEntry = {
+                action: action,
+                notes: notes,
+                helper: helper,
+                leader: leader,
+                timestamp: firebase.firestore.Timestamp.now()
+            };
+
+            try {
+                const docRef = db.collection('integracao').doc(id);
+                const docSnap = await docRef.get();
+                const d = docSnap.data();
+
+                // 1. UPDATE CRM RECORD
+                await docRef.update({
+                    integ_stage: newStage,
+                    status: newStage === 'Arquivado' ? 'arquivado' : 'em_integração',
+                    helper: helper,
+                    leader: leader,
+                    need: need,
+                    last_update: firebase.firestore.FieldValue.serverTimestamp(),
+                    history: firebase.firestore.FieldValue.arrayUnion(historyEntry)
+                });
+
+                // 2. MANDATORY SECRETARIAT NOTIFICATION (LOG)
+                await db.collection('pending').add({
+                    type: 'log_integracao',
+                    name: d.name || 'Sem Nome',
+                    contact: d.contact || '',
+                    action: `INTEGRAÇÃO: ${action}`,
+                    extra: `[Líder: ${leader}] [Acomp: ${helper}] Mudou para etapa: ${newStage}. Nota: ${notes}`,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    origin: 'crm_integracao'
+                });
+
+                closeModal();
+            } catch(e) {
+                alert("Erro ao registrar acompanhamento: " + e.message);
+                console.error(e);
+            }
+        }
+    </script>
+    <!-- LOGIN MODAL -->
+    <div id="login-overlay"
+        style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 99999; flex-direction: column; justify-content: center; align-items: center;">
+        <div
+            style="background: #111; padding: 40px; border-radius: 12px; border: 1px solid #333; width: 300px; text-align: center; font-family:'Outfit', sans-serif;">
+            <h2 style="color: #D4AF37; margin-bottom: 20px;">INTEGRAÇÃO</h2>
+            <p style="color:#aaa; font-size:0.9rem; margin-bottom:15px;">Faça login para liberar o sistema.</p>
+
+            <input type="email" id="login-email" placeholder="Email"
+                style="width: 100%; box-sizing:border-box; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: white; border-radius: 6px;">
+            <input type="password" id="login-pass" placeholder="Senha"
+                style="width: 100%; box-sizing:border-box; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: white; border-radius: 6px;">
+
+            <button onclick="doLogin()"
+                style="width: 100%; padding: 12px; margin-top: 20px; background: #D4AF37; color: black; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">ENTRAR</button>
+            <p id="login-msg" style="color: #ef4444; margin-top: 15px; font-size: 0.9rem;"></p>
+        </div>
+    </div>
+</body>
+
+</html>

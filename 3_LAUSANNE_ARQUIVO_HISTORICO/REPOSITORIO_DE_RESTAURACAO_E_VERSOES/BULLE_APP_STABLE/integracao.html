@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integração | JORNADA</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=64.0.0"></script>
+    
+    <script>
+        // SECURITY GUARD v47.2 - iframe-safe
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile.html';
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #060608;
+            --bg-card: rgba(12, 12, 16, 0.95);
+            --gold: #C9A050;
+            --gold-dim: rgba(201, 160, 80, 0.1);
+            --gold-glow: rgba(201, 160, 80, 0.3);
+            --border: rgba(201, 160, 80, 0.15);
+            --border-soft: rgba(255, 255, 255, 0.05);
+            --text: #e8dcc8;
+            --text-dim: rgba(232, 220, 200, 0.5);
+            --accent-emerald: #5aaa7a;
+            --accent-warm: #d4922a;
+            --font: 'Outfit', sans-serif;
+            --shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        body {
+            background: var(--bg);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(201, 160, 80, 0.03) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(91, 143, 212, 0.02) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 15px;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3 { font-family: var(--font); }
+
+        /* HEADER */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        /* JOURNEY TRACK */
+        .nav-journey {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 35px;
+            overflow-x: auto;
+            padding: 10px 5px;
+            scrollbar-width: none;
+        }
+        .nav-journey::-webkit-scrollbar { display: none; }
+
+        .journey-step {
+            background: var(--bg-card);
+            border: 1px solid var(--border-soft);
+            padding: 20px;
+            border-radius: 24px;
+            color: var(--text-dim);
+            font-family: var(--font);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 120px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .journey-step i { font-size: 1.4rem; margin-bottom: 10px; opacity: 0.4; transition: 0.3s; }
+        .journey-step span:first-of-type { font-size: 0.85rem; letter-spacing: 1px; }
+        .journey-step span:last-child { font-size: 0.65rem; font-weight: 500; opacity: 0.4; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .journey-step.active {
+            background: var(--gold-dim);
+            color: var(--gold);
+            border-color: var(--gold);
+            box-shadow: 0 15px 35px rgba(201, 160, 80, 0.15);
+            transform: translateY(-4px);
+        }
+        .journey-step.active i { opacity: 1; color: var(--gold); }
+        .journey-step.active span:last-child { opacity: 0.8; color: var(--gold); }
+
+        /* INNOVATIVE 3D CARDS */
+        .person-card {
+            background: var(--bg-card);
+            border-radius: 28px;
+            padding: 28px;
+            margin-bottom: 25px;
+            border: 1px solid var(--border-soft);
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            box-shadow: var(--shadow);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* The Glow Effect on Bottom */
+        .person-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 10%; width: 80%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            opacity: 0; transition: 0.4s;
+        }
+
+        .person-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--border);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+        }
+
+        .person-card:hover::after { opacity: 0.6; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .name-heading {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #fff;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .wa-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #22c55e;
+            font-weight: 800;
+            text-decoration: none;
+            background: rgba(34, 197, 94, 0.05);
+            padding: 6px 15px;
+            border-radius: 50px;
+            transition: 0.3s;
+            border: 1px solid rgba(34, 197, 94, 0.1);
+        }
+        .wa-pill:hover { background: #22c55e; color: #fff; }
+
+        .time-badge {
+            background: var(--gold-dim);
+            color: var(--gold);
+            font-size: 0.65rem;
+            font-weight: 900;
+            padding: 5px 14px;
+            border-radius: 50px;
+            border: 1px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* GRID INFO */
+        .grid-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 15px 0;
+        }
+
+        .info-pill {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-soft);
+            padding: 12px 15px;
+            border-radius: 18px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-dim);
+        }
+
+        .info-pill i { color: var(--gold); font-size: 0.9rem; opacity: 0.7; }
+        .info-pill strong { color: var(--text); font-weight: 800; }
+
+        /* HISTORY BLOCK */
+        .history-block {
+            background: rgba(0, 0, 0, 0.2);
+            border-left: 4px solid var(--gold);
+            padding: 18px;
+            border-radius: 0 20px 20px 0;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: var(--text);
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* BUTTONS NEXT-GEN */
+        .btn-modern {
+            background: var(--gold);
+            color: #000;
+            border: none;
+            padding: 18px 25px;
+            border-radius: 20px;
+            font-weight: 900;
+            font-family: var(--font);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(201, 160, 80, 0.3);
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(15px);
+            align-items: center; justify-content: center;
+            z-index: 10000; padding: 20px;
+        }
+
+        .glass-panel {
+            background: var(--bg-card);
+            border-radius: 35px;
+            padding: 35px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+            border: 1px solid var(--border-soft);
+            animation: modalIn 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.9) translateY(40px); } }
+
+        .input-modern {
+            width: 100%; padding: 18px; border-radius: 18px; border: 1px solid var(--border-soft); margin-bottom: 20px;
+            font-family: inherit; font-size: 1rem; color: #fff; box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.04); transition: 0.3s;
+            appearance: none; -webkit-appearance: none;
+        }
+        /* SELECT VISIBILITY FIX (v61.2) */
+        select.input-modern, select {
+            background: #1e293b !important;
+            color: #ffffff !important;
+            border: 1px solid var(--border) !important;
+            cursor: pointer;
+        }
+        select option {
+            background: #1e293b !important;
+            color: #ffffff !important;
+            padding: 10px;
+        }
+        select.input-modern:focus {
+            border-color: var(--gold) !important;
+            box-shadow: 0 0 15px var(--gold-glow) !important;
+        }
+        .input-modern:focus { outline: none; border-color: var(--gold); background: rgba(255, 255, 255, 0.07); box-shadow: 0 10px 20px rgba(201, 160, 80, 0.1); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div style="background: var(--gold-dim); width: 60px; height: 60px; border-radius: 22px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);">
+                <i class="fas fa-heart" style="color: var(--gold); font-size: 1.8rem;"></i>
+            </div>
+            <div>
+                <h1 style="margin: 0; font-size: 1.8rem; letter-spacing: 1px; font-weight: 800; color: #fff;">JORNADA</h1>
+                <p style="margin: 0; font-size: 0.7rem; color: var(--gold); font-weight: 800; letter-spacing: 2px; text-transform: uppercase;">Acompanhamento</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="nav-journey">
+        <div class="journey-step active" onclick="switchStep('contato', this)" data-stage="Novos Amigos">
+            <i class="fas fa-hand-holding-heart"></i>
+            <span>NOVOS AMIGOS</span>
+            <span>Boas-vindas (3m)</span>
+        </div>
+        <div class="journey-step" onclick="switchStep('evento', this)" data-stage="Evento">
+            <i class="fas fa-calendar-check"></i>
+            <span>EVENTO</span>
+            <span>Integração</span>
+        </div>
+        <div class="journey-step" onclick="switchStep('pce', this)" data-stage="PCE">
+            <i class="fas fa-graduation-cap"></i>
+            <span>PCE</span>
+            <span>Ensino</span>
+        </div>
+        <div class="journey-step" onclick="switchStep('pg', this)" data-stage="PG ou GG">
+            <i class="fas fa-users-rays"></i>
+            <span>PG ou GG</span>
+            <span>Célula</span>
+        </div>
+        <div class="journey-step" onclick="switchStep('monitoramento', this)" data-stage="Monitoramento">
+            <i class="fas fa-shield-heart"></i>
+            <span>MONITORAMENTO</span>
+            <span>Cuidado (3m)</span>
+        </div>
+        <div class="journey-step" onclick="switchStep('finalizados', this)" data-stage="Concluido">
+            <i class="fas fa-crown"></i>
+            <span>CONCLUÍDO</span>
+            <span>Integrados</span>
+        </div>
+    </div>
+
+    <!-- STAGES CONTENTS -->
+    <div id="step-contato" class="tab-content active">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; padding-left:10px;">
+            <h2 style="margin:0; font-size: 1.3rem; color: #fff; letter-spacing: 0.5px; font-weight: 800;">Novos Amigos</h2>
+            <span id="count-contato" style="background: var(--gold-dim); color: var(--gold); padding: 6px 15px; border-radius: 12px; font-weight: 900; font-size: 0.7rem; letter-spacing: 1px; border: 1px solid var(--border);">0 VIDAS</span>
+        </div>
+        <div id="list-contato">Carregando jornada...</div>
+    </div>
+
+    <div id="step-monitoramento" class="tab-content">
+        <div id="list-monitoramento">Carregando...</div>
+    </div>
+    
+    <div id="step-pce" class="tab-content">
+        <div id="list-pce">Carregando...</div>
+    </div>
+
+    <div id="step-pg" class="tab-content">
+        <div id="list-pg">Carregando...</div>
+    </div>
+
+    <div id="step-evento" class="tab-content">
+        <div id="list-evento">Carregando...</div>
+    </div>
+
+    <div id="step-finalizados" class="tab-content">
+        <div id="list-finalizados">Carregando...</div>
+    </div>
+
+    <!-- UPDATE MODAL -->
+    <div id="update-modal" class="modal-overlay">
+        <div class="glass-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px;">
+                <h3 style="margin:0; font-size: 1.4rem; color: #fff; font-weight: 800; letter-spacing: -0.5px;"><i class="fas fa-heart-pulse" style="margin-right:10px; color: var(--gold);"></i> Próximo Passo</h3>
+                <button onclick="closeModal()" style="border:none; background:none; font-size:1.5rem; cursor:pointer; color:var(--text-dim);">&times;</button>
+            </div>
+
+            <input type="hidden" id="fu-id">
+            
+            <label style="font-size:0.7rem; font-weight:900; color:var(--gold); margin-bottom:8px; display:block; letter-spacing:1.5px; text-transform: uppercase;">AÇÃO REALIZADA</label>
+            <select id="fu-action" class="input-modern">
+                <option value="Ligação Realizada">Ligação de Cuidado</option>
+                <option value="Mensagem Enviada">Whats de Acompanhamento</option>
+                <option value="Visita Realizada">Visita Agendada</option>
+                <option value="Mudou de Fase">Apenas Mudar de Fase</option>
+                <option value="Interrompeu">Interromper Processo</option>
+            </select>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <div>
+                   <label style="font-size:0.7rem; font-weight:900; color:var(--gold); letter-spacing:1.5px; text-transform: uppercase;">MONITOR RESPONSÁVEL</label>
+                   <input type="text" id="fu-monitor" class="input-modern" placeholder="Quem monitora?">
+                </div>
+                <div>
+                   <label style="font-size:0.7rem; font-weight:900; color:var(--gold); letter-spacing:1.5px; text-transform: uppercase;">AMIGO AJUDADOR</label>
+                   <input type="text" id="fu-friend" class="input-modern" placeholder="Quem ajuda a firmar?">
+                </div>
+            </div>
+
+            <div id="pce-fields" style="display:none; border: 1px solid var(--gold-dim); padding: 15px; border-radius: 20px; margin-bottom: 20px; background: rgba(201, 160, 80, 0.03);">
+                <label style="font-size:0.7rem; font-weight:900; color:var(--gold); letter-spacing:1.5px; text-transform: uppercase;">DADOS DO PCE</label>
+                <input type="text" id="fu-teacher" class="input-modern" placeholder="Nome do Professor">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                    <input type="date" id="fu-start" class="input-modern">
+                    <input type="date" id="fu-end" class="input-modern">
+                </div>
+            </div>
+
+            <label style="font-size:0.7rem; font-weight:900; color:var(--gold); letter-spacing:1.5px; text-transform: uppercase;">RELATÓRIO DE EVOLUÇÃO</label>
+            <textarea id="fu-notes" class="input-modern" rows="4" style="resize:none;" placeholder="Detalhes do acompanhamento..."></textarea>
+
+            <label style="font-size:0.7rem; font-weight:900; color:var(--gold); letter-spacing:1.5px; text-transform: uppercase;">PRÓXIMA ESTAÇÃO</label>
+            <select id="fu-stage" class="input-modern" style="border-color: var(--gold) !important; background: #0f172a !important; color: #fff !important; font-weight: 800;" onchange="togglePCEFields(this.value)">
+                <option value="Novos Amigos">1. Novos Amigos (3m)</option>
+                <option value="Evento">2. Evento</option>
+                <option value="PCE">3. PCE (Classe)</option>
+                <option value="PG ou GG">4. PG ou GG</option>
+                <option value="Monitoramento">5. Monitoramento (3m)</option>
+                <option value="Concluido">✅ 6. Integrado</option>
+                <option value="Arquivado">⚠️ Arquivar Desistência</option>
+            </select>
+
+            <button onclick="saveUpdate()" class="btn-modern" style="width:100%;">
+                CONSOLIDAR AGORA
+            </button>
+        </div>
+    </div>
+
+    <!-- EDIT VISITOR MODAL -->
+    <div id="edit-modal" class="modal-overlay">
+        <div class="glass-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px;">
+                <h3 style="margin:0; font-size: 1.4rem; color: #fff; font-weight: 800;"><i class="fas fa-user-pen" style="margin-right:10px; color: var(--gold);"></i> Editar Dados</h3>
+                <button onclick="closeEditModal()" style="border:none; background:none; font-size:1.5rem; cursor:pointer; color:var(--text-dim);">&times;</button>
+            </div>
+            <input type="hidden" id="edit-id">
+            <label style="font-size:0.7rem; font-weight:900; color:var(--gold); margin-bottom:8px; display:block; letter-spacing:1.5px; text-transform: uppercase;">NOME COMPLETO</label>
+            <input type="text" id="edit-name" class="input-modern" placeholder="Nome do Amigo">
+            <label style="font-size:0.7rem; font-weight:900; color:var(--gold); margin-bottom:8px; display:block; letter-spacing:1.5px; text-transform: uppercase;">WHATSAPP / TELEFONE</label>
+            <input type="tel" id="edit-contact" class="input-modern" placeholder="+41 ...">
+            <button onclick="saveEditVisitor()" class="btn-modern" style="width:100%;">SALVAR ALTERAÇÕES</button>
+        </div>
+    </div>
+
+    <!-- LOGIN MODAL -->
+    <div id="login-overlay" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 99999; flex-direction: column; justify-content: center; align-items: center; padding: 20px;">
+        <div class="glass-panel" style="width: 100%; max-width: 340px; text-align: center;">
+            <div style="background: var(--gold-dim); width: 70px; height: 70px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 30px; transform: rotate(8deg); border: 1px solid var(--border);">
+                <i class="fas fa-heart" style="font-size: 2rem; color: var(--gold); transform: rotate(-8deg);"></i>
+            </div>
+            <h2 style="color: #fff; margin: 0 0 10px 0; font-family: var(--font); font-weight: 800; font-size: 1.6rem; letter-spacing: 1px;">SISTEMA CONECTA</h2>
+            <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:40px; font-weight: 600;">Faça login para gerenciar as vidas.</p>
+
+            <input type="email" id="login-email" placeholder="E-mail Pastoral" class="input-modern">
+            <input type="password" id="login-pass" placeholder="Senha de Acesso" class="input-modern">
+
+            <button onclick="doLogin()" class="btn-modern" style="width:100%;">ACESSAR JORNADA</button>
+            <p id="login-msg" style="color: #ef4444; margin-top: 20px; font-size: 0.8rem; font-weight: 800;"></p>
+        </div>
+    </div>
+
+    <script>
+        var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+
+        function switchStep(stepId, btn) {
+            document.querySelectorAll('.journey-step').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('step-' + stepId).classList.add('active');
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const isInsideIframe = window.self !== window.top;
+            firebase.auth().onAuthStateChanged(user => {
+                const overlay = document.getElementById('login-overlay');
+                if (user) {
+                    if (overlay) overlay.style.display = 'none';
+                    initJourney();
+                } else {
+                    if (!isInsideIframe && overlay) overlay.style.display = 'flex';
+                }
+            });
+        });
+
+        function doLogin() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            const msg = document.getElementById('login-msg');
+            if (!email || !pass) return;
+            msg.innerText = "Validando credenciais...";
+            firebase.auth().signInWithEmailAndPassword(email.trim(), pass).catch(error => { msg.innerText = "Acesso negado!"; });
+        }
+
+        function logout() { firebase.auth().signOut().then(() => location.reload()); }
+
+        function initJourney() {
+            const config = [
+                { stage: 'Novos Amigos', el: 'list-contato', count: 'count-contato' },
+                { stage: 'Monitoramento', el: 'list-monitoramento', count: null },
+                { stage: 'PCE', el: 'list-pce', count: null },
+                { stage: 'PG ou GG', el: 'list-pg', count: null },
+                { stage: 'Evento', el: 'list-evento', count: null },
+                { stage: 'Concluido', el: 'list-finalizados', count: null }
+            ];
+
+            config.forEach(s => {
+                db.collection('integracao')
+                  .where('status', '==', 'em_integracao')
+                  .where('integ_stage', '==', s.stage)
+                  .onSnapshot(snap => {
+                    renderStep(snap, s.el, s.stage);
+                    if (s.count) {
+                        const countEl = document.getElementById(s.count);
+                        if (countEl) countEl.innerText = snap.size + " VIDAS";
+                    }
+                });
+            });
+        }
+
+        function renderStep(snap, containerId, listType) {
+            const list = document.getElementById(containerId);
+            if (!list) return;
+            if (snap.empty) {
+                list.innerHTML = `<div style="text-align:center; padding:80px 20px; opacity:0.2;"><i class="fas fa-seedling" style="font-size:4rem; margin-bottom:20px; color: var(--gold);"></i><p style="font-weight:800; letter-spacing: 1px;">NENHUM REGISTRO ENCONTRADO</p></div>`;
+                return;
+            }
+
+            let html = '';
+            snap.forEach(doc => {
+                const d = doc.data();
+                const id = doc.id;
+                const lastAct = d.history && d.history.length > 0 ? d.history[d.history.length - 1] : null;
+                const isConvert = (d.type || '').toLowerCase() === 'conversao';
+                
+                // Inactivity Logic (7 days)
+                let isInactive = false;
+                if (lastAct && lastAct.timestamp) {
+                    const lastDate = lastAct.timestamp.toDate();
+                    const days = Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24));
+                    if (days >= 7) isInactive = true;
+                }
+
+                html += `
+                <div class="person-card" style="${isInactive ? 'border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);' : ''}">
+                    ${isInactive ? `<div style="position:absolute; top:15px; right:15px; color:#ef4444; font-size:0.6rem; font-weight:900; background:rgba(239, 68, 68, 0.1); padding:4px 8px; border-radius:6px; animation: pulse 2s infinite;"><i class="fas fa-clock"></i> SEM CONTATO</div>` : ''}
+                    <div class="card-header">
+                              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                 <h3 class="name-heading">${d.name || 'Sem Nome'}</h3>
+                                 <button onclick="openEditVisitor('${id}', '${safeStr(d.name)}', '${safeStr(d.contact)}')" style="background:none; border:none; color:var(--gold); cursor:pointer; font-size:1rem; opacity:0.6; transition:0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'"><i class="fas fa-edit"></i></button>
+                              </div>
+                              <div style="display:flex; gap:12px; align-items:center; margin-top:10px;">
+                                <a href="https://wa.me/${(d.contact||'').replace(/\D/g,'')}" target="_blank" class="wa-pill">
+                                    <i class="fab fa-whatsapp"></i> ${d.contact || 'S/ telefone'}
+                                </a>
+                                ${isConvert ? `<span style="background:var(--gold-dim); color:var(--gold); font-size:0.65rem; font-weight:900; padding:4px 12px; border-radius:8px; text-transform:uppercase; border: 1px solid var(--border); letter-spacing:1px;">Decisão</span>` : ''}
+                             </div>
+                        </div>
+                        <span class="time-badge">${calculateDays(d.dispatched_at)}</span>
+                        ${(listType === 'Novos Amigos' || listType === 'Monitoramento') ? renderCountdown(d.dispatched_at) : ''}
+                    </div>
+
+                    <div class="grid-info">
+                        <div class="info-pill"><i class="fas fa-hand-holding-heart"></i> <span>Monitor: <strong>${d.monitor_name || '-'}</strong></span></div>
+                        <div class="info-pill"><i class="fas fa-user-friends"></i> <span>Ajudador: <strong>${d.helper_friend || '-'}</strong></span></div>
+                    </div>
+
+                    ${listType === 'PCE' ? `
+                    <div style="background: rgba(201, 160, 80, 0.05); padding:15px; border-radius:18px; font-size:0.8rem; color:var(--gold); border:1px solid var(--border-soft); margin-bottom:12px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div><i class="fas fa-chalkboard-teacher"></i> Professor: <strong>${d.teacher_name || '-'}</strong></div>
+                        <div><i class="fas fa-calendar"></i> Ciclo: <strong>${d.start_date ? formatDate(d.start_date) : ''} - ${d.end_date ? formatDate(d.end_date) : ''}</strong></div>
+                    </div>` : ''}
+
+                    ${lastAct ? `
+                    <div class="history-block">
+                        <strong style="font-size:0.7rem; color:var(--gold); letter-spacing:1.5px; text-transform: uppercase;">ÚLTIMA EVOLUÇÃO: ${lastAct.action} (${calculateDaysFromDate(lastAct.timestamp.toDate())})</strong>
+                        <div style="margin-top:8px; line-height:1.5; color:var(--text); opacity: 0.9;">${lastAct.notes || ''}</div>
+                    </div>
+                    ` : ''}
+
+                    ${listType !== 'Concluido' ? `
+                    <div style="margin-top:25px; display:flex; gap:15px;">
+                         <button onclick="openModal('${id}', \`${JSON.stringify({ monitor: d.monitor_name||'', friend: d.helper_friend||'', teacher: d.teacher_name||'', start: d.start_date||'', end: d.end_date||'' }).replace(/"/g, '&quot;')}\`, '${listType}', ${d.dispatched_at ? d.dispatched_at.toMillis() : 0})" class="btn-modern" style="flex:2;">
+                            <i class="fas fa-clipboard-list"></i> RELATÓRIO
+                         </button>
+                         <button onclick="sendConnectLink('${d.contact}', '${d.name}')" class="btn-modern" style="flex:1; background: var(--gold-dim); color: var(--gold); border: 1px solid var(--border);">
+                            <i class="fas fa-share-nodes"></i> CONNECT
+                         </button>
+                    </div>` : ''}
+                </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+        function formatDate(ts) {
+            if (!ts) return '';
+            const d = ts.toDate ? ts.toDate() : new Date(ts);
+            return d.toLocaleDateString('pt-BR');
+        }
+
+        function calculateDaysFromDate(date) {
+            const diff = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
+            if (diff === 0) return "Hoje";
+            return `Há ${diff} dias`;
+        }
+
+        function calculateDays(ts) {
+            if (!ts) return "---";
+            const date = ts.toDate();
+            const diff = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
+            if (diff === 0) return "Hoje";
+            if (diff === 1) return "Há 1 dia";
+            return `Há ${diff} dias`;
+        }
+
+        function renderCountdown(ts) {
+            if (!ts) return '';
+            const date = ts.toDate();
+            const daysActive = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
+            const remaining = 30 - daysActive;
+            
+            if (remaining > 0) {
+                return `<div style="font-size:0.6rem; font-weight:900; color:var(--gold); background:var(--gold-dim); padding:2px 8px; border-radius:6px; border:1px solid var(--border); margin-top:5px; text-align:right;">
+                            <i class="fas fa-clock"></i> AGUARDAR ${remaining} DIAS
+                        </div>`;
+            } else {
+                return `<div style="font-size:0.6rem; font-weight:900; color:#5aaa7a; background:rgba(90, 170, 122, 0.1); padding:2px 8px; border-radius:6px; border:1px solid rgba(90, 170, 122, 0.2); margin-top:5px; text-align:right;">
+                            <i class="fas fa-check-double"></i> MONITORAMENTO CONCLUÍDO
+                        </div>`;
+            }
+        }
+
+        function sendConnectLink(contact, name) {
+            if (!contact) return alert("Sem telefone cadastrado.");
+            const cleanPhone = contact.replace(/\D/g, '');
+            const msg = encodeURIComponent(`Olá ${name}! Seja muito bem-vindo à Catedral Bulle. Preparamos um link especial para você conhecer melhor nossa igreja, fazer pedidos de oração e ver nossa agenda: https://bulle-connect.web.app/connect.html`);
+            window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+        }
+
+        function openModal(id, metaJson, currentStage, tsMillis) {
+            const meta = JSON.parse(metaJson.replace(/&quot;/g, '"'));
+            const modal = document.getElementById('update-modal');
+            if (!modal) return;
+            document.getElementById('fu-id').value = id;
+            document.getElementById('fu-monitor').value = meta.monitor || '';
+            document.getElementById('fu-friend').value = meta.friend || '';
+            document.getElementById('fu-teacher').value = meta.teacher || '';
+            
+            if (meta.start) document.getElementById('fu-start').value = new Date(meta.start.seconds * 1000).toISOString().split('T')[0];
+            if (meta.end) document.getElementById('fu-end').value = new Date(meta.end.seconds * 1000).toISOString().split('T')[0];
+
+            document.getElementById('fu-notes').value = '';
+            document.getElementById('fu-stage').value = currentStage;
+            togglePCEFields(currentStage);
+
+            // 30-DAY RULE CHECK
+            const concludeOption = document.querySelector('#fu-stage option[value="Concluido"]');
+            if (concludeOption) {
+                const daysActive = tsMillis ? Math.floor((Date.now() - tsMillis) / (1000 * 60 * 60 * 24)) : 0;
+                if (daysActive < 30) {
+                    concludeOption.disabled = true;
+                    concludeOption.innerText = `✅ 6. Integrado (Bloqueado - Faltam ${30 - daysActive} dias)`;
+                } else {
+                    concludeOption.disabled = false;
+                    concludeOption.innerText = "✅ 6. Integrado à Família";
+                }
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        function togglePCEFields(stage) {
+            document.getElementById('pce-fields').style.display = (stage === 'PCE') ? 'block' : 'none';
+        }
+
+        function safeStr(str) {
+            if (!str) return '';
+            return String(str).replace(/[`'"]/g, '');
+        }
+
+        function openEditVisitor(id, name, contact) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-name').value = name;
+            document.getElementById('edit-contact').value = contact;
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+        function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
+        async function saveEditVisitor() {
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('edit-name').value;
+            const contact = document.getElementById('edit-contact').value;
+            if(!name) return alert("Nome é obrigatório");
+            await db.collection('integracao').doc(id).update({ name, contact });
+            closeEditModal();
+            alert("Dados atualizados com sucesso!");
+        }
+
+        function closeModal() { document.getElementById('update-modal').style.display = 'none'; }
+
+        async function saveUpdate() {
+            const id = document.getElementById('fu-id').value;
+            const newStage = document.getElementById('fu-stage').value;
+            const monitor = document.getElementById('fu-monitor').value;
+            const notes = document.getElementById('fu-notes').value;
+
+            if (!monitor) return alert("Identificação do monitor é obrigatória!");
+            if (!notes || notes.length < 5) return alert("Por favor, descreva a evolução (relatório) desta vida.");
+
+            const updateData = {
+                integ_stage: newStage,
+                status: newStage === 'Arquivado' ? 'arquivado' : (newStage === 'Concluido' ? 'pendente_secretaria' : 'em_integracao'),
+                monitor_name: monitor,
+                helper_friend: document.getElementById('fu-friend').value,
+                teacher_name: document.getElementById('fu-teacher').value,
+                start_date: document.getElementById('fu-start').value ? firebase.firestore.Timestamp.fromDate(new Date(document.getElementById('fu-start').value)) : null,
+                end_date: document.getElementById('fu-end').value ? firebase.firestore.Timestamp.fromDate(new Date(document.getElementById('fu-end').value)) : null,
+                last_update: firebase.firestore.FieldValue.serverTimestamp(),
+                history: firebase.firestore.FieldValue.arrayUnion({
+                    action: 'Evolução de Etapa: ' + newStage,
+                    notes: notes,
+                    timestamp: firebase.firestore.Timestamp.now()
+                })
+            };
+
+            await db.collection('integracao').doc(id).update(updateData);
+            
+            // Log for Secretariat
+            await db.collection('pending').add({
+                type: 'log_integracao',
+                name: 'Atualização de Estágio',
+                extra: `Movido para: ${newStage}. Monitor: ${monitor}`,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            closeModal();
+        }
+    </script>
+</body>
+</html>

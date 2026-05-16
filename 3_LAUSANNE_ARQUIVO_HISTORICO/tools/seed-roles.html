@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Role Seeding Tool - Catedral Connect</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #111; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #222; padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; max-width: 500px; }
+        button { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 20px; width: 100%; }
+        #status { margin-top: 20px; font-size: 0.9rem; text-align: left; background: #000; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🛠 Seeding Roles (v47.1)</h2>
+        <p>Esta ferramenta cria os documentos de papel (role) necessários no Firestore para os usuários departamentais vinculados aos UIDs de produção.</p>
+        <button id="btn-seed" onclick="seedRoles()">INICIAR SEEDING</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const ROLES_TO_SEED = [
+            { uid: 'YXNPTYzZ0cMjSbNSmRj9H3AL0vj1', role: 'reception', email: 'recepcao@catedral.ch' },
+            { uid: '9aAJv066oIVE7lEtY3UUo23jAMq1', role: 'kids', email: 'infantil@catedral.ch' },
+            { uid: 'iTBNHG1USKQsfi37yx6tHKd8LxD3', role: 'integracao', email: 'missao@catedral.ch' },
+            { uid: '6LiyG4HdDaRhEOTbjWdflai2k9l1', role: 'altar', email: 'midia@catedral.ch' },
+            { uid: 'Z6y7EYrKGKOzZuIrtlR48pr7Lmf1', role: 'admin', email: 'pastor@catedral.ch' },
+            // Fallbacks registrados na pesquisa
+            { uid: 'WPXywVqsQ6T8YFYWm1mf4ZfwKEG2', role: 'kids', email: 'kids@catedral.ch' },
+            { uid: 'sKHkmZ3oXwM1yvTVt50UiAODfP12', role: 'admin', email: 'lider@catedral.ch' }
+        ];
+
+        async function seedRoles() {
+            const btn = document.getElementById('btn-seed');
+            const status = document.getElementById('status');
+            btn.disabled = true;
+            status.innerHTML = "Iniciando processamento...<br>";
+
+            // Check if logged in (requires an admin session)
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                status.innerHTML += "<span class='error'>❌ ERRO: Você precisa estar logado (como admin) para realizar o seeding!</span>";
+                btn.disabled = false;
+                return;
+            }
+
+            for (const item of ROLES_TO_SEED) {
+                try {
+                    await db.collection('users').doc(item.uid).set({
+                        email: item.email,
+                        role: item.role,
+                        dept: item.role,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    status.innerHTML += `<span class='success'>✅ Sincronizado: ${item.email} (${item.role})</span><br>`;
+                } catch (e) {
+                    status.innerHTML += `<span class='error'>❌ Erro ao sincronizar ${item.email}: ${e.message}</span><br>`;
+                }
+            }
+
+            status.innerHTML += "<strong>Finalizado!</strong>";
+        }
+    </script>
+</body>
+</html>

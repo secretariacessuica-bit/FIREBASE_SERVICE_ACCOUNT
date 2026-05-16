@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INTEGRAÇÃO | JORNADA LAUSANNE</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.32"></script>
+    
+    <script>
+        // SECURITY GUARD v70.3.32 - iframe-safe
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile.html';
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #060608;
+            --bg-card: rgba(12, 12, 16, 0.95);
+            --gold: #C9A050;
+            --gold-dim: rgba(201, 160, 80, 0.1);
+            --border: rgba(201, 160, 80, 0.15);
+            --border-soft: rgba(255, 255, 255, 0.05);
+            --text: #e8dcc8;
+            --text-dim: rgba(232, 220, 200, 0.5);
+            --font: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .header-main {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: absolute;
+            left: 0;
+        }
+
+        /* TOP NAVIGATION TABS (Photo 1) */
+        .top-nav {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-start;
+            margin-bottom: 40px;
+            padding: 0 10px;
+        }
+
+        .top-tab {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-soft);
+            padding: 20px 25px;
+            border-radius: 20px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: 0.3s;
+            text-align: left;
+            min-width: 140px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .top-tab i { font-size: 1.2rem; margin-bottom: 5px; opacity: 0.5; }
+        .top-tab span:first-of-type { font-family: var(--font); font-weight: 800; font-size: 0.9rem; letter-spacing: 1px; color: var(--text-dim); }
+        .top-tab span:last-child { font-size: 0.65rem; text-transform: uppercase; opacity: 0.4; letter-spacing: 0.5px; }
+
+        .top-tab.active {
+            background: var(--gold-dim);
+            border-color: var(--gold);
+            box-shadow: 0 10px 30px rgba(201, 160, 80, 0.1);
+        }
+        .top-tab.active span:first-of-type { color: var(--gold); }
+        .top-tab.active i { color: var(--gold); opacity: 1; }
+
+        /* JOURNEY SUB-TABS */
+        .journey-nav {
+            display: none; /* Only show when JORNADA is active */
+            gap: 10px;
+            margin-bottom: 30px;
+            overflow-x: auto;
+            padding: 5px;
+            scrollbar-width: none;
+        }
+        .journey-nav.active { display: flex; }
+
+        .journey-step {
+            background: var(--bg-card);
+            border: 1px solid var(--border-soft);
+            padding: 15px 20px;
+            border-radius: 18px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: 0.3s;
+            min-width: 110px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .journey-step i { font-size: 1rem; margin-bottom: 8px; opacity: 0.4; }
+        .journey-step span:first-of-type { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.5px; }
+        .journey-step span:last-child { font-size: 0.55rem; opacity: 0.3; text-transform: uppercase; margin-top: 4px; }
+
+        .journey-step.active {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: var(--gold-dim);
+        }
+        .journey-step.active i { opacity: 1; }
+
+        /* CARDS */
+        .person-card {
+            background: var(--bg-card);
+            border-radius: 24px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-soft);
+            position: relative;
+        }
+
+        .name-heading { font-family: var(--font); font-size: 1.6rem; font-weight: 800; color: #fff; margin: 0; }
+        
+        .wa-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #22c55e;
+            font-weight: 800;
+            font-size: 0.85rem;
+            background: rgba(34, 197, 94, 0.05);
+            padding: 6px 14px;
+            border-radius: 50px;
+            text-decoration: none;
+            margin-top: 8px;
+        }
+
+        .time-badge {
+            position: absolute;
+            top: 25px; right: 25px;
+            background: var(--gold-dim);
+            color: var(--gold);
+            font-size: 0.6rem;
+            font-weight: 900;
+            padding: 5px 12px;
+            border-radius: 50px;
+            border: 1px solid var(--border);
+            text-transform: uppercase;
+        }
+
+        .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+        .info-pill {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-soft);
+            padding: 12px 15px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .info-pill i { color: var(--gold); opacity: 0.7; }
+
+        .history-block {
+            background: rgba(0, 0, 0, 0.2);
+            border-left: 3px solid var(--gold);
+            padding: 15px;
+            border-radius: 0 15px 15px 0;
+            margin-top: 15px;
+        }
+
+        .btn-modern {
+            background: var(--gold);
+            color: #000;
+            border: none;
+            padding: 16px;
+            border-radius: 18px;
+            font-weight: 900;
+            font-size: 0.85rem;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+        }
+
+        .empty-state { text-align: center; padding: 80px 20px; opacity: 0.2; }
+        .empty-state i { font-size: 4rem; margin-bottom: 20px; color: var(--gold); }
+
+        .page-content { display: none; }
+        .page-content.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } }
+
+        /* WIZARD FORM */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 0.7rem; font-weight: 900; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+        .input-modern {
+            width: 100%; padding: 15px; border-radius: 12px; border: 1px solid var(--border-soft);
+            background: rgba(255,255,255,0.03); color: #fff; font-family: inherit; font-size: 0.95rem; box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div style="font-family: var(--font); font-weight: 900; font-size: 1.2rem; letter-spacing: 2px;">CATEDRAL LAUSANNE</div>
+    </header>
+
+    <!-- TOP NAVIGATION (Photo 1) -->
+    <div class="top-nav">
+        <div class="top-tab" onclick="switchMainPage('triagem', this)">
+            <i class="fas fa-search-location"></i>
+            <span>TRIAGEM</span>
+            <span>Visitantes</span>
+        </div>
+        <div class="top-tab" onclick="switchMainPage('cadastro', this)">
+            <i class="fas fa-user-plus"></i>
+            <span>CADASTRO</span>
+            <span>Nova Decisão</span>
+        </div>
+        <div class="top-tab active" onclick="switchMainPage('jornada', this)">
+            <i class="fas fa-route"></i>
+            <span>JORNADA</span>
+            <span>Acompanhamento</span>
+        </div>
+    </div>
+
+    <!-- PAGE: JORNADA (Photo 1, 2, 3, 4) -->
+    <div id="page-jornada" class="page-content active">
+        <div class="journey-nav active">
+            <div class="journey-step active" onclick="switchJourneyStep('contato', this)" data-stage="Novos Amigos">
+                <i class="fas fa-hand-holding-heart"></i>
+                <span>NOVOS AMIGOS</span>
+                <span>Boas-vindas (3m)</span>
+            </div>
+            <div class="journey-step" onclick="switchJourneyStep('evento', this)" data-stage="Evento">
+                <i class="fas fa-calendar-check"></i>
+                <span>EVENTO</span>
+                <span>Integração</span>
+            </div>
+            <div class="journey-step" onclick="switchJourneyStep('pce', this)" data-stage="PCE">
+                <i class="fas fa-graduation-cap"></i>
+                <span>PCE</span>
+                <span>Ensino</span>
+            </div>
+            <div class="journey-step" onclick="switchJourneyStep('pg', this)" data-stage="PG ou GG">
+                <i class="fas fa-users-rays"></i>
+                <span>PG ou GG</span>
+                <span>Célula</span>
+            </div>
+            <div class="journey-step" onclick="switchJourneyStep('monitoramento', this)" data-stage="Monitoramento">
+                <i class="fas fa-shield-heart"></i>
+                <span>MONITORAMENTO</span>
+                <span>Cuidado (3m)</span>
+            </div>
+            <div class="journey-step" onclick="switchJourneyStep('finalizados', this)" data-stage="Concluido">
+                <i class="fas fa-crown"></i>
+                <span>CONCLUÍDO</span>
+                <span>Integrados</span>
+            </div>
+        </div>
+
+        <div id="jornada-content">
+            <!-- Rendered by JS -->
+            <div id="list-jornada"></div>
+        </div>
+    </div>
+
+    <!-- PAGE: TRIAGEM (Photo 5) -->
+    <div id="page-triagem" class="page-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0; font-family:var(--font); font-weight:800;">Visitantes no Radar</h2>
+            <span id="count-triagem" style="background:var(--gold-dim); color:var(--gold); padding:5px 12px; border-radius:10px; font-size:0.7rem; font-weight:900;">0 VIDAS</span>
+        </div>
+        <div id="list-triagem"></div>
+    </div>
+
+    <!-- PAGE: CADASTRO -->
+    <div id="page-cadastro" class="page-content">
+        <div style="max-width: 500px; margin: 0 auto; background: var(--bg-card); padding: 30px; border-radius: 25px; border: 1px solid var(--border-soft);">
+            <h2 style="margin-top:0; font-family:var(--font); text-align:center;">Nova Decisão</h2>
+            <div class="form-group">
+                <label>Nome do Amigo</label>
+                <input type="text" id="reg-name" class="input-modern" placeholder="Nome Completo">
+            </div>
+            <div class="form-group">
+                <label>WhatsApp / Telefone</label>
+                <input type="tel" id="reg-contact" class="input-modern" placeholder="+41 ...">
+            </div>
+            <div class="form-group">
+                <label>Cuidador Responsável</label>
+                <input type="text" id="reg-monitor" class="input-modern" placeholder="Quem vai cuidar?">
+            </div>
+            <button onclick="saveNewDecision()" class="btn-modern">INICIAR JORNADA AGORA</button>
+        </div>
+    </div>
+
+    <script>
+        var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+        let activeJourneyStep = 'Novos Amigos';
+
+        function switchMainPage(pageId, btn) {
+            document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('page-' + pageId).classList.add('active');
+        }
+
+        function switchJourneyStep(stepId, btn) {
+            document.querySelectorAll('.journey-step').forEach(s => s.classList.remove('active'));
+            btn.classList.add('active');
+            activeJourneyStep = btn.dataset.stage;
+            loadJourneyData();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            firebase.auth().onAuthStateChanged(user => {
+                if (user) {
+                    loadJourneyData();
+                    loadTriagemData();
+                }
+            });
+        });
+
+        function loadJourneyData() {
+            db.collection('integracao')
+              .where('status', '==', 'em_integracao')
+              .where('integ_stage', '==', activeJourneyStep)
+              .onSnapshot(snap => {
+                const list = document.getElementById('list-jornada');
+                if (snap.empty) {
+                    list.innerHTML = `<div class="empty-state"><i class="fas fa-seedling"></i><p>NENHUM REGISTRO NESTA ETAPA</p></div>`;
+                    return;
+                }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const lastAct = d.history && d.history.length > 0 ? d.history[d.history.length - 1] : null;
+                    html += `
+                    <div class="person-card">
+                        <span class="time-badge">${calculateDays(d.dispatched_at)}</span>
+                        <h3 class="name-heading">${d.name || 'Sem Nome'}</h3>
+                        <a href="https://wa.me/${(d.contact||'').replace(/\D/g,'')}" class="wa-pill"><i class="fab fa-whatsapp"></i> ${d.contact || 'S/ Telefone'}</a>
+                        
+                        <div class="grid-info">
+                            <div class="info-pill"><i class="fas fa-user-heart"></i> <span>Cuidador: <strong>${d.monitor_name || '-'}</strong></span></div>
+                            <div class="info-pill"><i class="fas fa-user-shield"></i> <span>Líder: <strong>${d.helper_friend || '-'}</strong></span></div>
+                        </div>
+
+                        ${lastAct ? `<div class="history-block">
+                            <span style="font-size:0.7rem; color:var(--gold); font-weight:900;">ÚLTIMA INTERAÇÃO: ${lastAct.action}</span>
+                            <p style="margin:5px 0 0 0; font-size:0.9rem; opacity:0.8;">${lastAct.notes || ''}</p>
+                        </div>` : ''}
+
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button class="btn-modern" style="flex:1;"><i class="fas fa-clipboard-list"></i> RELATÓRIO</button>
+                            <button onclick="promoteToCongregado('${doc.id}', '${d.person_id}')" class="btn-modern" style="flex:1; background:rgba(201, 160, 80, 0.1); border:1px solid var(--gold); color:var(--gold);">
+                                <i class="fas fa-medal"></i> PROMOVER
+                            </button>
+                        </div>
+                    </div>`;
+                });
+                list.innerHTML = html;
+            });
+        }
+
+        function loadTriagemData() {
+            db.collection('integracao')
+              .where('status', '==', 'pending_integracao')
+              .onSnapshot(snap => {
+                document.getElementById('count-triagem').innerText = snap.size + " VIDAS";
+                const list = document.getElementById('list-triagem');
+                if (snap.empty) {
+                    list.innerHTML = `<div class="empty-state"><i class="fas fa-heart-circle-check"></i><p>NENHUM NOVO AMIGO NA FILA</p></div>`;
+                    return;
+                }
+                
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html += `
+                    <div class="person-card">
+                        <span class="time-badge">Novo</span>
+                        <h3 class="name-heading">${d.name || 'Sem Nome'}</h3>
+                        <div class="wa-pill"><i class="fab fa-whatsapp"></i> ${d.contact || 'S/ Telefone'}</div>
+                        
+                        <div class="grid-info">
+                            <div class="info-pill"><i class="fas fa-info-circle"></i> <span>Origem: <strong>${d.origin || 'Recepção'}</strong></span></div>
+                            <div class="info-pill"><i class="fas fa-church"></i> <span>Igreja: <strong>${d.has_church ? 'Sim' : 'Não'}</strong></span></div>
+                        </div>
+
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="confirmVisitor('${doc.id}')" class="btn-modern" style="background:#22c55e; color:#fff;">
+                                <i class="fas fa-check"></i> CONFIRMAR E INICIAR
+                            </button>
+                            <button onclick="rejectVisitor('${doc.id}')" class="btn-modern" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; width:80px;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>`;
+                });
+                list.innerHTML = html;
+            });
+        }
+
+        async function confirmVisitor(id) {
+            if(!confirm("Deseja iniciar o acompanhamento deste visitante?")) return;
+            
+            try {
+                const docRef = db.collection('integracao').doc(id);
+                const snap = await docRef.get();
+                const d = snap.data();
+
+                const batch = db.batch();
+
+                // 1. Move to active journey
+                batch.update(docRef, {
+                    status: 'em_integracao',
+                    integ_stage: 'Novos Amigos',
+                    dispatched_at: firebase.firestore.FieldValue.serverTimestamp(),
+                    history: firebase.firestore.FieldValue.arrayUnion({
+                        action: 'Triagem Concluída',
+                        notes: 'Visitante confirmado pela equipe de integração.',
+                        timestamp: firebase.firestore.Timestamp.now()
+                    })
+                });
+
+                // 2. Ensure record exists in Secretariat (people)
+                if (d.contact) {
+                    const peopleSnap = await db.collection('people').where('contact', '==', d.contact).limit(1).get();
+                    if (peopleSnap.empty) {
+                        const newPersonRef = db.collection('people').doc();
+                        batch.set(newPersonRef, {
+                            name: d.name,
+                            contact: d.contact,
+                            type: 'visitante',
+                            origin: 'integracao_confirmed',
+                            created_at: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                }
+
+                await batch.commit();
+                alert("Visitante movido para a Jornada!");
+            } catch(e) {
+                alert("Erro ao confirmar: " + e.message);
+            }
+        }
+
+        async function rejectVisitor(id) {
+            if(!confirm("Deseja remover este registro da triagem?")) return;
+            try {
+                await db.collection('integracao').doc(id).delete();
+            } catch(e) { alert(e.message); }
+        }
+
+        async function saveNewDecision() {
+            const name = document.getElementById('reg-name').value;
+            const contact = document.getElementById('reg-contact').value;
+            const monitor = document.getElementById('reg-monitor').value;
+
+            if(!name || !contact) return alert("Nome e Contato são obrigatórios!");
+
+            try {
+                const batch = db.batch();
+                
+                // 1. Add to integration journey directly
+                const ref = db.collection('integracao').doc();
+                batch.set(ref, {
+                    name: name,
+                    contact: contact,
+                    monitor_name: monitor,
+                    type: 'decisao',
+                    status: 'em_integracao',
+                    integ_stage: 'Novos Amigos',
+                    dispatched_at: firebase.firestore.FieldValue.serverTimestamp(),
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // 2. Send to Altar
+                const refAtt = db.collection('attendance').doc();
+                batch.set(refAtt, {
+                    name: name,
+                    type: 'decision',
+                    detail: 'Nova Decisão (Integração)',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    origin: 'integracao_manual'
+                });
+
+                await batch.commit();
+                alert("Decisão registrada e jornada iniciada!");
+                document.getElementById('reg-name').value = '';
+                document.getElementById('reg-contact').value = '';
+                switchMainPage('jornada', document.querySelector('.top-tab[onclick*="jornada"]'));
+            } catch(e) { alert(e.message); }
+        }
+
+        async function promoteToCongregado(intId, personId) {
+            if(!confirm("Deseja promover este visitante a CONGREGADO oficial da Catedral?")) return;
+            
+            try {
+                const batch = db.batch();
+                
+                // 1. Update Integration record
+                batch.update(db.collection('integracao').doc(intId), {
+                    type: 'congregado',
+                    promoted_at: firebase.firestore.FieldValue.serverTimestamp(),
+                    history: firebase.firestore.FieldValue.arrayUnion({
+                        action: 'Promoção: Congregado',
+                        notes: 'Visitante promovido a congregado oficial.',
+                        timestamp: firebase.firestore.Timestamp.now()
+                    })
+                });
+
+                // 2. Update People (Secretariat) record
+                if(personId) {
+                    batch.update(db.collection('people').doc(personId), {
+                        type: 'congregado',
+                        promoted_date: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+
+                await batch.commit();
+                alert("Parabéns! Novo congregado registrado no sistema.");
+            } catch(e) {
+                alert("Erro ao promover: " + e.message);
+            }
+        }
+
+        function calculateDays(ts) {
+            if (!ts) return "Hoje";
+            const diff = Math.floor((new Date() - ts.toDate()) / (1000 * 60 * 60 * 24));
+            return diff === 0 ? "Hoje" : `Há ${diff} dias`;
+        }
+    </script>
+</body>
+</html>

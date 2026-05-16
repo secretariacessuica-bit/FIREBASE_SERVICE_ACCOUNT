@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<!-- CACHE BUSTER 53.1 -->
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CATEDRAL HUB</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --gold: #C9A050;
+            --gold-glow: rgba(201, 160, 80, 0.3);
+            --card-bg: #0A0A0B;
+            --font: 'Outfit', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font);
+            background: var(--bg);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .logo-container {
+            margin-bottom: 70px;
+            width: 180px; /* Aumentado como solicitado */
+            transition: 0.5s;
+        }
+        .logo-container img {
+            width: 100%;
+            height: auto;
+            filter: drop-shadow(0 0 15px rgba(201, 160, 80, 0.2));
+        }
+
+        .grid-master {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* FLOATING CARDS EFFECT */
+        .btn-base {
+            background: var(--card-bg);
+            border: 1px solid rgba(201, 160, 80, 0.2);
+            text-decoration: none;
+            display: flex;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-live {
+            width: 100%;
+            border-radius: 30px;
+            padding: 40px 20px;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            border-color: var(--gold);
+        }
+
+        .grid-2x2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .btn-portal {
+            border-radius: 30px;
+            padding: 40px 15px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        /* HOVER EFFECTS - FLOATING */
+        .btn-base:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: var(--gold);
+            background: rgba(201, 160, 80, 0.05);
+            box-shadow: 0 25px 50px rgba(201, 160, 80, 0.15);
+        }
+
+        .btn-base i {
+            color: var(--gold);
+            font-size: 1.8rem;
+            transition: 0.4s;
+        }
+
+        .btn-base span {
+            color: #fff;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .btn-base::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+            opacity: 0;
+            transition: 0.6s;
+            pointer-events: none;
+        }
+        .btn-base:hover::after { opacity: 1; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Light Theme Modern Formatting for Internal Modules (Simulated here) */
+        .modern-text {
+            font-family: var(--font);
+            font-weight: 100;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <img src="assets/logo_3.png?v=70.3.60" alt="Logo">
+        </div>
+
+        <div class="grid-master">
+            <!-- LIVE ACTION -->
+            <a href="mobile.html?v=70.3.55&role=altar" class="btn-base btn-live">
+                <i class="fas fa-tower-broadcast"></i>
+                <span>LIVE (ALTAR)</span>
+            </a>
+
+            <!-- GABINETE PASTORAL (MASTER ACCESS) -->
+            <a href="gabinete.html?v=70.3.57" class="btn-base btn-live" style="background: linear-gradient(90deg, rgba(201, 160, 80, 0.1) 0%, transparent 100%);">
+                <i class="fas fa-chess-king"></i>
+                <span>GABINETE PASTORAL</span>
+            </a>
+
+            <!-- SECONDARY GRID - ALIGNED WITH ALTAR -->
+            <div class="grid-2x2">
+                <a href="mobile.html?v=70.3.55&role=reception" class="btn-base btn-portal">
+                    <i class="fas fa-user-check"></i>
+                    <span>RECEPÇÃO</span>
+                </a>
+                <a href="mobile.html?v=70.3.55&role=integracao" class="btn-base btn-portal">
+                    <i class="fas fa-heart"></i>
+                    <span>INTEGRAÇÃO</span>
+                </a>
+                <a href="mobile.html?v=70.3.55&role=kids" class="btn-base btn-portal">
+                    <i class="fas fa-child"></i>
+                    <span>CRIANÇAS</span>
+                </a>
+                <a href="admin.html?v=70.3.60&role=admin&bypass=true" class="btn-base btn-portal">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>SECRETARIA</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) { registration.unregister(); }
+            });
+        }
+    </script>
+    <div class="footer-copyright" style="position:fixed; bottom:20px; width:100%; text-align:center; font-size:0.6rem; color:rgba(255,255,255,0.2); letter-spacing:2px; text-transform:uppercase; pointer-events:none;">
+        © 2026 Wan Hub - Todos os direitos reservados
+    </div>
+</body>
+</html>

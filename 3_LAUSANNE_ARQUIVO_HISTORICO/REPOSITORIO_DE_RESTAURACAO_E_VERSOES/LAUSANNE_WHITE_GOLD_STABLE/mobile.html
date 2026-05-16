@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Catedral Lausanne | Mobile</title>
+    <meta name="theme-color" content="#D4AF37">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Lausanne Core - Corporate Edition -->
+    <link rel="stylesheet" href="css/style-v2.css?v=51.2.4">
+    <link rel="stylesheet" href="css/mobile-v2.css?v=51.2.4">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=51.2.4"></script>
+    <script src="js/auth-manager.js?v=51.2.4"></script>
+
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --border-color: #d1d1d1;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            font-family: 'Outfit', sans-serif;
+            height: 100vh;
+            height: calc(var(--vh, 1vh) * 100);
+            width: 100vw;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .watermark {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-25deg);
+            font-size: 20vw;
+            font-weight: 800;
+            color: rgba(0, 0, 0, 0.035);
+            z-index: -1;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .app-shell {
+            width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; z-index: 10;
+        }
+
+        /* LOGIN VIEW */
+        #view-login {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-logo {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 35px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #111;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .role-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 340px;
+        }
+
+        .role-card {
+            background: #fff; border: 2px solid var(--border-color); border-radius: 12px; padding: 22px 10px;
+            display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        }
+
+        .role-card:active { transform: scale(0.95); border-color: var(--gold); }
+        .role-card span { font-size: 0.8rem; font-weight: 700; color: #1a1a1a; text-transform: uppercase; letter-spacing: 1px; }
+
+        .role-card.special { grid-column: span 2; border-color: var(--gold); background: rgba(212, 175, 55, 0.02); }
+        .role-card.special span { color: var(--gold); }
+
+        .pin-container {
+            background: #0a0a0a; padding: 30px; border-radius: 4px; border: 1px solid var(--border); width: 280px; text-align: center;
+        }
+
+        .pin-input {
+            width: 100%; background: #000; border: 1px solid var(--border); border-radius: 4px; padding: 12px; font-size: 1.8rem;
+            text-align: center; color: #fff; letter-spacing: 6px; margin-bottom: 20px; outline: none; box-sizing: border-box;
+        }
+
+        .btn-confirm {
+            width: 100%; background: var(--gold); color: #000; border: none; padding: 14px; border-radius: 4px; font-weight: 700; text-transform: uppercase;
+        }
+
+        /* PIN SCREEN */
+        #pin-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .app-header {
+            background: #000; padding: 0 20px; height: 55px; display: none; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);
+        }
+
+        .app-container {
+            display: none;
+            flex: 1;
+            position: relative;
+        }
+
+        .app-view { width: 100%; height: 100%; display: none; }
+        .app-view.active { display: block; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* MODAL */
+        .premium-modal {
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        .premium-modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 300px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="watermark">CATEDRAL LAUSANNE</div>
+    <div class="app-shell">
+        <div id="app-header" class="app-header">
+            <span style="font-weight:800;">Catedral Lausanne</span>
+            <i class="fas fa-power-off" style="color:#ef4444;" onclick="logout()"></i>
+        </div>
+
+            <div id="role-selection">
+                <div class="logo-circle" style="width: 100px; height: 100px; background: #ffffff; border: 1.5px solid var(--gold); border-radius: 50%; margin: 0 auto 35px auto; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(212,175,55,0.1); padding: 8px;">
+                    <img src="assets/logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+                <div class="role-grid">
+                    <div class="role-card special" onclick="selectRole('altar')"><span>LIVE (Altar)</span></div>
+                    <div class="role-card" onclick="selectRole('reception')"><span>Recepção</span></div>
+                    <div class="role-card" onclick="selectRole('integracao')"><span>Integração</span></div>
+                    <div class="role-card" onclick="selectRole('kids')"><span>Crianças</span></div>
+                    <div class="role-card" onclick="selectRole('admin')"><span>Secretaria</span></div>
+                </div>
+                <div style="margin-top: 40px; text-align: center; font-size: 0.55rem; color: #999; letter-spacing: 1px;">TODOS DIREITOS RESERVADOS PARA GRUPO BARÁ(בָּרָא)</div>
+            </div>
+
+            <div id="pin-screen">
+                <div class="pin-container">
+                    <h2 style="color: #fff; font-size: 1.2rem; margin-bottom: 20px; font-weight: 600;">ACESSO</h2>
+                    <input type="password" id="pin-input" class="pin-input" placeholder="••••">
+                    <button class="btn-confirm" onclick="validatePin()">ENTRAR</button>
+                    <p onclick="showRoles()" style="margin-top:20px; color:#666; font-size:0.7rem; cursor: pointer;">VOLTAR</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="app-container" class="app-container">
+            <div id="view-reception" class="app-view"><iframe id="iframe-reception" data-src="recepcao.html"></iframe></div>
+            <div id="view-kids" class="app-view"><iframe id="iframe-kids" data-src="kids.html"></iframe></div>
+            <div id="view-admin" class="app-view"><iframe id="iframe-admin" data-src="admin.html"></iframe></div>
+            <div id="view-integracao" class="app-view"><iframe id="iframe-integracao" data-src="integracao_v2.html"></iframe></div>
+            <div id="view-altar" class="app-view"><iframe id="iframe-altar" data-src="altar.html"></iframe></div>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div id="premium-modal" class="premium-modal">
+        <div class="premium-modal-content">
+            <h3 id="modal-title">Aviso</h3>
+            <p id="modal-message"></p>
+            <button onclick="closeModal()" style="width:100%; border:none; padding:10px; background:#1e293b; color:#fff; border-radius:10px;">OK</button>
+        </div>
+    </div>
+
+    <script>
+        let currentRole = null;
+        function setDocHeight() { document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`); }
+        window.addEventListener('resize', setDocHeight);
+        setDocHeight();
+
+        function selectRole(role) {
+            currentRole = role;
+            document.getElementById('role-selection').style.display='none';
+            document.getElementById('pin-screen').style.display='flex';
+            document.getElementById('pin-input').value='';
+            document.getElementById('pin-input').focus();
+        }
+
+        function showRoles() {
+            document.getElementById('app-header').style.display='none';
+            document.getElementById('app-container').style.display='none';
+            document.getElementById('view-login').style.display='flex';
+            document.getElementById('pin-screen').style.display='none';
+            document.getElementById('role-selection').style.display='block';
+        }
+
+        async function validatePin() {
+            const pin = document.getElementById('pin-input').value.trim();
+            if(!pin) return;
+            const stayLogged = document.getElementById('stay-logged-in').checked;
+            const res = await AuthManager.login(currentRole, pin);
+            if(res.success){
+                if (stayLogged) {
+                    localStorage.setItem('session_role_persistent', currentRole);
+                    localStorage.setItem('session_pin_persistent', pin);
+                }
+                localStorage.setItem('current_session_pin', pin);
+                enterApp(currentRole);
+            } else {
+                showAlert("Senha incorreta para Lausanne!");
+            }
+        }
+
+        function enterApp(role) {
+            document.getElementById('view-login').style.display='none';
+            document.getElementById('app-header').style.display='flex';
+            document.getElementById('app-container').style.display='block';
+            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+            const pin = localStorage.getItem('current_session_pin');
+            if(pin){
+                setTimeout(() => {
+                    document.querySelectorAll('iframe').forEach(i => {
+                        i.contentWindow.postMessage({type:'MASTER_BYPASS_SIGNAL', pin:pin}, '*');
+                    });
+                }, 1500);
+            }
+            const frameId = 'iframe-' + role;
+            const viewId = 'view-' + role;
+            if(document.getElementById(viewId)){
+                document.getElementById(viewId).classList.add('active');
+                _loadIframe(frameId);
+            }
+            if(role === 'altar') document.getElementById('app-header').style.display='none';
+        }
+
+        function _loadIframe(id) {
+            const f = document.getElementById(id);
+            if(!f || !f.dataset.src) return;
+            if(f.src) return;
+            f.src = f.dataset.src + "?v=" + new Date().getTime();
+        }
+
+        function logout() { AuthManager.logout(); location.reload(); }
+        function showAlert(m) { document.getElementById('modal-message').innerText=m; document.getElementById('premium-modal').style.display='flex'; }
+        function closeModal() { document.getElementById('premium-modal').style.display='none'; }
+
+        // SW Sychronization v51.2.4
+        window.addEventListener('load', () => {
+            const persistentRole = localStorage.getItem('session_role_persistent');
+            const persistentPin = localStorage.getItem('session_pin_persistent');
+            
+            if (persistentRole && persistentPin) {
+                currentRole = persistentRole;
+                AuthManager.login(persistentRole, persistentPin).then(res => {
+                    if (res.success) {
+                        localStorage.setItem('current_session_pin', persistentPin);
+                        enterApp(persistentRole);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "hosting": {
+    "site": "bulle-connect",
+    "public": "public_bulle",
+    "cleanUrls": true,
+    "headers": [
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      }
+    ]
+  }
+}

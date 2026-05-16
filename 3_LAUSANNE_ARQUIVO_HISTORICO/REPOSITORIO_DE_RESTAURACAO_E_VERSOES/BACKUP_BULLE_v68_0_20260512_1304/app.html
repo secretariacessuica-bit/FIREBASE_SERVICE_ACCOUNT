@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>CES Bulle | Master Connect</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo bulle.jpeg?v=3">
+    <!-- Antigravity 2.4 - Unified Shell v61.1.0 Diamond Phoenix -->
+    <link rel="stylesheet" href="css/style-v2.css">
+    <link rel="stylesheet" href="css/mobile-v2.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css?v=61.1.0">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=61.1.0"></script>
+    <script src="js/auth-manager.js?v=61.1.0"></script>
+    <script>
+        // --- SECURITY GUARD v48.28.0 ---
+        (async function() {
+            // Admin only shell typically, but we check based on role if needed
+            // For the master shell, we at least require authentication
+            const user = await new Promise(resolve => firebase.auth().onAuthStateChanged(resolve));
+            if (!user && !window.location.search.includes('clean=true')) {
+                // allow clean=true for initial login page view
+            }
+        })();
+    </script>
+
+    <style>
+        /* Specific Overrides for the "App" Model */
+        body {
+            margin: 0;
+            padding-bottom: 0;
+            background: #050505;
+            font-family: var(--font-body);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            color: #ffffff;
+        }
+
+        body::before {
+            content: "CES BULLE";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 15vw;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.01);
+            z-index: -3;
+            pointer-events: none;
+            white-space: nowrap;
+            letter-spacing: 15px;
+        }
+
+        /* --- DYNAMIC BACKGROUND --- */
+        .app-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: linear-gradient(135deg, #050505 0%, #151515 50%, #0a0a0a 100%);
+            background-size: 300% 300%;
+            animation: gradientMove 12s ease infinite;
+        }
+
+        /* Subtle Gold Glow/Aurora */
+        .app-background::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.02) 0%, transparent 60%);
+            animation: rotateGlow 25s linear infinite;
+        }
+
+        /* Moving Cathedral Watermark */
+        .bg-watermark {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('assets/logo%20bulle.jpeg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.12;
+            filter: grayscale(100%);
+            z-index: -1;
+            animation: floatLogo 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes gradientMove {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes rotateGlow {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes floatLogo {
+            0% {
+                transform: scale(1);
+            }
+
+            100% {
+                transform: scale(1.1);
+            }
+        }
+
+        /* LOGIN SCREEN - PREMIUM DARK GLASS */
+        #view-login {
+            background: transparent;
+            z-index: 2000;
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            box-sizing: border-box;
+            height: 100vh;
+        }
+
+        .login-btn {
+            width: 100%;
+            max-width: 400px;
+            padding: 18px 25px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            border-radius: 16px;
+            background: rgba(10, 10, 10, 0.85);
+            font-size: 1rem;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(212, 175, 55, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+        }
+
+        /* --- McDonald's Kiosk Style UI --- */
+        .kiosk-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 850px;
+            margin: 0 auto;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-x: hidden !important; /* Safety Lock */
+        }
+
+        .kiosk-card {
+            background: rgba(20, 20, 20, 0.7);
+            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 25px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            text-align: center;
+            min-height: 160px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kiosk-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent);
+            opacity: 0; transition: 0.3s;
+        }
+
+        .kiosk-card:hover {
+            transform: translateY(-5px);
+            background: rgba(30, 30, 30, 0.9);
+            border-color: rgba(255,255,255,0.25);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+
+        .kiosk-card:hover::before { opacity: 1; }
+
+        .kiosk-card i {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));
+            transition: 0.3s;
+        }
+
+        .kiosk-card:hover i { transform: scale(1.1); }
+
+        .kiosk-card strong {
+            display: block;
+            font-size: 1rem;
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .kiosk-card span {
+            font-size: 0.75rem;
+            color: #aaa;
+            line-height: 1.2;
+            opacity: 0.7;
+        }
+
+        /* Module Specific Accents */
+        .card-red i { color: #f43f5e; }
+        .card-red:hover { border-color: rgba(244,63,94,0.5); box-shadow: 0 20px 50px rgba(244,63,94,0.2); }
+        
+        .card-blue i { color: #3b82f6; }
+        .card-blue:hover { border-color: rgba(59,130,246,0.5); box-shadow: 0 20px 50px rgba(59,130,246,0.2); }
+        
+        .card-green i { color: #10b981; }
+        .card-green:hover { border-color: rgba(16,185,129,0.5); box-shadow: 0 20px 50px rgba(16,185,129,0.2); }
+        
+        .card-orange i { color: #f59e0b; }
+        .card-orange:hover { border-color: rgba(245,158,11,0.5); box-shadow: 0 200px 50px rgba(245,158,11,0.2); }
+        
+        .card-purple i { color: #8b5cf6; }
+        .card-purple:hover { border-color: rgba(139,92,246,0.5); box-shadow: 0 20px 50px rgba(139,92,246,0.2); }
+        
+        .card-gold i { color: #d4af37; }
+        .card-gold:hover { border-color: rgba(212,175,55,0.6); box-shadow: 0 20px 50px rgba(212,175,55,0.3); }
+
+        /* PIN INPUT SCREEN */
+        #pin-screen {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .pin-container {
+            background: rgba(15, 15, 15, 0.7);
+            padding: 30px;
+            border-radius: 25px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+        }
+
+        .pin-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 2rem;
+            text-align: center;
+            color: white;
+            letter-spacing: 10px;
+            margin-bottom: 20px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .pin-actions {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
+        }
+
+        .btn-pin {
+            padding: 12px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600;
+        }
+
+        .btn-confirm { background: var(--gold-gradient); color: #000; }
+        .btn-back { background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.1); }
+
+        /* HEADER */
+        .app-header {
+            background: rgba(10, 10, 10, 0.85);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            box-sizing: border-box;
+            height: 60px;
+            display: none;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        /* VIEW CONTAINER */
+        .app-container {
+            margin-top: 60px;
+            height: calc(100% - 60px);
+            overflow-y: auto;
+            display: none;
+            position: relative;
+        }
+
+        .app-view {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .app-view.active {
+            display: block;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            background: #000;
+        }
+
+        .logout-icon {
+            position: absolute; right: 15px; top: 10px;
+            height: 40px; width: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <div class="app-background"></div>
+    <div class="bg-watermark"></div>
+
+    <div id="view-login">
+        <div id="role-selection" class="kiosk-grid">
+            <div style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; margin-bottom: 25px;">
+                <img src="assets/logo%20bulle.jpeg" alt="Logo" style="width:75px; height:75px; object-fit:cover; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 30px rgba(212,175,55,0.3);" id="sidebar-logo-img">
+                <h2 style="margin-bottom:5px; color:white; font-size: 2.2rem; font-family:'Outfit'; font-weight:800; letter-spacing:1px;">CES - Bulle</h2>
+                <p style="color:#d4af37; margin-bottom:10px; font-size: 1.1rem; font-style:italic; font-weight:600;">"Igreja que inova sem perder a essência"</p>
+                <div style="height:2px; width:100px; background:linear-gradient(90deg, transparent, #d4af37, transparent); margin-bottom:15px;"></div>
+            </div>
+
+            <!-- HIGHLIGHTED: LIVE -->
+            <div onclick="selectRole('altar')" class="kiosk-card card-red" style="grid-column: 1 / -1; border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.1); min-height: 80px; padding: 15px;">
+                <strong>LIVE</strong>
+                <span style="margin-top:2px;">Monitoramento & Notificações em Tempo Real</span>
+            </div>
+
+            <!-- OPERATIONAL CARDS -->
+            <div onclick="selectRole('reception')" class="kiosk-card card-blue">
+                <strong>RECEPÇÃO</strong>
+                <span>Visitantes & Check-in</span>
+            </div>
+
+            <div onclick="selectRole('integracao')" class="kiosk-card card-orange">
+                <strong>INTEGRAÇÃO</strong>
+                <span>Triagem & Jornada</span>
+            </div>
+
+            <div onclick="selectRole('kids')" class="kiosk-card card-green">
+                <strong>CRIANÇAS</strong>
+                <span>Kids & Berçário</span>
+            </div>
+
+            <div onclick="selectRole('admin')" class="kiosk-card card-gold">
+                <strong>SECRETARIA</strong>
+                <span>Gestão da Base</span>
+            </div>
+        </div>
+
+        <div id="pin-screen">
+            <div class="pin-container">
+                <h3 id="pin-title" style="margin-bottom: 20px; color: var(--gold-primary); font-family: Outfit;">Senha</h3>
+                <input type="password" id="pin-input" class="pin-input" placeholder="••••••••" maxlength="20">
+                
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; color: #cbd5e1; font-size: 0.9rem; cursor: pointer;" onclick="document.getElementById('remember-me').click()">
+                    <input type="checkbox" id="remember-me" style="width: 18px; height: 18px; cursor: pointer;">
+                    <span>Permanecer Logado</span>
+                </div>
+
+                <div class="pin-actions">
+                    <button class="btn-pin btn-back" onclick="showRoles()">Voltar</button>
+                    <button class="btn-pin btn-confirm" onclick="validatePin()">Entrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <header class="app-header" id="app-header">
+        <span style="color:#ffffff; font-weight:900; letter-spacing:2px; font-size:1.3rem;">CES BULLE</span>
+        <div class="logout-icon" onclick="AuthManager.logout()">
+            <i class="fas fa-power-off" style="color:#ef4444; font-size:1.4rem;"></i>
+        </div>
+    </header>
+
+
+    <div class="app-container" id="app-container">
+        <div id="view-reception" class="app-view">
+            <iframe data-src="recepcao.html" id="iframe-reception"></iframe>
+        </div>
+        <div id="view-kids" class="app-view">
+            <iframe data-src="kids.html" id="iframe-kids"></iframe>
+        </div>
+        <div id="view-admin" class="app-view">
+            <iframe data-src="admin.html" id="iframe-admin"></iframe>
+        </div>
+        <div id="view-altar" class="app-view">
+            <iframe data-src="altar.html" id="iframe-altar"></iframe>
+        </div>
+        <div id="view-integracao" class="app-view">
+            <iframe data-src="integracao_v2.html" id="iframe-integracao"></iframe>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentRole = null;
+
+
+        function logout() { AuthManager.logout(); }
+        function _loadIframe(id) {
+            const iframe = document.getElementById(id);
+            if (iframe && iframe.dataset.src) {
+                // Determine if we have a shell ID (from the parent URL)
+                const urlParams = new URLSearchParams(window.location.search);
+                const shellEventId = urlParams.get('id');
+                
+                // SKIPPED CHECK: If it's already set to the CORRECT thing, skip.
+                // FORCE: If it's events, ALWAYS re-evaluate to ensure ID is present.
+                if (iframe.src && id !== 'iframe-events') return;
+
+                let targetSrc = iframe.dataset.src;
+                
+                // If it's the events iframe AND we have an ID, append it correctly
+                if (id === 'iframe-events' && shellEventId) {
+                    const hasQuery = targetSrc.includes('?');
+                    targetSrc += (hasQuery ? '&' : '?') + 'id=' + shellEventId;
+                    console.log('👷 Shell (PC): Event ID FORCED into Iframe:', shellEventId);
+                }
+
+                // Dynamic cache busting + Intelligent search param handling
+                const separator = targetSrc.includes('?') ? '&' : '?';
+                iframe.src = targetSrc + separator + "v=" + new Date().getTime();
+            }
+        }
+
+        // Auto-Login Check on Load
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const shellEventId = urlParams.get('id');
+            const savedRole = sessionStorage.getItem('session_role');
+            
+            // PERSISTENT LOGIN (Remember Me)
+            const persistentRole = localStorage.getItem('session_role_persistent');
+            const persistentPin = localStorage.getItem('session_pin_persistent');
+
+            const roleParam = urlParams.get('role');
+
+            if (shellEventId) {
+                console.log("👷 Shell (PC): Link de evento detectado. Redirecionando...");
+                enterApp('reception'); // Redireciona para recepção que agora contém eventos
+            } else if (savedRole) {
+                enterApp(savedRole);
+            } else if (persistentRole && persistentPin) {
+                console.log("👷 Shell (PC): Login persistente detectado. Autenticando...");
+                validatePin(persistentPin, persistentRole);
+            } else if (roleParam) {
+                console.log("👷 Shell (PC): Role pré-selecionada via URL:", roleParam);
+                selectRole(roleParam);
+            }
+
+            console.log('👷 Shell (PC): Full URL detected:', window.location.href);
+            // SW v61.1.0 - DIAMOND UPDATE
+            if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+                window.addEventListener('load', () => {
+                    const swUrl = 'sw-v4.js?v=61.1.0'; 
+                    const CURRENT_VERSION = "v61.1.0";
+                    navigator.serviceWorker.register(swUrl).then(reg => {
+                        console.log("🚀 SW v61.1.0 Registered");
+                        
+                        // Critical Update Handler
+                        reg.onupdatefound = () => {
+                            const installingWorker = reg.installing;
+                            installingWorker.onstatechange = () => {
+                                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('🚀 Finalizing v51.2.26 update...');
+                                    window.location.reload(true);
+                                }
+                            };
+                        };
+                    });
+                });
+            }
+        });
+
+
+        function selectRole(role) {
+            // ALTAR SHORTCUT
+            if (role === 'altar') {
+                AuthManager.login('altar', 'Catedral@2025!').then(res => {
+                    if(res.success){
+                        localStorage.setItem('current_session_pin', 'Catedral@2025!');
+                        enterApp('altar');
+                    }
+                });
+                return;
+            }
+
+            currentRole = role;
+            document.getElementById('role-selection').style.display = 'none';
+            document.getElementById('pin-screen').style.display = 'flex';
+            document.getElementById('pin-title').innerText = "Senha";
+            document.getElementById('pin-input').value = "";
+            document.getElementById('pin-input').focus();
+        }
+
+        function showRoles() {
+            document.getElementById('pin-screen').style.display = 'none';
+            document.getElementById('role-selection').style.display = 'grid';
+        }
+
+        async function validatePin(providedPin, providedRole) {
+            const pin = (providedPin || document.getElementById('pin-input').value).trim();
+            const role = providedRole || currentRole;
+            
+            if (!pin) return;
+
+            const btn = document.querySelector('.btn-confirm');
+            const originalText = btn.innerText;
+            if (!providedPin) {
+                btn.innerText = "Autenticando...";
+                btn.disabled = true;
+            }
+
+            const result = await AuthManager.login(role, pin);
+
+            if (result.success) {
+                // If this is a manual login, check the remember me checkbox
+                if (!providedPin) {
+                    const remember = document.getElementById('remember-me').checked;
+                    if (remember) {
+                        localStorage.setItem('session_role_persistent', role);
+                        localStorage.setItem('session_pin_persistent', pin);
+                    } else {
+                        localStorage.removeItem('session_role_persistent');
+                        localStorage.removeItem('session_pin_persistent');
+                    }
+                }
+                
+                sessionStorage.setItem('session_role', role);
+                localStorage.setItem('current_session_pin', pin); // Legacy fallback
+                enterApp(role);
+            } else {
+                if (!providedPin) {
+                    alert("Senha incorreta!");
+                    document.getElementById('pin-input').value = "";
+                } else {
+                    console.error("Auto-login failed. Clearing persistent session.");
+                    localStorage.removeItem('session_role_persistent');
+                    localStorage.removeItem('session_pin_persistent');
+                }
+            }
+
+            if (!providedPin) {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+
+        function enterApp(role) {
+            document.getElementById('view-login').style.display = 'none';
+            document.getElementById('app-header').style.display = 'flex';
+            document.getElementById('app-container').style.display = 'block';
+            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+            
+            const viewId = 'view-' + role;
+            const targetView = document.getElementById(viewId);
+            if (targetView) {
+                targetView.classList.add('active');
+                _loadIframe('iframe-' + role);
+            }
+        }
+
+    </script>
+</body>
+</html>

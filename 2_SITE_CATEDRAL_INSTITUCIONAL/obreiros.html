@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Obreiro | CES Bulle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/site.css">
+    <style>
+        body {
+            background: #020617;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* ── LOCK SCREEN ── */
+        #lock-screen {
+            text-align: center;
+            max-width: 420px;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 50px 40px;
+            border-radius: 40px;
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+            animation: fadeIn 0.8s ease;
+        }
+
+        .lock-icon {
+            font-size: 3.5rem;
+            color: var(--primary-gold);
+            margin-bottom: 25px;
+            filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.3));
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 18px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            color: #fff;
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 25px;
+            outline: none;
+            transition: 0.3s;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: 4px;
+        }
+
+        .password-input:focus {
+            border-color: var(--primary-gold);
+            background: rgba(212, 175, 55, 0.05);
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.1);
+        }
+
+        /* ── CONTENT ── */
+        #obreiros-content {
+            display: none;
+            max-width: 1100px;
+            width: 100%;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .section-group {
+            margin-bottom: 50px;
+        }
+
+        .section-group h2 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--primary-gold);
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            opacity: 0.8;
+        }
+
+        .section-group h2::after {
+            content: '';
+            height: 1px;
+            flex: 1;
+            background: linear-gradient(90deg, rgba(212, 175, 55, 0.3), transparent);
+        }
+
+        .obreiro-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+        }
+
+        .resource-card {
+            background: rgba(15, 23, 42, 0.4);
+            padding: 40px;
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: left;
+            transition: 0.4s;
+            text-decoration: none;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .resource-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), transparent);
+            opacity: 0;
+            transition: 0.4s;
+        }
+
+        .resource-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary-gold);
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .resource-card:hover::before {
+            opacity: 1;
+        }
+
+        .resource-card i {
+            font-size: 2.2rem;
+            color: var(--primary-gold);
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .resource-card h3 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            position: relative;
+        }
+
+        .resource-card p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .card-arrow {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            font-size: 1.2rem;
+            opacity: 0.2;
+            transition: 0.4s;
+        }
+
+        .resource-card:hover .card-arrow {
+            opacity: 1;
+            transform: translateX(5px);
+        }
+
+        .back-home {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.05);
+            padding: 10px 20px;
+            border-radius: 50px;
+            transition: 0.3s;
+            z-index: 1000;
+        }
+
+        .back-home:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .error-msg {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+            display: none;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(30px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        @media (max-width: 768px) {
+            .obreiro-grid { grid-template-columns: 1fr; }
+            .resource-card { padding: 30px; }
+            #obreiros-content { padding-top: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <a href="index.html" class="back-home"><i class="fas fa-arrow-left"></i> SITE OFICIAL</a>
+
+    <!-- Lock Screen -->
+    <div id="lock-screen">
+        <i class="fas fa-shield-halved lock-icon"></i>
+        <h2 style="font-weight: 800; margin-bottom: 10px; letter-spacing: -1px;">ÁREA RESTRITA</h2>
+        <p style="color: #94a3b8; margin-bottom: 30px; font-size: 0.95rem;">Identifique-se para acessar os sistemas internos e manuais operacionais.</p>
+        
+        <div id="error-msg" class="error-msg">Senha inválida. Tente novamente.</div>
+        <input type="password" id="password" class="password-input" placeholder="••••••••">
+        <button class="btn btn-primary" style="width: 100%; padding: 18px;" onclick="checkPassword()">ACESSAR PAINEL</button>
+    </div>
+
+    <!-- Protected Content -->
+    <div id="obreiros-content">
+        <header style="text-align: center; margin-bottom: 60px;">
+            <h1 class="gold-text" style="font-size: 3rem; margin-bottom: 10px;">CENTRAL DO OBREIRO</h1>
+            <p style="color: #94a3b8; font-size: 1.1rem; letter-spacing: 1px;">Ecossistema Digital Catedral da Esperança Bulle</p>
+        </header>
+
+        <!-- Sistemas Operacionais -->
+        <div class="section-group">
+            <h2><i class="fas fa-terminal"></i> SISTEMAS OPERACIONAIS</h2>
+            <div class="obreiro-grid">
+                <a href="https://catedral-connect-bf717.web.app" target="_blank" class="resource-card" style="border-color: rgba(212,175,55,0.4);">
+                    <i class="fas fa-mobile-screen-button"></i>
+                    <h3>APLICATIVO OFICIAL</h3>
+                    <p>Acesso direto aos módulos de Recepção, Kids, Altar e Integração. Use seu PIN para login.</p>
+                    <i class="fas fa-external-link-alt card-arrow"></i>
+                </a>
+
+                <a href="https://catedral-connect-bf717.web.app/mobile?v=admin" target="_blank" class="resource-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>SECRETARIA & GESTÃO</h3>
+                    <p>Login direto na Secretaria. Painel administrativo para líderes e gestores de dados.</p>
+                    <i class="fas fa-external-link-alt card-arrow"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Documentação -->
+        <div class="section-group">
+            <h2><i class="fas fa-book-open"></i> DOCUMENTAÇÃO & TREINAMENTO</h2>
+            <div class="obreiro-grid">
+                <a href="manual/index.html" class="resource-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h3>MANUAIS OPERACIONAIS</h3>
+                    <p>Central de guias passo a passo para todos os setores: Recepção, Integração, Kids e Altar.</p>
+                    <i class="fas fa-chevron-right card-arrow"></i>
+                </a>
+
+                <a href="manual/pce_descubra.html" class="resource-card" style="border-color: rgba(16,185,129,0.3);">
+                    <i class="fas fa-seedling" style="color: #10b981;"></i>
+                    <h3>CURSO PCE - NÍVEL 1</h3>
+                    <p>Plano de Crescimento Espiritual. Material de apoio para professores e alunos (Aula 1 e 2).</p>
+                    <i class="fas fa-chevron-right card-arrow"></i>
+                </a>
+            </div>
+        </div>
+
+        <footer style="text-align: center; margin-top: 80px; opacity: 0.3; font-size: 0.8rem; letter-spacing: 2px;">
+            &copy; 2026 CES BULLE | SISTEMA DE APOIO MINISTERIAL
+        </footer>
+    </div>
+
+    <script>
+        function checkPassword() {
+            const pass = document.getElementById('password').value;
+            const error = document.getElementById('error-msg');
+            
+            // Aceitando as duas senhas configuradas
+            if (pass === 'bulle2026' || pass === 'Ces124578') {
+                sessionStorage.setItem('obreiro_auth', 'true');
+                showContent();
+            } else {
+                error.style.display = 'block';
+                document.getElementById('password').value = '';
+                document.getElementById('password').focus();
+            }
+        }
+
+        function showContent() {
+            document.getElementById('lock-screen').style.display = 'none';
+            document.getElementById('obreiros-content').style.display = 'block';
+            document.body.style.alignItems = 'flex-start';
+            document.body.style.paddingTop = '80px';
+        }
+
+        // Auto-unlock if already authenticated
+        window.addEventListener('load', () => {
+            if (sessionStorage.getItem('obreiro_auth') === 'true') {
+                showContent();
+            }
+        });
+
+        // Enter key support
+        document.getElementById('password').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+    </script>
+</body>
+</html>

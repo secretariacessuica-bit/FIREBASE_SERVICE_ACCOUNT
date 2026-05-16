@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+
+  // --- CORE SYSTEM FUNCTIONS (v48.12.22) ---
+  
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function hasRole(role) {
+    let email = (request.auth.token != null && 'email' in request.auth.token) ? request.auth.token.email.lower() : '';
+    let emailRole = (role == 'admin'       && (email.matches('.*pastor.*') || email.matches('.*admin.*') || email.matches('.*secretaria.*'))) ||
+                    (role == 'reception'   && email.matches('.*recepcao.*')) ||
+                    (role == 'kids'        && (email.matches('.*infantil.*') || email.matches('.*kids.*'))) ||
+                    (role == 'integracao'  && (email.matches('.*missao.*') || email.matches('.*integracao.*'))) ||
+                    (role == 'acolhimento' && (email.matches('.*acolhimento.*') || email.matches('.*missao.*'))) ||
+                    (role == 'altar'       && (email.matches('.*altar.*') || email.matches('.*midia.*')));
+    
+    return isSignedIn() && (
+      emailRole ||
+      (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role)
+    );
+  }
+
+  function isAdmin() {
+    return hasRole('admin');
+  }
+
+  match /databases/{database}/documents {
+    
+    // --- NUCLEAR THAW: BULLE DIRECT ACCESS ---
+    // Liberação total para qualquer coleção que comece com 'bulle_'
+    match /{collection}/{document} {
+      allow read, write: if collection.split('_')[0] == 'bulle';
+    }
+
+    // --- DIAGNOSTIC COLLECTIONS (ROOT) ---
+    match /volunteers/{docId}   { allow read, write: if true; }
+    match /pending/{docId}      { allow read, write: if true; }
+    match /users/{docId}        { allow read, write: if true; }
+    match /attendance/{docId}   { allow read, write: if true; }
+    match /leaders/{docId}      { allow read, write: if true; }
+    match /birthdays/{docId}    { allow read, write: if true; }
+
+    // --- STANDARD COLLECTIONS (LAUSANNE) ---
+    match /people/{docId} {
+      allow read: if hasRole('admin') || hasRole('reception') || hasRole('integracao') || hasRole('followup') || hasRole('altar') || hasRole('acolhimento');
+      allow write: if hasRole('admin') || hasRole('reception') || hasRole('integracao') || hasRole('followup') || hasRole('acolhimento');
+    }
+    match /kids/{docId} {
+      allow read: if hasRole('kids') || hasRole('reception') || isAdmin();
+      allow write: if hasRole('kids') || hasRole('reception') || isAdmin();
+    }
+    match /integracao/{docId} {
+      allow read, write: if hasRole('admin') || hasRole('reception') || hasRole('integracao') || hasRole('acolhimento');
+    }
+    match /decisions/{docId} {
+      allow read, write: if hasRole('admin') || hasRole('reception') || hasRole('acolhimento') || hasRole('integracao');
+    }
+
+    // FALLBACK
+    match /{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || hasRole('reception');
+    }
+  }
+}

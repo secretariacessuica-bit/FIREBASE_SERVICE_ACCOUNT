@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CES Bulle | Catedral da Esperança</title>
+    
+    <!-- SEO & Meta Tags -->
+    <meta name="description" content="Catedral da Esperança em Bulle - Uma igreja contemporânea focada na Palavra e na Família. Conheça nossos cultos e ministérios.">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    
+    <!-- Core Styling -->
+    <link rel="stylesheet" href="css/site.css">
+
+    <style>
+        /* Ultra-Premium Minimalism v67.6.0 */
+        :root {
+            --primary-gold: #d4af37;
+            --dark-bg: #050505;
+        }
+
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            background: #000;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .hero-video-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .hero-video-bg video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.55; /* Increased opacity */
+            filter: saturate(0.8) brightness(0.8); /* Brighter */
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, #000 35%, transparent 100%),
+                        linear-gradient(to top, #000 10%, transparent 40%);
+            z-index: 2;
+        }
+
+        .hero-split {
+            position: relative;
+            z-index: 10;
+            display: grid;
+            grid-template-columns: 1fr 1.1fr;
+            gap: 60px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .watch-cta-minimal {
+            position: absolute;
+            bottom: -60px;
+            right: 40px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: 0.4s;
+            letter-spacing: 3px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .watch-cta-minimal i {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .watch-cta-minimal:hover {
+            opacity: 1;
+            color: var(--primary-gold);
+        }
+
+        .watch-cta-minimal:hover i {
+            border-color: var(--primary-gold);
+            background: var(--primary-gold);
+            color: #000;
+        }
+
+        .floating-cta { position: fixed; bottom: 30px; right: 30px; z-index: 1000; }
+        .btn-whatsapp {
+            background: #25d366; color: white; padding: 15px 25px; border-radius: 50px;
+            display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.3);
+            text-decoration: none; font-weight: 600; transition: transform 0.3s ease;
+        }
+        .btn-whatsapp:hover { transform: scale(1.05); }
+
+        nav {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px 0;
+            z-index: 100;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Floating WhatsApp -->
+    <div class="floating-cta">
+        <a href="https://wa.me/41782243224" class="btn-whatsapp" target="_blank">
+            <i class="fab fa-whatsapp"></i> FALE CONOSCO
+        </a>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="container nav-container">
+            <div class="logo-wrapper">
+                <img src="assets/logo bulle.jpeg" alt="CES Bulle" style="height: 60px; border-radius: 50%; border: 1px solid var(--primary-gold);">
+                <div class="brand-text">
+                    <span class="brand-top">CATEDRAL DA</span>
+                    <span class="brand-main">ESPERANÇA</span>
+                    <span class="brand-sub">BULLE - SWISS</span>
+                </div>
+            </div>
+
+            <div class="nav-menu">
+                <a href="#" class="active">INÍCIO</a>
+                <a href="#cultos">CULTOS</a>
+                <a href="#ministerios">MINISTÉRIOS</a>
+                <a href="javascript:void(0)" onclick="openHistoryModal()">SOBRE</a>
+                <a href="#contato">CONTATO</a>
+            </div>
+
+            <div class="nav-actions">
+                <a href="https://app.cesbulle.com" class="btn-member">
+                    <i class="far fa-user"></i> ÁREA DO MEMBRO
+                </a>
+                <a href="https://app.cesbulle.com/connect" class="btn-cta-gold">
+                    CONNECT <i class="fas fa-users"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section - Premium Minimalist -->
+    <section class="hero">
+        <div class="hero-video-bg">
+            <video autoplay muted loop playsinline>
+                <source src="assets/mensagem.mp4" type="video/mp4">
+            </video>
+            <div class="hero-overlay"></div>
+        </div>
+
+        <div class="container hero-split">
+            <div class="hero-content" data-aos="fade-right" style="padding-left: 0; margin-left: -20px;">
+                <div class="hero-accent"></div>
+                <h1 style="font-size: 4rem; line-height: 1.1; max-width: 600px;">UMA FAMÍLIA PARA <span class="gold-text">PERTENCER</span></h1>
+                <p style="font-size: 1.2rem; opacity: 0.9; margin-top: 20px;">Experimente a presença de Deus em um ambiente acolhedor, moderno e focado na Palavra.</p>
+                <div class="hero-btns">
+                    <a href="#cultos" class="btn btn-primary">NOSSOS CULTOS</a>
+                    <a href="javascript:void(0)" onclick="openHistoryModal()" class="btn btn-outline">CONHEÇA-NOS</a>
+                </div>
+            </div>
+
+            <div class="image-slices-premium" data-aos="fade-left">
+                <div class="slice-skewed bw">
+                    <img src="assets/hero_1.jpg" alt="Louvor">
+                </div>
+                <div class="slice-skewed active">
+                    <img src="assets/hero_2.jpg" alt="Mensagem">
+                </div>
+                
+                <div class="watch-cta-minimal" onclick="openVideoModal()">
+                    <i class="fas fa-play"></i>
+                    <span>ASSISTIR MENSAGEM</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Nossos Cultos Section -->
+    <section id="cultos" class="cultos">
+        <div class="container">
+            <div class="section-title" data-aos="fade-up">
+                <h2>NOSSOS <span class="gold-text">CULTOS</span></h2>
+                <div class="divider"></div>
+            </div>
+
+            <div class="cultos-grid">
+                <div class="culto-item" data-aos="fade-up" data-aos-delay="100">
+                    <i class="fas fa-sun"></i>
+                    <h3>DOMINGO</h3>
+                    <div class="time-badge">10:00</div>
+                    <p>Celebração da Família e Adoração</p>
+                </div>
+                <div class="culto-item" data-aos="fade-up" data-aos-delay="200">
+                    <i class="fas fa-fire"></i>
+                    <h3>TERÇA-FEIRA</h3>
+                    <div class="time-badge">20:00</div>
+                    <p>Noite de Oração e Intercessão</p>
+                </div>
+                <div class="culto-item" data-aos="fade-up" data-aos-delay="300">
+                    <i class="fas fa-book-open"></i>
+                    <h3>QUINTA-FEIRA</h3>
+                    <div class="time-badge">20:00</div>
+                    <p>Estudo Bíblico e Profundidade</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modals -->
+    <div id="modal-historia" class="modal-overlay" onclick="closeHistoryModal()">
+        <div class="modal-card-historia" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeHistoryModal()">&times;</button>
+            <div class="modal-scroll-area">
+                <img src="assets/historia.png" alt="Nossa História" class="img-full-compact">
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-video" class="modal-overlay" onclick="closeVideoModal()">
+        <div class="modal-card-video" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeVideoModal()">&times;</button>
+            <div class="video-container">
+                <video id="church-video" controls style="width: 100%; height: 100%; border-radius: 20px;">
+                    <source src="assets/mensagem.mp4" type="video/mp4">
+                </video>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({ duration: 1000, once: true });
+
+        function openHistoryModal() { document.getElementById('modal-historia').style.display = 'flex'; }
+        function closeHistoryModal() { document.getElementById('modal-historia').style.display = 'none'; }
+        
+        function openVideoModal() { 
+            document.getElementById('modal-video').style.display = 'flex'; 
+            document.getElementById('church-video').play();
+        }
+        function closeVideoModal() { 
+            document.getElementById('modal-video').style.display = 'none'; 
+            document.getElementById('church-video').pause();
+        }
+
+        if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+            navigator.serviceWorker.register('sw-v4.js?v=67.6.4').then(reg => {
+                console.log("🚀 Root SW Registered: v67.6.4");
+            });
+        }
+    </script>
+</body>
+</html>

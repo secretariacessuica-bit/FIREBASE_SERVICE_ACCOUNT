@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-in | Lausanne App</title>
+    <link rel="stylesheet" href="css/style-v2.css?v=70.1.0">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.0"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-dim: rgba(212, 175, 55, 0.1);
+            --bg: #ffffff;
+            --bg-card: #ffffff;
+            --text: #1a1a1a;
+            --text-dim: #666;
+            --border: #e2e8f0;
+            --font: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg) !important;
+            background: var(--bg) !important;
+            color: var(--text) !important;
+            font-family: var(--font);
+            margin: 0;
+            padding-bottom: 50px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+
+        .event-card {
+            background: var(--bg-card);
+            color: var(--text);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            margin-bottom: 25px;
+            border: 1px solid var(--border);
+            border-bottom: 4px solid var(--gold);
+        }
+
+        .event-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 5px;
+            color: #1a1a1a;
+        }
+
+        .event-info {
+            font-size: 0.9rem;
+            color: var(--gold);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .checkin-section {
+            background: var(--bg-card);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+        }
+
+        h4 {
+            color: #1a1a1a;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 15px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            color: #1a1a1a;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--gold);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        input::placeholder {
+            color: var(--text-dim);
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-checkin {
+            background: var(--gold);
+            color: #000;
+            box-shadow: 0 4px 15px rgba(201, 160, 80, 0.2);
+        }
+
+        .btn-checkin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(201, 160, 80, 0.3);
+        }
+
+        .participant-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 15px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .participant-item:hover {
+            background: rgba(201, 160, 80, 0.05);
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            font-weight: 900;
+            padding: 5px 12px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+        }
+
+        .status-ok {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-pending {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+        }
+
+        #loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 15px;
+            color: var(--text);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading">
+        <i class="fas fa-spinner fa-spin fa-3x" style="color:var(--gold);"></i>
+        <div style="font-weight:700; letter-spacing: 2px; text-transform: uppercase; font-size: 0.8rem;">Carregando Evento...</div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h2 style="font-weight:900; letter-spacing: 1px;">CHECK-IN <span style="color:var(--gold);">LAUSANNE</span></h2>
+        </div>
+
+        <div id="event-header-container"></div>
+
+        <div id="checkin-ui" class="checkin-section" style="display:none;">
+            <!-- UI dynamically injected here -->
+        </div>
+
+        <div id="success-ui" style="display:none; text-align:center; padding:40px; background: var(--bg-card); border-radius: 20px; border: 1px solid var(--border);">
+            <i class="fas fa-check-circle fa-5x" style="color:#22c55e; margin-bottom:20px;"></i>
+            <h3 style="font-size:1.5rem; font-weight:800; color: #1a1a1a;">Check-in Realizado!</h3>
+            <p style="color: #666;">Sua presença foi confirmada com sucesso.</p>
+            <button onclick="location.reload()" style="margin-top:20px; background:var(--gold-dim); color: var(--gold); border: 1px solid var(--border);">Novo Check-in</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Assume already available via script tags in deployment or local) -->
+    <!-- Integration with existing Firebase instance -->
+
+    <script>
+        console.log('👷 Check-in Module: Full URL received:', window.location.href);
+        const urlParams = new URLSearchParams(window.location.search);
+        let eventId = urlParams.get('id');
+        console.log('👷 Check-in Module: Extracted ID:', eventId);
+        let currentEvent = null;
+
+        // AUTH GUARD
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                console.log("👷 Check-in Auth: OK", user.email);
+                if (!eventId) {
+                    loadRecentEvents();
+                } else {
+                    initEvent();
+                }
+            } else {
+                console.warn("👷 Check-in Auth: Waiting...");
+                // If not authenticated, we could redirect or show message
+                // but usually it's handled by the parent shell
+            }
+        });
+
+        async function loadRecentEvents() {
+            try {
+                if (!window.db) throw new Error("Database init failed.");
+                document.getElementById('loading').innerHTML = `
+                    <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--gold);"></i>
+                    <div style="font-weight:700; margin-top:10px; letter-spacing:1px; text-transform:uppercase; font-size:0.7rem;">Buscando Eventos Recentes...</div>
+                `;
+
+                // Fetch active events and sort manually to avoid Firestore index requirements
+                const snap = await db.collection('events').where('status', '==', 'active').get();
+                
+                document.getElementById('loading').style.display = 'none';
+                const container = document.getElementById('event-header-container');
+                
+                let html = '<h3 style="text-align:center; color:#1a1a1a; margin-bottom:20px; font-weight:800; font-size:1.1rem; letter-spacing:0.5px;">SELECIONE UM EVENTO ATIVO</h3><div style="display:flex; flex-direction:column; gap:12px;">';
+                
+                if (snap.empty) {
+                    html += `<div style="text-align:center; padding:40px; color:var(--text-dim); background:var(--bg-card); border-radius:15px; border:1px solid var(--border);"><i class="fas fa-calendar-times fa-3x" style="margin-bottom:15px; opacity:0.3;"></i><br>Nenhum evento registrado recentemente.</div>`;
+                } else {
+                    const sortedEvents = [];
+                    snap.forEach(doc => sortedEvents.push({ id: doc.id, ...doc.data() }));
+                    // Sort descending by date
+                    sortedEvents.sort((a,b) => (b.date || "").localeCompare(a.date || ""));
+
+                    sortedEvents.forEach(d => {
+                        const dateStr = new Date(d.date + "T12:00:00").toLocaleDateString('pt-BR');
+                        const typeLabel = d.type === 'open' ? 'Aberto' : 'Com Lista';
+                        html += `
+                            <button onclick="selectEventManually('${d.id}')" style="background:var(--bg-card); border:1px solid var(--border); border-radius:15px; padding:18px; text-align:left; display:flex; justify-content:space-between; align-items:center; transition:0.2s; color:var(--text);">
+                                <div>
+                                    <div style="font-weight:800; color:#1a1a1a; font-size:1.1rem; margin-bottom:4px;">${d.name}</div>
+                                    <div style="font-size:0.8rem; color:var(--text-dim);"><i class="far fa-calendar-alt"></i> ${dateStr} • <span style="background:var(--gold-dim); color:var(--gold); padding:2px 8px; border-radius:8px; font-weight:800; font-size:0.65rem;">${typeLabel}</span></div>
+                                </div>
+                                <i class="fas fa-chevron-right" style="color:var(--gold); opacity:0.5;"></i>
+                            </button>
+                        `;
+                    });
+                }
+                html += '</div>';
+                container.innerHTML = html;
+
+            } catch (e) {
+                console.error("List Events Error:", e);
+                document.getElementById('loading').innerHTML = `
+                    <div style="padding:40px; text-align:center;">
+                        <i class="fas fa-exclamation-triangle fa-3x" style="color:#ef4444; margin-bottom:20px;"></i>
+                        <div style="font-weight:900; color:#1a1a1a; font-size:1.1rem; margin-bottom:10px;">Falha ao carregar eventos</div>
+                        <div style="color:var(--text-dim); font-size:0.9rem;">${e.message}</div>
+                        <button onclick="location.reload()" style="margin-top:20px; background:var(--gold-dim); color:var(--gold); border:1px solid var(--border); width:auto; padding:10px 20px;">Tentar Novamente</button>
+                    </div>
+                `;
+            }
+        }
+
+        function selectEventManually(id) {
+            eventId = id;
+            document.getElementById('event-header-container').innerHTML = ''; // Clear selection
+            document.getElementById('loading').style.display = 'flex'; // Show loading
+            document.getElementById('loading').innerHTML = `
+                <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--gold);"></i>
+                <div style="font-weight:700; margin-top:10px; letter-spacing:1px; text-transform:uppercase; font-size:0.7rem;">Iniciando Sistema de Check-in...</div>
+            `;
+            initEvent();
+        }
+
+        async function initEvent() {
+            try {
+                if (!window.db) {
+                    throw new Error("Conexão com Banco de Dados não inicializada.");
+                }
+
+                const doc = await db.collection('events').doc(eventId).get();
+                if (!doc.exists) {
+                    throw new Error("O link deste evento pode estar expirado ou o ID é inválido.");
+                }
+
+                currentEvent = { id: doc.id, ...doc.data() };
+                renderHeader();
+                renderUI();
+                document.getElementById('loading').style.display = 'none';
+            } catch (e) {
+                console.error("Event Init Error:", e);
+                document.getElementById('loading').innerHTML = `
+                    <div style="padding:40px; text-align:center;">
+                        <i class="fas fa-times-circle fa-4x" style="color:#ef4444; margin-bottom:20px;"></i>
+                        <div style="font-weight:900; font-size:1.2rem; color:#1a1a1a; margin-bottom:10px;">Ops! Algo deu errado.</div>
+                        <div style="color:var(--text-dim); margin-bottom:20px;">${e.message}</div>
+                        <button onclick="window.history.back()" style="background:var(--gold-dim); color:var(--gold); border:1px solid var(--border); width:auto; padding:10px 20px;">Voltar</button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderHeader() {
+            const container = document.getElementById('event-header-container');
+            const dateStr = new Date(currentEvent.date + "T12:00:00").toLocaleDateString('pt-BR');
+            container.innerHTML = `
+                <div class="event-card">
+                    <div class="event-title">${currentEvent.name}</div>
+                    <div class="event-info"><i class="far fa-calendar-alt"></i> ${dateStr}</div>
+                </div>
+            `;
+        }
+
+        function renderUI() {
+            const ui = document.getElementById('checkin-ui');
+            ui.style.display = 'block';
+
+            if (currentEvent.type === 'open') {
+                ui.innerHTML = `
+                    <h4 style="margin-top:0; margin-bottom:15px;"><i class="fas fa-user-edit"></i> Digite seus dados</h4>
+                    <input type="text" id="name" placeholder="Nome Completo">
+                    <input type="tel" id="phone" placeholder="Celular (opcional)">
+                    <button class="btn-checkin" onclick="doOpenCheckin()">Realizar Check-in</button>
+                `;
+            } else {
+                ui.innerHTML = `
+                    <h4 style="margin-top:0; margin-bottom:15px;"><i class="fas fa-search"></i> Busque seu nome na lista</h4>
+                    <input type="text" id="search" placeholder="Filtrar nome..." onkeyup="filterParticipants()">
+                    <div id="participants-list" style="max-height:280px; overflow-y:auto; border:1px solid var(--border); border-radius:12px; margin-bottom:20px; background: rgba(0,0,0,0.2);">
+                        <div style="padding:20px; text-align:center; color:var(--text-dim);"><i class="fas fa-spinner fa-spin"></i> Carregando lista...</div>
+                    </div>
+                    
+                    <div id="walkin-section" style="border-top:1px solid var(--border); padding-top:20px;">
+                        <h5 style="margin:0 0 12px 0; color:var(--gold); font-weight:800; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Não está na lista? (Novo Cadastro)</h5>
+                        <input type="text" id="walkin-name" placeholder="Nome Completo">
+                        <input type="tel" id="walkin-phone" placeholder="WhatsApp / Celular">
+                        <button onclick="doWalkinRegistration()" style="background:#fff; color:#000; font-size:0.9rem; font-weight:900;">CADASTRAR E ENTRAR</button>
+                    </div>
+                `;
+                loadClosedList();
+            }
+        }
+
+        async function doWalkinRegistration() {
+            const name = document.getElementById('walkin-name').value;
+            const phone = document.getElementById('walkin-phone').value;
+
+            if (!name || !phone) {
+                alert("Por favor, preencha Nome e Telefone para o cadastro na portaria.");
+                return;
+            }
+
+            try {
+                // Register and check-in immediately
+                await db.collection('event_registrations').add({
+                    eventId: currentEvent.id,
+                    name: name,
+                    phone: phone,
+                    checkedIn: true,
+                    checkinTime: firebase.firestore.FieldValue.serverTimestamp(),
+                    walkIn: true,
+                    paid: false // Walk-ins usually pay at the door or later
+                });
+                
+                // [RULE v63.2] - Sync to Secretariat but SKIP Integration
+                await syncToSecretariat(name, phone);
+                
+                showSuccess();
+            } catch (e) {
+                alert("Erro ao realizar cadastro: " + e.message);
+            }
+        }
+
+        async function doOpenCheckin() {
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+
+            if (!name) {
+                alert("Por favor, digite seu nome.");
+                return;
+            }
+
+            try {
+                await db.collection('event_attendance').add({
+                    eventId: currentEvent.id,
+                    name: name,
+                    phone: phone,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // [RULE v63.2] - Sync to Secretariat but SKIP Integration
+                await syncToSecretariat(name, phone);
+
+                showSuccess();
+            } catch (e) {
+                alert("Erro: " + e.message);
+            }
+        }
+
+        async function syncToSecretariat(name, phone) {
+            try {
+                await db.collection('pending').add({
+                    type: 'visitante_evento',
+                    name: name,
+                    contact: phone,
+                    extra: `Check-in no evento: ${currentEvent.name}`,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch(e) { console.error("Secretariat Sync Error:", e); }
+        }
+
+        let participants = [];
+        async function loadClosedList() {
+            const listContainer = document.getElementById('participants-list');
+            
+            db.collection('event_registrations').where('eventId', '==', currentEvent.id).onSnapshot(snap => {
+                participants = [];
+                snap.forEach(doc => {
+                    participants.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort in JS to avoid index requirement
+                participants.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+                listContainer.innerHTML = '';
+                if (participants.length === 0) {
+                    listContainer.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-dim); font-weight:600; font-size:0.85rem;">Nenhum nome encontrado na lista.</div>';
+                    return;
+                }
+
+                renderParticipants(participants);
+            });
+        }
+
+        function renderParticipants(list) {
+            const listContainer = document.getElementById('participants-list');
+            listContainer.innerHTML = '';
+            
+            list.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'participant-item';
+                item.onclick = () => doClosedCheckin(p);
+                
+                item.innerHTML = `
+                    <div style="font-weight:600;">${p.name}</div>
+                    ${p.checkedIn ? '<span class="status-badge status-ok">CHECK-IN OK</span>' : '<span class="status-badge status-pending">PENDENTE</span>'}
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        function filterParticipants() {
+            const term = document.getElementById('search').value.toLowerCase();
+            const filtered = participants.filter(p => p.name.toLowerCase().includes(term));
+            renderParticipants(filtered);
+        }
+
+        async function doClosedCheckin(p) {
+            if (p.checkedIn) {
+                alert("Este check-in já foi realizado!");
+                return;
+            }
+
+            if (!confirm(`Confirmar check-in para ${p.name}?`)) return;
+
+            try {
+                await db.collection('event_registrations').doc(p.id).update({
+                    checkedIn: true,
+                    checkinTime: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showSuccess();
+            } catch (e) {
+                alert("Erro: " + e.message);
+            }
+        }
+
+        function showSuccess() {
+            document.getElementById('checkin-ui').style.display = 'none';
+            document.getElementById('success-ui').style.display = 'block';
+        }
+    </script>
+</body>
+
+</html>

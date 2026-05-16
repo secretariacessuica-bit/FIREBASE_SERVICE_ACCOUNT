@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.0"></script>
+    <script src="js/auth-manager.js?v=70.3.0"></script>
+    <link rel="icon" type="image/png" href="assets/logo 3.png?v=70.3.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Altar | Catedral Lausanne</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-soft: #F9F6E8;
+            --bg: #FFFFFF;
+            --text: #1A1A1A;
+            --border: #E4E4E7;
+            --font: 'Outfit', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html, body { 
+            width: 100%; 
+            height: 100%; 
+            background: var(--bg); 
+            color: var(--text); 
+            font-family: var(--font);
+            overflow: hidden;
+        }
+
+        .watermark {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg);
+            font-size: 15vw; font-weight: 900; color: rgba(0,0,0,0.02); z-index: 0; pointer-events: none;
+        }
+
+        .container { 
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; 
+            padding: 40px; gap: 30px; 
+            z-index: 10;
+        }
+
+        /* HEADER */
+        .topbar { display: flex; align-items: center; justify-content: space-between; }
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        
+        .logo-box { width: 100px; height: 100px; }
+        .logo-box img { width: 100%; height: 100%; object-fit: contain; }
+
+        .clock-box { display: flex; flex-direction: column; }
+        #clock { font-size: 3.5rem; font-weight: 200; line-height: 1; color: var(--text); }
+        #timer-label { font-size: 0.8rem; font-weight: 800; color: var(--gold); letter-spacing: 2px; }
+
+        .stats-row { display: flex; gap: 15px; }
+        .stat-btn {
+            background: #FFF; border: 1.5px solid var(--border); border-radius: 20px;
+            padding: 15px 25px; min-width: 150px; display: flex; flex-direction: column;
+            align-items: center; cursor: pointer; transition: 0.2s;
+        }
+        .stat-btn.active { border-color: var(--gold); background: var(--gold-soft); }
+        .stat-btn span { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #71717A; }
+        .stat-btn .val { font-size: 2.5rem; font-weight: 300; color: var(--text); line-height: 1.2; }
+        .stat-btn.active .val { color: var(--gold); font-weight: 600; }
+
+        /* LIST */
+        .main-view { flex: 1; display: flex; overflow: hidden; justify-content: center; }
+        .feed-col { 
+            width: 100%; max-width: 1100px; 
+            background: #FFF; border: 1.5px solid var(--border); 
+            border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.03); 
+            display: none; flex-direction: column; overflow: hidden;
+        }
+        .feed-col.active { display: flex; }
+
+        .col-header { padding: 25px 40px; background: #FAFAFA; border-bottom: 1.5px solid var(--border); }
+        .col-header h2 { font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; color: #52525B; }
+
+        .col-list { flex: 1; overflow-y: auto; padding: 30px; }
+        .card { 
+            background: #FFF; border: 1.5px solid var(--border); border-radius: 20px; 
+            padding: 25px; margin-bottom: 15px;
+        }
+        .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .card-name { font-size: 1.6rem; font-weight: 700; color: #111; }
+        .card-time { font-size: 0.8rem; font-weight: 800; color: var(--gold); background: var(--gold-soft); padding: 5px 12px; border-radius: 10px; }
+        .card-detail { font-size: 1.1rem; color: #52525B; line-height: 1.6; }
+
+        .exit-btn {
+            position: fixed; bottom: 30px; left: 30px; background: #111; color: #FFF;
+            padding: 15px 25px; border-radius: 15px; text-decoration: none; font-weight: 800;
+            font-size: 0.8rem; z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="watermark">LAUSANNE</div>
+    
+    <a href="#" onclick="logout()" class="exit-btn">SAIR</a>
+
+    <div class="container">
+        <div class="topbar">
+            <div class="header-left">
+                <div class="logo-box"><img src="assets/logo 3.png?v=70.3.0"></div>
+                <div class="clock-box">
+                    <div id="clock">00:00</div>
+                    <div id="timer-label">CULTO</div>
+                </div>
+            </div>
+            <div class="stats-row">
+                <div class="stat-btn active" id="btn-v" onclick="setTab('v')"><span>Visitantes</span><div class="val" id="val-v">0</div></div>
+                <div class="stat-btn" id="btn-p" onclick="setTab('p')"><span>Orações</span><div class="val" id="val-p">0</div></div>
+                <div class="stat-btn" id="btn-c" onclick="setTab('c')"><span>Celebrações</span><div class="val" id="val-c">0</div></div>
+            </div>
+        </div>
+
+        <div class="main-view">
+            <div class="feed-col active" id="col-v">
+                <div class="col-header"><h2>Visitantes de Hoje</h2></div>
+                <div class="col-list" id="list-v"></div>
+            </div>
+            <div class="feed-col" id="col-p">
+                <div class="col-header"><h2>Pedidos de Oração</h2></div>
+                <div class="col-list" id="list-p"></div>
+            </div>
+            <div class="feed-col" id="col-c">
+                <div class="col-header"><h2>Celebrações</h2></div>
+                <div class="col-list" id="list-c"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const db = firebase.firestore();
+        
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+        }
+        setInterval(updateClock, 1000); updateClock();
+
+        function setTab(t) {
+            document.querySelectorAll('.stat-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.feed-col').forEach(c => c.classList.remove('active'));
+            document.getElementById('btn-'+t).classList.add('active');
+            document.getElementById('col-'+t).classList.add('active');
+        }
+
+        firebase.auth().onAuthStateChanged(user => {
+            if(user) startMonitor();
+            else location.href = 'app.html';
+        });
+
+        function startMonitor() {
+            db.collection('attendance').limit(50).onSnapshot(snap => {
+                let s = { v:0, p:0, c:0 }, h = { v:'', p:'', c:'' };
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const time = d.timestamp ? d.timestamp.toDate().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--';
+                    
+                    if(d.type === 'visitante') {
+                        s.v++;
+                        h.v += `<div class="card"><div class="card-top"><span class="card-name">${d.name}</span><span class="card-time">${time}</span></div><span class="card-detail">${d.extra || 'Visitante'}</span></div>`;
+                    }
+                    if(d.origin === 'reception_live_prayer') {
+                        s.p++;
+                        h.p += `<div class="card"><div class="card-top"><span class="card-name">${d.name}</span><span class="card-time">${time}</span></div><span class="card-detail">${d.detail || 'Pedido de Oração'}</span></div>`;
+                    }
+                    if(d.type === 'convert' || (d.interests && d.interests.some(i => i.includes('Jesus')))) {
+                        s.c++;
+                        h.c += `<div class="card"><div class="card-top"><span class="card-name">${d.name}</span><span class="card-time">${time}</span></div><span class="card-detail" style="color:var(--gold); font-weight:800;">NOVA DECISÃO!</span></div>`;
+                    }
+                });
+                document.getElementById('val-v').innerText = s.v;
+                document.getElementById('val-p').innerText = s.p;
+                document.getElementById('val-c').innerText = s.c;
+                document.getElementById('list-v').innerHTML = h.v || '<p style="text-align:center; opacity:0.3; margin-top:30px;">Nenhum visitante</p>';
+                document.getElementById('list-p').innerHTML = h.p || '<p style="text-align:center; opacity:0.3; margin-top:30px;">Nenhuma oração</p>';
+                document.getElementById('list-c').innerHTML = h.c || '<p style="text-align:center; opacity:0.3; margin-top:30px;">Nenhuma celebração</p>';
+            });
+        }
+        function logout() { firebase.auth().signOut(); }
+    </script>
+</body>
+</html>

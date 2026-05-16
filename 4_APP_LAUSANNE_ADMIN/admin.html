@@ -1,0 +1,2350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        // SECURITY GUARD v48.29.0 - iframe-safe & Bypass Support
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isBypass = urlParams.get('bypass') === 'true';
+            
+            if (!isBypass && window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile.html' + window.location.search;
+            }
+        })();
+    </script>
+
+    <script>
+        // FIX SW ERROR on Local Protocol (Polyfill or Guard)
+        if (window.location.protocol === 'file:') {
+            // Override SW to prevent errors from external libs early
+            Object.defineProperty(navigator, 'serviceWorker', {
+                value: {
+                    register: () => Promise.resolve(),
+                    getRegistrations: () => Promise.resolve([]),
+                    ready: Promise.resolve()
+                }
+            });
+            console.log("Local Dev: ServiceWorker Stubbed in HEAD.");
+        }
+    </script>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADMIN Connect Lausanne</title>
+    <link rel="icon" type="image/png" href="assets/logo_3.png?v=70.3.57">
+    <!-- 
+        ANTIGRAVITY 2.4 - COMMAND CENTER (LAUSANNE CORE)
+        - Master Bypass Activated
+        - Corporate Edition
+    -->
+    <script src="js/firebase-config.js?v=70.3.57"></script>
+    <script src="js/auth-manager.js?v=70.3.57"></script>
+    <!-- Core Reception Logic v70.3.34 -->
+    <script src="js/reception_kids_logic.js?v=70.3.57"></script>
+    <link rel="stylesheet" href="css/style-v2.css?v=70.3.57">
+    <link rel="stylesheet" href="css/mobile-v2.css?v=70.3.57">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/admin-v2.css?v=70.3.57">
+    <style>
+        /* === DIAMOND DARK CORE v70.3.36 === */
+        :root {
+            --bg: #060608;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --gold: #C9A050;
+            --gold-dim: rgba(201, 160, 80, 0.1);
+            --text: #e8dcc8;
+            --text-dim: #94a3b8;
+            --border: rgba(201, 160, 80, 0.15);
+            --font: 'Outfit', sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; overflow-x: hidden; background-color: var(--bg); color: var(--text); font-family: var(--font); }
+        
+        /* SCROLLBAR MINIMALIST v70.3.53 */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 10px; opacity: 0.3; }
+        ::-webkit-scrollbar-thumb:hover { background: #fff; }
+        * { scrollbar-width: thin; scrollbar-color: var(--gold) transparent; }
+        
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: #000;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .dashboard-header-title {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #1e293b;
+            margin: 0 0 8px 0;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .dashboard-header-subtitle {
+            font-size: 1rem;
+            color: #64748b;
+            margin: 0 0 35px 0;
+            font-weight: 500;
+        }
+
+        .glass-card-v2 {
+            background: var(--card-bg) !important;
+            border-radius: 20px !important;
+            padding: 25px !important;
+            min-height: 140px;
+            border: 1px solid var(--border) !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            color: #fff;
+        }
+
+        .glass-card-v2:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(201, 160, 80, 0.1) !important;
+            border-color: var(--gold) !important;
+            background: var(--gold-dim) !important;
+        }
+
+        .count-up {
+            font-size: 3rem;
+            font-weight: 100;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, #fff, var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 5px 0 0 0;
+            line-height: 1;
+        }
+
+        .pending-label {
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #94a3b8;
+            margin-bottom: 5px;
+        }
+
+        .chart-container-premium {
+            position: relative;
+            height: 280px;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        @keyframes slideFadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dashboard-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        /* --- DESKTOP ARMOR --- */
+        @media (min-width: 1281px) {
+            .dashboard-layout { display: flex; }
+            .sidebar { width: 260px; position: fixed; display: flex !important; }
+            .main-content { margin-left: 260px !important; width: calc(100% - 260px) !important; padding: 20px 40px !important; }
+        }
+
+        .dashboard-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .responsive-grid-v2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .responsive-grid-v2 {
+                grid-template-columns: 1fr;
+            }
+            .dashboard-row {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            .glass-card-v2 {
+                padding: 15px !important;
+            }
+            .dashboard-header-title { font-size: 1.5rem; }
+            .top-bar { padding: 15px; margin: -15px -15px 25px -15px; }
+        }
+
+
+        /* WIZARD & MODAL STYLES */        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        #modal-membership {
+            display: none !important;
+        }
+
+        .modal-content {
+            background: #fff;
+            width: 95%;
+            max-width: 650px;
+            max-height: 90vh;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+            padding: 30px;
+            position: relative;
+        }
+
+        #modal-membership .wizard-dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #aaa;
+            transition: 0.3s;
+        }
+
+        #modal-membership .wizard-dot.active {
+            background: var(--gold-accent);
+            color: #000;
+        }
+
+        #modal-membership .wizard-step {
+            display: none;
+        }
+
+        #modal-membership .wizard-step.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #modal-membership .wizard-step label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #666;
+            display: block;
+            margin-top: 12px;
+            margin-bottom: 4px;
+        }
+
+        #modal-membership .wizard-step input,
+        #modal-membership .wizard-step select,
+        #modal-membership .wizard-step textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+        }
+
+        /* EXCEL-LIKE TABLE STYLES */
+        .excel-table-container {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .excel-table th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 800;
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .excel-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1e293b;
+            vertical-align: middle;
+        }
+
+        .excel-table tr:hover {
+            background: #f1f5f9;
+        }
+
+        .excel-table tr.zebra {
+            background: #fcfcfc;
+        }
+
+        .excel-badge {
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .view-toggle-btn {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #64748b;
+            transition: 0.2s;
+        }
+
+        .view-toggle-btn.active {
+            background: #111827;
+            color: #fff;
+            border-color: #111827;
+        }
+
+        /* === MOBILE EXTREME RESPONSIVENESS v51.2.26 --- */
+        @media (max-width: 1280px) {
+            .sidebar { 
+                position: fixed;
+                left: -280px;
+                top: 0;
+                height: 100vh;
+                z-index: 20000;
+                display: flex !important;
+                flex-direction: column;
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 20px 0 50px rgba(0,0,0,0.1);
+                /* Removed double overflow to fix hit-testing on touch devices */
+                overflow: hidden !important; 
+            }
+            .sidebar.open { left: 0; }
+            
+            .sidebar-nav {
+                flex: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 20px;
+                pointer-events: auto !important;
+            }
+
+            .nav-item {
+                pointer-events: auto !important; /* Forces touch registry */
+                z-index: 20001;
+            }
+
+            .mobile-menu-btn {
+                display: flex !important;
+                font-size: 1.1rem !important;
+                padding: 8px 14px !important;
+                margin-right: 15px !important;
+                cursor: pointer;
+                color: white !important;
+                position: relative !important;
+                z-index: 999999 !important;
+                pointer-events: auto !important;
+            }
+
+            .dashboard-layout { display: block; width: 100%; overflow-x: hidden; }
+            .main-content { 
+                padding: 60px 10px 100px 10px; 
+                margin-left: 0; /* Reset margin on mobile only */
+                transition: padding 0.3s ease;
+            }
+            .user-profile span { display: none; }
+            
+            /* FIX FOR SECRETARIA FILTER TABS & SEARCH */
+            .people-filter-tabs {
+                justify-content: flex-start !important;
+                padding-bottom: 15px !important;
+                margin-bottom: 5px !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+                display: flex !important;
+                gap: 10px !important;
+            }
+            #search-people {
+                font-size: 0.85rem !important;
+            }
+
+            .excel-table td, .excel-table th { padding: 8px 10px; font-size: 0.75rem; }
+            .modal-content { width: 98%; padding: 15px; }
+        }
+
+        /* === TOAST NOTIFICATIONS v60.0 === */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: #1e293b;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            max-width: 450px;
+            animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: auto;
+            border-left: 4px solid var(--gold-accent);
+        }
+
+        .toast-icon {
+            font-size: 1.2rem;
+            color: var(--gold-accent);
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 800;
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+
+        .toast-message {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .toast-exit {
+            animation: toastSlideOut 0.3s forwards;
+        }
+
+        @keyframes toastSlideOut {
+            to { opacity: 0; transform: translateX(100%); }
+        }
+        /* HIDE BARS IN IFRAME (v70.3.35) */
+        @media (max-width: 1280px) {
+            .top-bar { display: none !important; }
+            .sidebar { display: none !important; }
+            .main-content { margin-left: 0 !important; width: 100% !important; padding: 20px 15px 100px 15px !important; }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body onload="initSupernova()">
+    <div id="toast-container"></div>
+
+    <div class="dashboard-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header" style="display:flex; align-items:center; gap:12px; padding:25px 20px;">
+                <!-- LOGO with Fallback -->
+                <div style="width:60px; height:60px; min-width:60px; display:flex; align-items:center; justify-content:center;">
+                    <img src="assets/logo_3.png?v=70.3.45" alt="Logo" style="width:100%; height:100%; object-fit:contain; filter: drop-shadow(0 0 10px rgba(201,160,80,0.3));" id="sidebar-logo-img"
+                        onerror="this.style.display='none'; document.getElementById('sidebar-logo-fallback').style.display='flex';">
+                    <div id="sidebar-logo-fallback" style="display:none; width:100%; height:100%; background:#111; align-items:center; justify-content:center;">
+                        <i class="fas fa-church" style="color:#da291c; font-size:18px;"></i>
+                    </div>
+                </div>
+                <div class="sidebar-brand">
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" onclick="switchPage('dashboard', this)">
+                    <i class="fas fa-home"></i>
+                    <span>Resumo Geral</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('people', this)">
+                    <i class="fas fa-users"></i>
+                    <span>Membros</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('leaders', this)">
+                    <i class="fas fa-user-tie"></i>
+                    <span>Lideranças</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('ministries', this)">
+                    <i class="fas fa-network-wired"></i>
+                    <span>Ministérios</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('followup', this)">
+                    <i class="fas fa-route"></i>
+                    <span>Jornada (CRM)</span>
+                </div>
+                <div class="nav-item" onclick="alert('Módulo de Escalas em breve na Fase 2')">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Escalas</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('events', this)">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Eventos</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('warnings', this)">
+                    <i class="fas fa-bullhorn"></i>
+                    <span>Comunicação</span>
+                </div>
+                <div class="nav-item" onclick="alert('Relatórios Completos em breve na Fase 2')">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Relatórios</span>
+                </div>
+                <div class="nav-item" onclick="alert('Financeiro Básico em breve na Fase 3')">
+                    <i class="fas fa-wallet"></i>
+                    <span>Finanças</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('history', this)">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Documentos</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('dashboard', this)" style="border-top:1px solid rgba(255,255,255,0.1); margin-top:10px; padding-top:10px; color:var(--gold-accent);">
+                    <i class="fas fa-history"></i>
+                    <span>Ata Digital</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="javascript:void(0)" onclick="AuthManager.logout()" class="nav-item" style="color:#e74c3c;">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Sair</span>
+                </a>
+            </div>
+            <div style="padding:15px; font-size:0.55rem; color:rgba(201,160,80,0.3); text-align:center; letter-spacing:1px; text-transform:uppercase; margin-top:auto;">
+                © 2026 Wan Hub
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+
+            <!-- TOP BAR (Mobile Toggle + Profile) -->
+            <div class="top-bar">
+                <div style="display:flex; align-items:center;">
+                    <div class="mobile-menu-btn" onclick="toggleSidebar()" style="align-items:center; gap:8px; background:var(--gold-accent, #c9a050); color:white; padding:8px 14px; border-radius:8px; margin-right:15px; cursor:pointer; font-weight:bold; box-shadow:0 4px 10px rgba(201,160,80,0.3); z-index:999999!important; position:relative!important;">
+                        <i class="fas fa-bars"></i> MENU
+                    </div>
+                    <h1 class="page-title" id="page-title">Visão Geral</h1>
+                </div>
+
+                <div class="user-profile">
+                    <div class="user-avatar" style="color:white; background:#333;">AD</div>
+                    <span>Admin</span>
+                </div>
+            </div>
+
+            <!-- PAGE: DASHBOARD (Overview + Pending List) -->
+            <div id="page-dashboard" class="page-content active">
+
+                <!-- Welcome/Stats Area -->
+                <div class="dashboard-header-wrapper" style="margin-bottom: 35px; padding: 0 10px;">
+                    <div id="dashboard-integration-alerts" style="margin-top:20px;"></div>
+
+
+                    <!-- KPI Cards (Pastoral Dashboard) -->
+                    <div id="pending-grid-overview" class="dashboard-row" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                        <div class="glass-card-v2" style="background:#fff !important; color:#1e293b; border-radius: 16px !important; padding: 20px !important;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div style="background:#f3e8ff; padding:12px; border-radius:12px;"><i class="fas fa-users" style="color:#a855f7; font-size:1.5rem;"></i></div>
+                                <span style="color:#10b981; font-weight:700; font-size:0.85rem;"><i class="fas fa-arrow-up"></i> +12%</span>
+                            </div>
+                            <div style="margin-top:15px;">
+                                <div style="font-size:0.9rem; color:#64748b; font-weight:700;">Membros Ativos</div>
+                                <div style="font-size:2.2rem; font-weight:800; color:#0f172a; line-height:1;" id="dash-kpi-membros">...</div>
+                            </div>
+                        </div>
+
+                        <div class="glass-card-v2" style="background:#fff !important; color:#1e293b; border-radius: 16px !important; padding: 20px !important;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div style="background:#dcfce7; padding:12px; border-radius:12px;"><i class="fas fa-user-tie" style="color:#22c55e; font-size:1.5rem;"></i></div>
+                                <span style="color:#10b981; font-weight:700; font-size:0.85rem;"><i class="fas fa-arrow-up"></i> +2%</span>
+                            </div>
+                            <div style="margin-top:15px;">
+                                <div style="font-size:0.9rem; color:#64748b; font-weight:700;">Líderes Ativos</div>
+                                <div style="font-size:2.2rem; font-weight:800; color:#0f172a; line-height:1;" id="dash-kpi-lideres">28</div>
+                            </div>
+                        </div>
+
+                        <div class="glass-card-v2" style="background:#fff !important; color:#1e293b; border-radius: 16px !important; padding: 20px !important;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div style="background:#e0f2fe; padding:12px; border-radius:12px;"><i class="fas fa-network-wired" style="color:#0ea5e9; font-size:1.5rem;"></i></div>
+                                <span style="color:#64748b; font-weight:700; font-size:0.85rem;">Estável</span>
+                            </div>
+                            <div style="margin-top:15px;">
+                                <div style="font-size:0.9rem; color:#64748b; font-weight:700;">Ministérios</div>
+                                <div style="font-size:2.2rem; font-weight:800; color:#0f172a; line-height:1;" id="dash-kpi-ministerios">19</div>
+                            </div>
+                        </div>
+
+                        <div class="glass-card-v2" style="background:#fff !important; color:#1e293b; border-radius: 16px !important; padding: 20px !important;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div style="background:#ffedd5; padding:12px; border-radius:12px;"><i class="fas fa-chart-column" style="color:#f97316; font-size:1.5rem;"></i></div>
+                                <span style="color:#10b981; font-weight:700; font-size:0.85rem;"><i class="fas fa-arrow-up"></i> +6%</span>
+                            </div>
+                            <div style="margin-top:15px;">
+                                <div style="font-size:0.9rem; color:#64748b; font-weight:700;">Frequência Média</div>
+                                <div style="font-size:2.2rem; font-weight:800; color:#0f172a; line-height:1;" id="dash-kpi-frequencia">...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Health & New Feature Teaser -->
+                    <div class="responsive-grid-v2" style="margin-top:20px;">
+                        <div id="base-quality-indicator" class="health-quality-card">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <i class="fas fa-heart-pulse" style="font-size:1.4rem; color:var(--accent-gold);"></i>
+                                <span id="health-text">Calculando saúde da base...</span>
+                            </div>
+                        </div>
+                        <div class="ai-insight-card">
+                             <i class="fas fa-bolt" style="color:#fbbf24; font-size:1.5rem;"></i>
+                             <div>
+                                <div style="font-weight:700; font-size:0.85rem;">Insights IA</div>
+                                <div id="ia-insight-text" style="font-size:0.7rem; opacity:0.8;">Analisando tendências de membros...</div>
+                             </div>
+                             <div class="ai-insight-bg-icon"><i class="fas fa-robot"></i></div>
+                        </div>
+                    </div>
+
+                    <div id="dashboard-charts-container" class="dashboard-charts-grid" style="display:grid; grid-template-columns: 2fr 1fr; gap:25px; margin-top:30px;">
+                        <!-- GROWTH CHART (SPAN 1 on desktop, full width on mobile) -->
+                        <div class="glass-card-v2" style="background:#fff !important; color:#1e293b;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <h4 style="margin:0; font-size:1.1rem; color:#0f172a; font-weight:800;">Crescimento da Igreja</h4>
+                                <select style="border:1px solid #e2e8f0; border-radius:8px; padding:5px 10px; font-family:'Outfit'; color:#64748b; font-weight:600; outline:none;">
+                                    <option>Últimos 6 meses</option>
+                                    <option>Último ano</option>
+                                </select>
+                            </div>
+                            <div class="chart-container-premium">
+                                <canvas id="chart-growth-history"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- ATIVIDADE POR MINISTÉRIO -->
+                        <div class="glass-card-v2" style="background:#fff !important; color:#1e293b;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <h4 style="margin:0; font-size:1.1rem; color:#0f172a; font-weight:800;">Atividade por Ministério</h4>
+                                <a href="#" style="color:#3b82f6; font-size:0.8rem; font-weight:700; text-decoration:none;">Ver todos</a>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <div style="width:30px; height:30px; border-radius:50%; background:#dcfce7; color:#16a34a; display:flex; align-items:center; justify-content:center;"><i class="fas fa-music"></i></div>
+                                        <span style="font-weight:700; color:#334155; font-size:0.9rem;">Louvor</span>
+                                    </div>
+                                    <span style="background:#dcfce7; color:#16a34a; padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:800;">Ótima</span>
+                                </div>
+                                <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <div style="width:30px; height:30px; border-radius:50%; background:#e0f2fe; color:#0284c7; display:flex; align-items:center; justify-content:center;"><i class="fas fa-child"></i></div>
+                                        <span style="font-weight:700; color:#334155; font-size:0.9rem;">Crianças</span>
+                                    </div>
+                                    <span style="background:#dcfce7; color:#16a34a; padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:800;">Ótima</span>
+                                </div>
+                                <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <div style="width:30px; height:30px; border-radius:50%; background:#f3e8ff; color:#9333ea; display:flex; align-items:center; justify-content:center;"><i class="fas fa-praying-hands"></i></div>
+                                        <span style="font-weight:700; color:#334155; font-size:0.9rem;">Intercessão</span>
+                                    </div>
+                                    <span style="background:#e0f2fe; color:#0284c7; padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:800;">Boa</span>
+                                </div>
+                                <div style="display:flex; align-items:center; justify-content:space-between;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <div style="width:30px; height:30px; border-radius:50%; background:#ffedd5; color:#ea580c; display:flex; align-items:center; justify-content:center;"><i class="fas fa-video"></i></div>
+                                        <span style="font-weight:700; color:#334155; font-size:0.9rem;">Mídia</span>
+                                    </div>
+                                    <span style="background:#ffedd5; color:#ea580c; padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:800;">Atenção</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ATA DIGITAL AND ALERTS -->
+                    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:25px; margin-top:25px;">
+                        <!-- ATA DIGITAL FEED -->
+                        <div class="glass-card-v2" style="background:#fff !important; color:#1e293b;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <h4 style="margin:0; font-size:1.1rem; color:#0f172a; font-weight:800;"><i class="fas fa-history" style="color:var(--gold-accent); margin-right:8px;"></i> Últimas Alterações (Ata Digital)</h4>
+                                <a href="#" style="color:#3b82f6; font-size:0.8rem; font-weight:700; text-decoration:none;">Ver todos</a>
+                            </div>
+                            <div id="ata-digital-feed" style="display:flex; flex-direction:column; gap:15px; max-height:300px; overflow-y:auto; padding-right:10px;">
+                                <div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.9rem;">Carregando registros da Ata Digital...</div>
+                            </div>
+                        </div>
+
+                        <!-- ALERTAS E PENDÊNCIAS -->
+                        <div class="glass-card-v2" style="background:#fff !important; color:#1e293b;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <h4 style="margin:0; font-size:1.1rem; color:#0f172a; font-weight:800;">Alertas e Pendências</h4>
+                            </div>
+                            <div id="dashboard-alertas-feed" style="display:flex; flex-direction:column; gap:12px;">
+                                <!-- Conteúdo injetado dinamicamente -->
+                                <div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.9rem;">Verificando pendências...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: LIDERANÇAS -->
+            <div id="page-leaders" class="page-content" style="display:none;">
+                <div class="dashboard-header-wrapper" style="margin-bottom: 35px; padding: 0 10px;">
+                    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 20px; padding: 30px; color: white; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <div>
+                            <h2 style="margin:0; font-size:1.8rem; font-weight:800; color:var(--gold-accent);"><i class="fas fa-user-tie"></i> Lideranças</h2>
+                            <p style="margin:5px 0 0 0; color:#94a3b8; font-size:0.95rem;">Gestão de Líderes, Coordenadores e Pastores</p>
+                        </div>
+                        <button onclick="abrirModalNovoLider()" style="background:var(--gold-accent); color:#111827; border:none; padding:12px 24px; border-radius:12px; font-weight:800; font-size:0.9rem; cursor:pointer; box-shadow:0 4px 15px rgba(201,160,80,0.4);"><i class="fas fa-plus" style="margin-right:8px;"></i> NOMEAR LÍDER</button>
+                    </div>
+
+                    <div style="margin-top:25px;">
+                        <input type="text" id="search-leader-input" placeholder="Buscar líder pelo nome..." onkeyup="filterLeadersGrid()" style="width:100%; padding:15px 20px; border-radius:12px; border:1px solid #e2e8f0; font-family:'Outfit'; font-size:1rem; box-shadow:0 4px 10px rgba(0,0,0,0.02); outline:none;">
+                    </div>
+
+                    <div id="leaders-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px; margin-top:25px;">
+                        <div style="grid-column: 1 / -1; text-align:center; padding:40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Carregando Lideranças...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: NOVO LÍDER -->
+            <div id="modal-novo-lider" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.8); z-index:9999999; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
+                <div style="background:#fff; width:90%; max-width:500px; border-radius:20px; overflow:hidden; box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+                    <div style="background:linear-gradient(90deg, #1e293b, #0f172a); padding:20px; display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0; color:var(--gold-accent); font-size:1.2rem; font-weight:800;"><i class="fas fa-medal" style="margin-right:8px;"></i> Nomear Liderança</h3>
+                        <i class="fas fa-times" style="color:#94a3b8; cursor:pointer; font-size:1.2rem;" onclick="document.getElementById('modal-novo-lider').style.display='none'"></i>
+                    </div>
+                    <div style="padding:25px; display:flex; flex-direction:column; gap:15px;">
+                        <div>
+                            <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Buscar Membro (Nome ou Celular)</label>
+                            <input type="text" id="novo-lider-busca" placeholder="Digite para buscar..." style="width:100%; padding:12px; border-radius:10px; border:1px solid #cbd5e1; outline:none; font-family:'Outfit'; font-size:0.95rem;">
+                            <div id="novo-lider-busca-resultados" style="max-height:150px; overflow-y:auto; border:1px solid #e2e8f0; border-top:none; border-radius:0 0 10px 10px; display:none;"></div>
+                        </div>
+                        <input type="hidden" id="novo-lider-id">
+                        
+                        <div id="novo-lider-detalhes" style="display:none; flex-direction:column; gap:15px;">
+                            <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
+                                <div style="font-weight:800; color:#1e293b;" id="novo-lider-nome-show"></div>
+                                <div style="font-size:0.85rem; color:#64748b;" id="novo-lider-tel-show"></div>
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Cargo / Função</label>
+                                <select id="novo-lider-cargo" style="width:100%; padding:12px; border-radius:10px; border:1px solid #cbd5e1; outline:none; font-family:'Outfit'; font-size:0.95rem;">
+                                    <option value="Voluntário">Voluntário</option>
+                                    <option value="Líder" selected>Líder</option>
+                                    <option value="Coordenador">Coordenador</option>
+                                    <option value="Pastor">Pastor</option>
+                                </select>
+                            </div>
+                            <button onclick="salvarNovaLideranca(this)" style="width:100%; padding:15px; background:var(--gold-accent); color:#111827; border:none; border-radius:10px; font-weight:800; font-size:1rem; cursor:pointer;"><i class="fas fa-save" style="margin-right:8px;"></i> CONFIRMAR NOMEAÇÃO</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: MINISTÉRIOS -->
+            <div id="page-ministries" class="page-content" style="display:none;">
+                <div class="dashboard-header-wrapper" style="margin-bottom: 35px; padding: 0 10px;">
+                    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 20px; padding: 30px; color: white; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <div>
+                            <h2 style="margin:0; font-size:1.8rem; font-weight:800; color:var(--gold-accent);"><i class="fas fa-network-wired"></i> Ministérios</h2>
+                            <p style="margin:5px 0 0 0; color:#94a3b8; font-size:0.95rem;">Gestão de Equipes e Organograma</p>
+                        </div>
+                        <button onclick="abrirModalMinisterio(); document.querySelector('#modal-novo-ministerio h3').innerHTML = '<i class=\"fas fa-network-wired\" style=\"margin-right:8px;\"></i> Criar Novo Ministério'; document.querySelector('#modal-novo-ministerio button[onclick*=\"salvarMinisterio\"]').innerHTML = '<i class=\"fas fa-save\" style=\"margin-right:8px;\"></i> SALVAR EQUIPE';" style="background:var(--gold-accent); color:#111827; border:none; padding:12px 24px; border-radius:12px; font-weight:800; font-size:0.9rem; cursor:pointer; box-shadow:0 4px 15px rgba(201,160,80,0.4);"><i class="fas fa-plus" style="margin-right:8px;"></i> NOVA EQUIPE</button>
+                    </div>
+
+                    <div id="ministries-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:25px; margin-top:30px;">
+                        <div style="grid-column: 1 / -1; text-align:center; padding:40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Carregando Ministérios...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: NOVO MINISTÉRIO -->
+            <div id="modal-novo-ministerio" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.8); z-index:9999999; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
+                <div style="background:#fff; width:90%; max-width:500px; border-radius:20px; overflow:hidden; box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+                    <div style="background:linear-gradient(90deg, #1e293b, #0f172a); padding:20px; display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0; color:var(--gold-accent); font-size:1.2rem; font-weight:800;"><i class="fas fa-network-wired" style="margin-right:8px;"></i> Criar / Editar Ministério</h3>
+                        <i class="fas fa-times" style="color:#94a3b8; cursor:pointer; font-size:1.2rem;" onclick="document.getElementById('modal-novo-ministerio').style.display='none'"></i>
+                    </div>
+                    <div style="padding:25px; display:flex; flex-direction:column; gap:15px;">
+                        <input type="hidden" id="min-id">
+                        <div>
+                            <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Nome da Equipe</label>
+                            <input type="text" id="min-nome" placeholder="Ex: Louvor e Adoração" style="width:100%; padding:12px; border-radius:10px; border:1px solid #cbd5e1; outline:none; font-family:'Outfit'; font-size:0.95rem;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Cor de Destaque</label>
+                            <input type="color" id="min-cor" value="#3b82f6" style="width:100%; height:40px; padding:2px; border-radius:10px; border:1px solid #cbd5e1; cursor:pointer;">
+                        </div>
+                        <div id="min-lider-container" style="display:none;">
+                            <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Atribuir Líder Principal</label>
+                            <select id="min-lider" style="width:100%; padding:12px; border-radius:10px; border:1px solid #cbd5e1; outline:none; font-family:'Outfit'; font-size:0.95rem;">
+                                <option value="">Sem líder definido</option>
+                            </select>
+                        </div>
+                        <button onclick="salvarMinisterio(this)" style="width:100%; padding:15px; background:var(--gold-accent); color:#111827; border:none; border-radius:10px; font-weight:800; font-size:1rem; cursor:pointer; margin-top:10px;"><i class="fas fa-save" style="margin-right:8px;"></i> SALVAR EQUIPE</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: FOLLOW-UP (INTEGRAÇÃO CRM) -->
+            <div id="page-followup" class="page-content" style="display:none;">
+                <div class="people-filter-tabs" style="display:flex; gap:8px; margin-bottom:20px;">
+                    <button class="category-tab active" onclick="setFollowupTab('triagem', this)" style="color:#f43f5e;">
+                        <i class="fas fa-search-plus"></i> Triagem
+                    </button>
+                    <button class="category-tab" onclick="setFollowupTab('jornada', this)" style="color:#d4af37;">
+                        <i class="fas fa-route"></i> Jornada
+                    </button>
+                    <button class="category-tab" onclick="setFollowupTab('decisao', this)" style="color:#3b82f6;">
+                        <i class="fas fa-user-plus"></i> Nova Decisão
+                    </button>
+                </div>
+
+                <!-- Tab: Triagem (Formerly Requests) -->
+                <div id="followup-content-triagem">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h2 style="margin:0; font-size:1.1rem; color:#2c3e50;"><i class="fas fa-inbox" style="color:var(--gold-accent); margin-right:8px;"></i> Triagem de Visitantes</h2>
+                        <button onclick="loadRequests()" class="btn-sm" style="background:#111827; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--gold-accent); cursor:pointer;"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div id="req-container-oracao"></div>
+                    <div id="req-container-bebe"></div>
+                    <div id="req-container-batismo"></div>
+                    <div id="req-container-visita"></div>
+                    <div id="req-container-grupo"></div>
+                    <div id="req-container-volunteers"></div>
+                    <div id="req-container-decisions"></div>
+                    <div id="req-container-crm"></div>
+                    <div id="req-container-membro"></div>
+                    <div id="req-container-retention-radar"></div>
+                    <div id="req-container-integracao"></div>
+                    <div id="req-container-finalizacao" style="margin-top:25px;"></div>
+                    <div id="req-container-neglect" style="margin-top:25px;"></div>
+                </div>
+
+                <!-- Tab: Jornada (Formerly Integration CRM) -->
+                <div id="followup-content-jornada" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h2 style="margin:0; font-size:1.1rem; color:#2c3e50;"><i class="fas fa-route" style="color:var(--gold-accent); margin-right:10px;"></i> Jornada de Acompanhamento</h2>
+                        <button onclick="loadIntegrationDashboard()" class="btn-sm" style="background:#111827; color:var(--gold-accent); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div class="panel-card" style="padding:0; overflow:hidden; height:70vh; border:1px solid #e2e8f0;">
+                         <iframe src="integracao.html" style="width:100%; height:100%; border:none;"></iframe>
+                    </div>
+                </div>
+
+                <!-- Tab: Nova Decisão (Entry point for new members) -->
+                <div id="followup-content-decisao" style="display:none;">
+                    <div class="panel-card" style="text-align:center; padding:50px 20px; background: linear-gradient(135deg, #111827 0%, #1f2937 100%); color:white;">
+                        <i class="fas fa-user-plus" style="font-size:3rem; color:var(--gold-accent); margin-bottom:20px;"></i>
+                        <h2 style="margin:0; font-size:1.5rem;">Cadastrar Nova Decisão</h2>
+                        <p style="opacity:0.8; max-width:400px; margin:15px auto 25px;">Inicie o processo de integração para novos visitantes, convertidos ou transferências.</p>
+                        <button onclick="openMembershipWizard()" style="background:var(--gold-accent); color:black; border:none; border-radius:12px; padding:15px 30px; font-weight:800; font-size:1rem; cursor:pointer; font-family:'Outfit'; box-shadow:0 10px 20px rgba(201,160,80,0.3);">
+                             <i class="fas fa-edit"></i> ABRIR FICHA DE CADASTRO
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- PAGE: PEOPLE DATABASE -->
+            <div id="page-people" class="page-content" style="display:none;">
+
+                <div class="panel-card"
+                    style="background:#ffffff !important; padding:30px !important;">
+                    <!-- Header compacto -->
+                    <div
+                        style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                        <div style="font-weight:800; font-size:1rem; color:#1a1a1a;">
+                            <i class="fas fa-address-book" style="color:var(--gold-accent); margin-right:8px;"></i>
+                            Base de Dados <span id="people-count"
+                                style="background:#f1f5f9; color:#6b7280; font-size:0.75rem; padding:2px 10px; border-radius:12px; font-weight:700; margin-left:6px;">...</span>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+
+
+                            <button onclick="openMembershipWizard()"
+                                 style="background:var(--gold-accent); color:#000; border:none; border-radius:10px; padding:7px 14px; font-weight:800; font-size:0.8rem; cursor:pointer; font-family:'Outfit'; display:flex; align-items:center; gap:6px;">
+                                 <i class="fas fa-user-plus"></i> Cadastro Completo
+                            </button>
+
+                            <button onclick="exportarTudo()"
+                                style="background:#10b981; color:white; border:none; border-radius:10px; padding:7px 14px; font-weight:800; font-size:0.8rem; cursor:pointer; font-family:'Outfit'; display:flex; align-items:center; gap:6px;">
+                                <i class="fas fa-file-excel"></i> CSV
+                            </button>
+                            <button onclick="loadPeople(true)"
+                                style="background:var(--gold-accent); color:black; border:none; border-radius:10px; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 10px rgba(201,160,80,0.3);"
+                                title="Sincronizar dados">
+                                <i class="fas fa-sync-alt" id="sync-people-icon" style="font-size:0.8rem;"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Busca compacta -->
+                    <div style="position:relative; margin-bottom:14px;">
+                        <i class="fas fa-search"
+                            style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9ca3af; font-size:0.85rem;"></i>
+                        <input type="text" id="search-people" onkeyup="filterPeople()"
+                            placeholder="Buscar nome, contato..."
+                            style="width:100%; padding:10px 12px 10px 34px; border-radius:10px; border:1px solid #e5e7eb; font-family:'Outfit'; font-size:0.88rem; outline:none; box-sizing:border-box;">
+                    </div>
+
+                    <!-- Abas de Filtro de Base de Dados -->
+                    <div class="people-filter-tabs" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:10px; margin-bottom:10px; scrollbar-width:none;">
+                        <button class="category-tab" id="tab-triagem" onclick="setPeopleTab('triagem', this)" style="color:#f43f5e;">
+                            <i class="fas fa-search-plus"></i> Triagem
+                        </button>
+                        <button class="category-tab" id="tab-jornada" onclick="setPeopleTab('jornada', this)" style="color:#d4af37;">
+                            <i class="fas fa-route"></i> Jornada
+                        </button>
+                        <button class="category-tab" id="tab-visitante" onclick="setPeopleTab('visitante', this)" style="color:#3b82f6;">
+                            <i class="fas fa-user-plus"></i> Cadastro
+                        </button>
+                        <button class="category-tab active" id="tab-membro" onclick="setPeopleTab('membro', this)">
+                            <i class="fas fa-id-badge"></i> Membros
+                        </button>
+                        <button class="category-tab" id="tab-congregado" onclick="setPeopleTab('congregado', this)" style="display:none;">
+                            <i class="fas fa-pray"></i> Congregados
+                        </button>
+                        <button class="category-tab" id="tab-crianca" onclick="setPeopleTab('crianca', this)" style="color:#f59e0b;">
+                            <i class="fas fa-child"></i> Crianças
+                        </button>
+                        <button class="category-tab" id="tab-outros" onclick="setPeopleTab('outros', this)">
+                            <i class="fas fa-ellipsis-h"></i> Outros
+                        </button>
+                    </div>
+
+                    <!-- Lista Container (Dynamic Grid or Table) -->
+                    <div id="people-list-container"
+                        style="max-height:calc(100vh - 280px); overflow-y:auto; padding-right:10px; padding-bottom:20px; margin-top:15px;">
+                        <div style="text-align:center; padding:30px; color:#9ca3af; font-family:'Outfit';">
+                            Carregando membros...</div>
+                    </div>
+                </div>
+
+                <!-- ANIVERSARIANTES DO MÊS PANEL -->
+                <div class="panel-card"
+                    style="background:#fff !important; margin-top:30px;">
+                    <div class="panel-title"
+                        style="color:#1a1a1a; font-weight:800; font-size:1.1rem; margin-bottom:20px;">
+                        <span><i class="fas fa-birthday-cake"
+                                style="color:#ec4899; margin-right:10px;"></i>Aniversariantes do Mês</span>
+                    </div>
+
+                    <div id="birthdays-month-container"
+                        style="display:flex; flex-direction:column; gap:8px; max-height:250px; overflow-y:auto; margin-bottom:15px;">
+                        <div style="text-align:center; padding:20px; color:#9ca3af;">Carregando aniversariantes...</div>
+                    </div>
+
+                    <div style="border-top: 1px solid #f3f4f6; padding-top: 15px;">
+                        <div style="font-size:0.8rem; font-weight:700; color:#6b7280; margin-bottom:8px;">Adicionar
+                            Aniversariante Manualmente</div>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <input type="text" id="add-bday-name" placeholder="Nome Completo"
+                                style="flex:2; padding:10px 12px; border-radius:10px; border:1px solid #e5e7eb; font-family:'Outfit'; font-size:0.9rem;">
+                            <input type="text" id="add-bday-date" placeholder="DD/MM" maxlength="5"
+                                style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #e5e7eb; font-family:'Outfit'; font-size:0.9rem; text-align:center;">
+                            <button onclick="addManualBirthday()"
+                                style="background:var(--gold-accent); color:black; border:none; border-radius:10px; padding:10px 16px; font-weight:800; cursor:pointer; font-family:'Outfit';">Adicionar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: SETTINGS (Configurações) -->
+            <div id="page-settings" class="page-content" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h2 style="margin:0; font-size:1.2rem; color:#2c3e50;"><i class="fas fa-cog"
+                            style="color:var(--gold-accent); margin-right:8px;"></i> Configurações do Sistema</h2>
+                </div>
+
+                <!-- CONFIGURACOES PANEL -->
+                <div class="panel-card"
+                    style="background:#fff !important; margin-bottom:30px;">
+                    <div class="panel-title"
+                        style="color:#1a1a1a; font-weight:800; font-size:1.1rem; margin-bottom:20px;">
+                        <span><i class="fas fa-users-cog"
+                                style="color:var(--gold-accent); margin-right:10px;"></i>Liderança e Notificações</span>
+                    </div>
+
+                    <!-- LIDERES DE NOTIFICACAO (Unified v48.26.0) -->
+                    <div style="margin-bottom:30px;">
+                        <div
+                            style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#d97706; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid #fef3c7;">
+                            <i class="fas fa-users"></i> Gerenciar Líderes de Notificação
+                        </div>
+                        
+                        <div style="background:#f9fafb; border-radius:14px; padding:20px; border:1px solid #f3f4f6;">
+                            <div style="font-weight:800; font-size:0.9rem; color:#111827; margin-bottom:15px;">
+                                <i class="fas fa-user-plus" style="color:var(--gold-accent); margin-right:8px;"></i>Adicionar Novo Líder
+                            </div>
+                            
+                            <div id="leaders-geral" style="min-height:40px; margin-bottom:20px; display:flex; flex-wrap:wrap; gap:8px;">
+                                <!-- Líderes unificados aparecem aqui -->
+                            </div>
+
+                            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
+                                <div style="flex:2; min-width:200px;">
+                                    <label style="font-size:0.75rem; color:#6b7280; font-weight:700; text-transform:uppercase;">Nome do Líder</label>
+                                    <input type="text" id="input-leader-name-geral" placeholder="Ex: João Silva"
+                                        style="width:100%; padding:12px 16px; border-radius:12px; border:1px solid #e5e7eb; font-family:'Outfit'; font-size:0.9rem; margin-top:5px;">
+                                </div>
+                                <div style="flex:2; min-width:200px;">
+                                    <label style="font-size:0.75rem; color:#6b7280; font-weight:700; text-transform:uppercase;">WhatsApp (com DDD)</label>
+                                    <input type="tel" id="input-leader-phone-geral" placeholder="Ex: 79 98888 7777"
+                                        style="width:100%; padding:12px 16px; border-radius:12px; border:1px solid #e5e7eb; font-family:'Outfit'; font-size:0.9rem; margin-top:5px;">
+                                </div>
+                                <button onclick="addNotifLeader('geral')"
+                                    style="height:46px; background:var(--gold-accent); color:black; border:none; border-radius:12px; padding:0 24px; font-weight:800; cursor:pointer; font-family:'Outfit'; transition: transform 0.2s;">
+                                    <i class="fas fa-plus-circle"></i> SALVAR
+                                </button>
+                            </div>
+                            
+                            <p style="margin-top:15px; font-size:0.8rem; color:#6b7280; font-style:italic;">
+                                <i class="fas fa-info-circle"></i> Todos os líderes nesta lista estarão disponíveis para recebimento de encaminhamentos da Triagem.
+                            </p>
+                        </div>
+                    </div>
+
+
+
+                </div>
+
+                <!-- MANUAL DO USUÁRIO -->
+                <div class="panel-card" style="background:#fff !important; margin-bottom:30px; border: 1px solid #e2e8f0;">
+                    <div class="panel-title" style="color:#1a1a1a; font-weight:800; font-size:1.1rem; margin-bottom:20px;">
+                        <span><i class="fas fa-book" style="color:var(--gold-accent); margin-right:10px;"></i>Manual do Usuário</span>
+                    </div>
+                    
+                    <div style="background:#f8fafc; border-radius:14px; padding:20px; border:1px solid #e2e8f0;">
+                        <p style="font-size:0.9rem; color:#475569; margin-bottom:20px; line-height:1.6;">
+                            Acesse o guia completo de operação do sistema, incluindo senhas oficiais, fluxos de cada setor e resoluções de problemas comuns.
+                        </p>
+                        
+                        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <button onclick="openUserManualModal()" style="background:#111827; color:var(--gold-accent); border:none; border-radius:12px; padding:12px 24px; font-weight:800; cursor:pointer; font-family:'Outfit'; display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-eye"></i> Visualizar Manual
+                            </button>
+                            <a href="GUIA_USUARIO.md" target="_blank" style="background:#fff; color:#475569; border:1px solid #e2e8f0; border-radius:12px; padding:12px 24px; font-weight:800; text-decoration:none; font-size:0.85rem; display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-download"></i> Abrir Arquivo MD
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR CODE DE CADASTRO -->
+                <div style="background:#fff; padding:20px; border-radius:20px; border:2px solid #111827 !important;">
+                    <div
+                        style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#0891b2; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid #e0f2fe;">
+                        <i class="fas fa-qrcode"></i> QR Code de Auto-Cadastro
+                    </div>
+                    <div style="display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+                        <div id="settings-qr"
+                            style="padding:14px; background:#fff; border-radius:14px; box-shadow:0 4px 16px rgba(0,0,0,0.08); display:inline-block;">
+                        </div>
+                        <div>
+                            <div style="font-size:0.9rem; font-weight:700; color:#111827; margin-bottom:6px;">Página
+                                pública de cadastro</div>
+                            <div style="font-size:0.8rem; color:#6b7280; margin-bottom:12px;">Sem login necessário.
+                                Ao inserir o e-mail, o histórico é recuperado automaticamente.</div>
+                            <a href="connect.html" target="_blank"
+                                style="background:#0891b2; color:white; border-radius:10px; padding:8px 16px; font-family:'Outfit'; font-weight:700; text-decoration:none; font-size:0.85rem;">
+                                <i class="fas fa-external-link-alt" style="margin-right:6px;"></i>Abrir Página
+                            </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: GABINETE PASTORAL -->
+            <div id="page-gabinete" class="page-content" style="display:none; padding-top: 0;">
+                <div class="glass-card-v2" style="margin-bottom:20px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color:white; border:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h2 style="margin:0; font-family:'Outfit'; font-weight:800; font-size:1.5rem; color:var(--gold-accent);">Gabinete Pastoral</h2>
+                            <p style="margin:5px 0 0 0; opacity:0.8; font-size:0.9rem;">Gestão de diretrizes e aconselhamentos estratégicos.</p>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.7rem; font-weight:800; opacity:0.6; text-transform:uppercase;">Monitor de Resposta</div>
+                            <div id="gabinete-health" style="font-family:'Outfit'; font-weight:800; font-size:1.2rem; color:var(--gold-accent);">...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+                    <div class="glass-card-v2">
+                        <h3 style="margin-top:0; font-family:'Outfit'; font-weight:800; color:#1e293b;"><i class="fas fa-tasks" style="margin-right:10px; color:var(--gold-accent);"></i> Diretrizes Pendentes</h3>
+                        <div id="gabinete-tasks-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+                    </div>
+                    
+                    <div class="glass-card-v2">
+                        <h3 style="margin-top:0; font-family:'Outfit'; font-weight:800; color:#1e293b;"><i class="fas fa-history" style="margin-right:10px; color:var(--gold-accent);"></i> Ata Digital</h3>
+                        <div id="ata-digital-feed" style="display:flex; flex-direction:column; gap:10px; max-height:500px; overflow-y:auto;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: ATTENDANCE -->
+            <div id="page-attendance" class="page-content" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:25px;">
+                    <div>
+                        <h2 style="margin:0; font-family:'Outfit'; font-weight:800; font-size:1.8rem; color:#1e293b;">Check-in em Tempo Real</h2>
+                        <p style="margin:5px 0 0 0; color:#64748b; font-weight:600;">Monitoramento ativo das salas e ambientes.</p>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="clearKidsRoomMessages()" class="btn-sm" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca;"><i class="fas fa-child"></i> Limpar Kids</button>
+                        <button onclick="clearAltarMessages()" class="btn-sm" style="background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd;"><i class="fas fa-tv"></i> Limpar Altar</button>
+                    </div>
+                </div>
+                
+                <div id="attendance-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:20px;"></div>
+            </div>
+
+            <!-- PAGE: EVENTS (Eventos) -->
+            <div id="page-events" class="page-content" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h2 style="margin:0; font-size:1.2rem; color:#2c3e50;"><i class="fas fa-calendar-day"
+                            style="color:var(--gold-accent); margin-right:8px;"></i> Gestão de Eventos</h2>
+                    <button onclick="openNewEventModal()" class="btn-sm"
+                        style="background:var(--gold-accent); color:black; font-weight:800; border-radius:10px; padding:10px 20px; border:none; cursor:pointer;">
+                        <i class="fas fa-plus"></i> Novo Evento
+                    </button>
+                </div>
+
+                <div id="events-list-container" class="dashboard-stats-row responsive-grid-v2" style="margin-bottom:30px;">
+                    <!-- Event Cards Injected Here -->
+                </div>
+                
+                <div id="event-details-area" style="display:none;">
+                    <!-- Participants list and management for selected event -->
+                </div>
+            </div>
+
+            <!-- PAGE: HISTORY -->
+    <div id="page-history" class="page-content" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0; font-size:1.2rem; color:#2c3e50;"><i class="fas fa-history"
+                    style="color:var(--gold-accent); margin-right:8px;"></i> Histórico de Concluídos / Arquivados</h2>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="filter-history-input" placeholder="Buscar no histórico..."
+                    style="padding:8px 15px; border-radius:12px; border:1px solid #cbd5e1; outline:none; font-family:'Outfit';"
+                    onkeyup="filterHistory()">
+                <button onclick="loadHistory()" class="btn-sm"
+                    style="background:#111827; color:var(--gold-accent); border:none; border-radius:10px; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.2);"
+                    title="Atualizar Histórico">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+        <div class="panel-card" style="padding:0; overflow:hidden;">
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; margin:0;" id="table-history">
+                    <thead>
+                        <tr
+                            style="background:#f8fafc; color:#64748b; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">
+                            <th style="padding:15px; text-align:left; border-bottom:1px solid #e2e8f0;">Data / Hora</th>
+                            <th style="padding:15px; text-align:left; border-bottom:1px solid #e2e8f0;">Solicitante
+                                (Nome / Contato)</th>
+                            <th style="padding:15px; text-align:left; border-bottom:1px solid #e2e8f0;">Tipo / Detalhes
+                            </th>
+                            <th style="padding:15px; text-align:center; border-bottom:1px solid #e2e8f0;">Status
+                                Ocorrência</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <!-- Injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="history-loading" style="padding:30px; text-align:center; color:#94a3b8; display:none;">
+                <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Carregando registros do histórico...
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE: WARNINGS -->
+    <div id="page-warnings" class="page-content" style="display:none; padding-top: 0;">
+        <div class="panel-card"
+            style="justify-content: flex-start !important; margin-top: 0 !important; max-width:800px; margin: 0 auto; background:#ffffff; box-shadow: 0 4px 20px rgba(0,0,0,0.05); padding: 30px; border-radius: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
+            <div class="panel-title"
+                style="color:#111827; font-weight:800; font-size:1.4rem; border-bottom:1px solid #f3f4f6; padding-bottom:15px; margin-bottom:20px;">
+                <span><i class="fas fa-bullhorn" style="color:var(--gold-accent); margin-right:12px;"></i>
+                    Mural de Avisos & Telão</span>
+            </div>
+
+            <div
+                style="background:#fefce8; border-left:4px solid #facc15; padding:16px 20px; border-radius:0 12px 12px 0; margin-bottom:25px;">
+                <div style="font-weight:800; color:#854d0e; font-size:0.95rem; margin-bottom:5px;"><i
+                        class="fas fa-info-circle" style="margin-right:6px;"></i>Atenção Liderança</div>
+                <p style="color:#a16207; font-size:0.85rem; margin:0; line-height:1.5;">Esta mensagem aparecerá
+                    instantaneamente no telão principal do auditório (Altar) após enviada. Use com moderação e
+                    certifique-se da grafia antes de enviar.</p>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:20px;">
+                <textarea id="warning-msg" placeholder="Ex: Reunião de obreiros logo após o culto na sala 2..."
+                    style="width:100%; min-height:140px; padding:20px; box-sizing:border-box; border-radius:14px; border:2px solid #e5e7eb; background:#f9fafb; font-family:'Outfit'; font-size:1.15rem; color:#1f2937; outline:none; resize:vertical; transition:border 0.3s;"
+                    onfocus="this.style.borderColor='var(--gold-accent)'; this.style.background='#fff'"
+                    onblur="this.style.borderColor='#e5e7eb'; this.style.background='#f9fafb'"></textarea>
+
+                <div style="display:flex; gap:12px; justify-content:flex-end; flex-wrap:wrap; margin-top:10px;">
+                    <button onclick="clearWarning()"
+                        style="flex: 1; min-width: 140px; background:#fff1f2; color:#be123c; border:1px solid #fecdd3; border-radius:12px; font-family:'Outfit'; font-weight:800; font-size:0.95rem; height:50px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.2s;"
+                        onmouseover="this.style.background='#ffe4e6'" onmouseout="this.style.background='#fff1f2'">
+                        <i class="fas fa-trash-alt"></i> Retirar Aviso
+                    </button>
+                    <button onclick="sendWarning()"
+                        style="flex: 2; min-width: 200px; background:#111827; color:var(--gold-accent); border:none; border-radius:12px; font-family:'Outfit'; font-weight:800; font-size:1.05rem; height:50px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.2s; box-shadow:0 4px 10px rgba(0,0,0,0.1);"
+                        onmouseover="this.style.background='#000'; this.style.transform='translateY(-2px)'"
+                        onmouseout="this.style.background='#111827'; this.style.transform='translateY(0)'">
+                        <i class="fas fa-paper-plane"></i> Enviar ao Telão
+                    </button>
+                </div>
+
+                <!-- NEW: Status em Tempo Real (O que está no Altar agora) -->
+                <div style="margin-top:25px; border-top:1px solid #f1f5f9; padding-top:25px;">
+                    <div style="font-weight:800; color:#64748b; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+                        <span style="display:inline-block; width:8px; height:8px; background:#10b981; border-radius:50%; box-shadow:0 0 8px #10b981;"></span>
+                        Status em Tempo Real (No Altar/Telão)
+                    </div>
+                    <div id="active-warning-display" style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:20px; min-height:60px; display:flex; align-items:center; justify-content:center; text-align:center; color:#334155; font-style:italic;">
+                        Iniciando monitoramento do altar...
+                    </div>
+                </div>
+
+                <!-- NEW: ALTAR GOVERNANCE PANEL v48.14.1 -->
+                <div style="margin-top:20px; padding-top:20px; border-top:1px solid #f1f5f9;">
+                    <div style="font-size:0.8rem; font-weight:800; color:#ef4444; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">
+                        <i class="fas fa-shield-alt"></i> Governança de Emergência (Altar)
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <input type="hidden" id="altar-clear-type" value="all">
+                        <button onclick="document.getElementById('altar-clear-type').value='all'; clearAltarMessages();" 
+                            style="background:#fef2f2; color:#b91c1c; border:1px solid #fee2e2; border-radius:12px; padding:12px; font-weight:700; cursor:pointer; font-size:0.85rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <i class="fas fa-trash-alt"></i> Limpar Tudo (Reset Geral)
+                        </button>
+                        <button onclick="document.getElementById('altar-clear-type').value='visitante'; clearAltarMessages();" 
+                            style="background:#fff7ed; color:#9a3412; border:1px solid #ffedd5; border-radius:12px; padding:12px; font-weight:700; cursor:pointer; font-size:0.85rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <i class="fas fa-users-slash"></i> Limpar Só Visitantes
+                        </button>
+                    </div>
+                </div>
+
+                <!-- NEW: MANUAL SEND TO ALTAR v71.2.0 -->
+                <div style="margin-top:20px; padding-top:20px; border-top:1px solid #f1f5f9;">
+                    <div style="font-size:0.8rem; font-weight:800; color:var(--gold-accent); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">
+                        <i class="fas fa-paper-plane"></i> Envio Manual para Altar
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <input type="text" id="manual-altar-name" placeholder="Nome da Pessoa / Título..." 
+                            style="width:100%; padding:12px; border-radius:10px; border:1px solid #e5e7eb; font-family:'Outfit';">
+                        <select id="manual-altar-type" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e5e7eb; font-family:'Outfit';">
+                            <option value="visitante">Visitante</option>
+                            <option value="request">Pedido de Oração</option>
+                            <option value="decision">Nova Decisão / Celebração</option>
+                            <option value="birthday">Aniversário (Banner Especial)</option>
+                        </select>
+                        <textarea id="manual-altar-obs" placeholder="Detalhes / Observação..." 
+                            style="width:100%; padding:12px; border-radius:10px; border:1px solid #e5e7eb; font-family:'Outfit'; min-height:80px;"></textarea>
+                        <button onclick="sendManualToAltar()" 
+                            style="background:#111827; color:var(--gold-accent); border:none; border-radius:12px; padding:15px; font-weight:800; cursor:pointer; font-family:'Outfit';">
+                            <i class="fas fa-broadcast-tower"></i> TRANSMITIR AGORA
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    </main>
+    </div>
+
+    <!-- MODAL: FICHA COMPLETA (42 FIELDS) -->
+    <div id="modal-membership" class="modal-overlay">
+        <div class="modal-content">
+            <button onclick="closeMembershipWizard()"
+                style="position:absolute; top:15px; right:20px; background:none; border:none; color:#999; cursor:pointer; font-size:1.8rem; width:auto; padding:0; line-height:1;">&times;</button>
+
+            <div style="text-align:center; margin-bottom:25px;">
+                <div style="font-size:1.5rem; font-weight:800; color:#1a1a1a; font-family:'Outfit';">Ficha Nacional de
+                    Membro</div>
+                <div style="color:#888; font-size:0.85rem; margin-top:4px;">Preencha todos os campos para o registro
+                    definitivo.</div>
+                <div style="display:flex; justify-content:center; gap:10px; margin-top:18px;">
+                    <div class="wizard-dot active" id="mdot-1">1</div>
+                    <div class="wizard-dot" id="mdot-2">2</div>
+                    <div class="wizard-dot" id="mdot-3">3</div>
+                    <div class="wizard-dot" id="mdot-4">4</div>
+                </div>
+            </div>
+
+            <form id="form-full-membership">
+
+                <!-- STEP 1: DADOS PESSOAIS -->
+                <div class="wizard-step active" id="mstep-1">
+                    <div
+                        style="font-weight:800; color:var(--gold-accent); border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:15px; font-size:0.9rem; text-transform:uppercase;">
+                        1. Dados Pessoais</div>
+                    <label>1. Nome Completo*</label><input type="text" id="mf-1" required>
+                    <label>2. Igreja*</label><input type="text" id="mf-2" value="CATEDRAL" required>
+                    <label>3. G&#234;nero*</label>
+                    <select id="mf-3" required>
+                        <option value="">Selecione...</option>
+                        <option value="Masculino">Masculino</option>
+                        <option value="Feminino">Feminino</option>
+                    </select>
+                    <label>4. Nome do Pai</label><input type="text" id="mf-4">
+                    <label>5. Nome da M&#227;e</label><input type="text" id="mf-5">
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>6. Data de Nasc.*</label><input type="date" id="mf-6" required>
+                        </div>
+                        <div style="flex:1;"><label>7. Estado Civil</label>
+                            <select id="mf-7">
+                                <option>Solteiro(a)</option>
+                                <option>Casado(a)</option>
+                                <option>Divorciado(a)</option>
+                                <option>Vi&#250;vo(a)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label>8. Data Casamento</label><input type="date" id="mf-8">
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>9. Naturalidade</label><input type="text" id="mf-9"></div>
+                        <div style="flex:1;"><label>10. Nacionalidade</label><input type="text" id="mf-10"></div>
+                    </div>
+                    <label>11. Grau Acad&#234;mico</label>
+                    <select id="mf-11">
+                        <option>Fundamental</option>
+                        <option>M&#233;dio</option>
+                        <option selected>Superior</option>
+                        <option>P&#243;s-Gradua&#231;&#227;o</option>
+                    </select>
+                    <label>12. Profiss&#227;o</label><input type="text" id="mf-12">
+                    <button type="button" onclick="changeMStep(2)"
+                        style="margin-top:20px; width:100%; background:var(--gold-accent); color:black; font-weight:800; height:48px; border:none; border-radius:14px; cursor:pointer; font-family:'Outfit'; font-size:1rem;">Pr&#243;ximo
+                        Passo &rarr;</button>
+                </div>
+
+                <!-- STEP 2: CONTATO & DOC -->
+                <div class="wizard-step" id="mstep-2">
+                    <div
+                        style="font-weight:800; color:var(--gold-accent); border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:15px; font-size:0.9rem; text-transform:uppercase;">
+                        2. Contato &amp; Documenta&#231;&#227;o</div>
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>13. Tipo Doc</label><input type="text" id="mf-13"
+                                placeholder="RG, BI..."></div>
+                        <div style="flex:1;"><label>14. N&#186; Doc</label><input type="text" id="mf-14"></div>
+                    </div>
+                    <label>15. Passaporte</label><input type="text" id="mf-15">
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>16. NIF / NISS</label><input type="text" id="mf-16"></div>
+                        <div style="flex:1;"><label>17. Outros</label><input type="text" id="mf-17"></div>
+                    </div>
+                    <label>18. Endere&#231;o Completo*</label><textarea id="mf-18" rows="2" required></textarea>
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>19. C&#243;d. Postal</label><input type="text" id="mf-19"></div>
+                        <div style="flex:1;"><label>20. Cidade*</label><input type="text" id="mf-20" required></div>
+                    </div>
+                    <label>21. WhatsApp / Celular*</label><input type="tel" id="mf-21" required>
+                    <label>22. Email*</label><input type="email" id="mf-22" required>
+                    <div style="display:flex; gap:10px; margin-top:18px;">
+                        <button type="button" onclick="changeMStep(1)"
+                            style="flex:1; background:#f3f4f6; color:#333; border:none; border-radius:14px; height:46px; cursor:pointer; font-family:'Outfit'; font-weight:700;">&#8592;
+                            Voltar</button>
+                        <button type="button" onclick="changeMStep(3)"
+                            style="flex:2; background:var(--gold-accent); color:black; font-weight:800; border:none; border-radius:14px; height:46px; cursor:pointer; font-family:'Outfit'; font-size:1rem;">Pr&#243;ximo
+                            &rarr;</button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: DADOS ESPIRITUAIS -->
+                <div class="wizard-step" id="mstep-3">
+                    <div
+                        style="font-weight:800; color:var(--gold-accent); border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:15px; font-size:0.9rem; text-transform:uppercase;">
+                        3. Dados Espirituais</div>
+                    <label>23. Data 1&#170; Visita</label><input type="date" id="mf-23">
+                    <label>24. Igreja Anterior</label><input type="text" id="mf-24">
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>25. Data Apres. Beb&#234;</label><input type="date" id="mf-25">
+                        </div>
+                        <div style="flex:1;"><label>26. Local Apres.</label><input type="text" id="mf-26"></div>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>27. Data Batismo</label><input type="date" id="mf-27"></div>
+                        <div style="flex:1;"><label>28. Local Batismo</label><input type="text" id="mf-28"></div>
+                    </div>
+                    <label>29. Fun&#231;&#227;o na Igreja</label><input type="text" id="mf-29"
+                        placeholder="Ex: Di&#225;cono, Obreiro...">
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>30. &#218;ltima Ord.</label><input type="date" id="mf-30"></div>
+                        <div style="flex:1;"><label>31. Local Ord.</label><input type="text" id="mf-31"></div>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:18px;">
+                        <button type="button" onclick="changeMStep(2)"
+                            style="flex:1; background:#f3f4f6; color:#333; border:none; border-radius:14px; height:46px; cursor:pointer; font-family:'Outfit'; font-weight:700;">&#8592;
+                            Voltar</button>
+                        <button type="button" onclick="changeMStep(4)"
+                            style="flex:2; background:var(--gold-accent); color:black; font-weight:800; border:none; border-radius:14px; height:46px; cursor:pointer; font-family:'Outfit'; font-size:1rem;">Pr&#243;ximo
+                            &rarr;</button>
+                    </div>
+                </div>
+
+                <!-- STEP 4: HIST&#211;RICO CATEDRAL -->
+                <div class="wizard-step" id="mstep-4">
+                    <div
+                        style="font-weight:800; color:var(--gold-accent); border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:15px; font-size:0.9rem; text-transform:uppercase;">
+                        4. Hist&#243;rico CATEDRAL</div>
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>32. Data Admiss&#227;o</label><input type="date" id="mf-32"></div>
+                        <div style="flex:1;"><label>33. Membro Efetivo</label><input type="date" id="mf-33"></div>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label>34. Apres. Nesta Igreja</label><input type="date" id="mf-34"></div>
+                        <div style="flex:1;"><label>35. Batismo Aqui</label><input type="date" id="mf-35"></div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div><label>36. Di&#225;cono</label><input type="date" id="mf-36"></div>
+                        <div><label>37. Presb&#237;tero</label><input type="date" id="mf-37"></div>
+                        <div><label>38. Evangelista</label><input type="date" id="mf-38"></div>
+                        <div><label>39. Pastor</label><input type="date" id="mf-39"></div>
+                    </div>
+                    <label>40. Cursos Conclu&#237;dos</label><input type="text" id="mf-40">
+                    <label>41. Cursos em Andamento</label><input type="text" id="mf-41">
+                    <label>42. Observa&#231;&#245;es</label><input type="text" id="mf-42">
+                    <div style="display:flex; gap:10px; margin-top:20px;">
+                        <button type="button" onclick="changeMStep(3)"
+                            style="flex:1; background:#f3f4f6; color:#333; border:none; border-radius:14px; height:46px; cursor:pointer; font-family:'Outfit'; font-weight:700;">&#8592;
+                            Voltar</button>
+                        <button type="button" onclick="submitFullMembership()"
+                            style="flex:2; background:#111; color:var(--gold-accent); font-weight:800; border:none; border-radius:14px; height:46px; cursor:pointer; font-family:'Outfit'; font-size:1rem;">&#10003;
+                            FINALIZAR FICHA</button>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- PREMIUM UI HELPERS (Shell Integration) ---
+        function _alert(msg, title) {
+            try {
+                if (window.parent && window.parent.showAlert) {
+                    window.parent.showAlert(msg, title);
+                    return;
+                }
+            } catch (e) {
+            }
+            alert(msg);
+        }
+
+        function _confirm(msg, callback, title) {
+            try {
+                if (window.parent && window.parent.showConfirm) {
+                    window.parent.showConfirm(msg, callback, title);
+                    return;
+                }
+            } catch (e) {
+            }
+            if (confirm(msg)) callback();
+        }
+
+        function getRecordIdentity(d) {
+            if (!d) return { name: 'N/A', phone: '', email: '', initial: '?' };
+            const name = d.name || d.nome_completo || d.person_name || d.field_1 || 'Sem Nome';
+            const phone = d.phone || d.contato || d.whatsapp || d.field_21 || '';
+            const email = d.email || d.field_22 || '';
+            const initial = (name && name.length > 0) ? name[0].toUpperCase() : '?';
+            const date = d.created_at || d.timestamp || d.createdAt || null;
+            const dateStr = date ? (typeof date.toDate === 'function' ? date.toDate().toLocaleDateString('pt-BR') : new Date(date).toLocaleDateString('pt-BR')) : '—';
+            return { name, phone, email, initial, dateStr };
+        }
+
+        var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+
+        var isInsideIframe = window.self !== window.top;
+        const ssoPin = localStorage.getItem('current_session_pin');
+        const isBypass = ssoPin === 'Catedral@2025!';
+
+        if (isInsideIframe) {
+            console.log("Admin: Modo iframe detectado...");
+            if (isBypass) {
+                console.log("👑 Master Bypass Ativo (Iframe), liberando acesso instantâneo.");
+                setTimeout(loadDashboard, 100);
+            } else if (ssoPin) {
+                console.log("Admin: Tentando sincronização silenciosa...");
+                firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION)
+                    .then(() => firebase.auth().signInWithEmailAndPassword('pastor@catedral.ch', ssoPin))
+                    .then(() => {
+                        console.log("Auth Sinc: OK");
+                        loadDashboard();
+                    })
+                    .catch(err => {
+                        console.warn("Auth Sinc Falhou:", err.code);
+                        loadDashboard();
+                    });
+            } else {
+                loadDashboard();
+            }
+        } else {
+            if (isBypass) loadDashboard();
+        }
+
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user || isBypass) {
+                console.log("Admin: Estado de Auth Atualizado -> Ativo");
+                loadDashboard();
+            }
+        });
+
+        function initAdminMonitor() {
+            loadDashboard();
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        function isWithinCurrentServiceWindow(dateObj, strict = false) {
+            if (!dateObj) return false;
+            const now = new Date();
+            const day = now.getDay();
+            const hour = now.getHours();
+            const d = new Date(dateObj);
+            if (day === 0 || (day === 1 && hour < 22)) {
+                let startOfShift = new Date(now);
+                startOfShift.setDate(now.getDate() - (day === 1 ? 1 : 0));
+                startOfShift.setHours(0, 0, 0, 0);
+                let endOfShift = new Date(startOfShift);
+                endOfShift.setDate(startOfShift.getDate() + 1);
+                endOfShift.setHours(22, 0, 0, 0);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            if (day === 2 || (day === 3 && hour < 15)) {
+                let startOfShift = new Date(now);
+                startOfShift.setDate(now.getDate() - (day === 3 ? 1 : 0));
+                startOfShift.setHours(0, 0, 0, 0);
+                let endOfShift = new Date(startOfShift);
+                endOfShift.setDate(startOfShift.getDate() + 1);
+                endOfShift.setHours(15, 0, 0, 0);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            if ((day === 3 && hour >= 15) || day === 4) {
+                let startOfShift = new Date(now);
+                startOfShift.setDate(now.getDate() - (day === 4 ? 1 : 0));
+                startOfShift.setHours(15, 0, 0, 0);
+                let endOfShift = new Date(startOfShift);
+                endOfShift.setDate(startOfShift.getDate() + 1);
+                endOfShift.setHours(20, 59, 59, 999);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            if (day === 5 || (day === 6 && hour < 12)) {
+                let startOfShift = new Date(now);
+                startOfShift.setDate(now.getDate() - (day === 6 ? 1 : 0));
+                startOfShift.setHours(0, 0, 0, 0);
+                let endOfShift = new Date(startOfShift);
+                endOfShift.setDate(startOfShift.getDate() + 1);
+                endOfShift.setHours(12, 0, 0, 0);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            if (day === 6 && hour >= 14 && hour < 23) {
+                let startOfShift = new Date(now);
+                startOfShift.setHours(14, 0, 0, 0);
+                let endOfShift = new Date(now);
+                endOfShift.setHours(23, 0, 0, 0);
+                return d >= startOfShift && d <= endOfShift;
+            }
+            if (strict) return false;
+            let today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return d >= today;
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function switchPage(pageId, navEl) {
+            const titles = { dashboard: 'Resumo Geral', gabinete: 'Gabinete Pastoral', followup: 'JORNADA (Acompanhamento)', attendance: 'Presenças Hoje', people: 'SECRETARIA (Base de Dados)', history: 'Histórico Admin', warnings: 'Avisos Altar', settings: 'Configurações do Sistema', events: 'Gestão de Eventos' };
+            const targetPage = document.getElementById('page-' + pageId);
+            if (!targetPage) return;
+            document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
+            targetPage.style.display = 'block';
+            const titleEl = document.getElementById('page-title');
+            if (titleEl) titleEl.innerText = titles[pageId] || 'Secretaria';
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            if (navEl) navEl.classList.add('active');
+            
+            if (pageId === 'dashboard') loadDashboard();
+            if (pageId === 'followup') loadFollowup();
+            if (pageId === 'people') { loadPeople(); loadMonthBirthdays(); }
+            if (pageId === 'history') loadHistory();
+            if (pageId === 'warnings') loadActiveWarning();
+            if (pageId === 'settings') { loadNotifLeaders(); loadLeaders(); renderSettingsQR(); }
+            if (pageId === 'events') loadEvents();
+            if (pageId === 'leaders') loadLeadersGrid();
+            if (pageId === 'ministries') loadMinistriesGrid();
+            if (window.innerWidth <= 900) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        }
+
+        window._cacheData = { people: null, kids: null, integracao: null, schedule_requests: null, followup: null, time: 0 };
+        function animateValue(id, start, end, duration) {
+            const obj = document.getElementById(id);
+            if (!obj) return;
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        async function getPeopleKidsData(force = false, retryCount = 0) {
+            if (!firebase.auth().currentUser && localStorage.getItem('current_session_pin') !== 'Catedral@2025!' && retryCount < 5) {
+                await new Promise(r => setTimeout(r, 1000));
+                return getPeopleKidsData(force, retryCount + 1);
+            }
+            
+            const cacheKey = 'dashboard_cache_lausanne';
+            const cached = localStorage.getItem(cacheKey);
+            const now = Date.now();
+
+            if (cached && !force) {
+                try {
+                    const stats = JSON.parse(cached);
+                    if (now - stats.time < 180000) {
+                         window._lastStats = stats;
+                    }
+                } catch(e) {}
+            }
+
+            try {
+                const [p, k, i, r, f] = await Promise.all([
+                    db.collection('people').get(), 
+                    db.collection('kids').get(), 
+                    db.collection('integracao').get(), 
+                    db.collection('schedule_requests').get(),
+                    db.collection('followup').get()
+                ]);
+
+                const newStats = { p_size: p.size, k_size: k.size, i_size: i.size, r_size: r.size, f_size: f.size, time: now };
+                localStorage.setItem(cacheKey, JSON.stringify(newStats));
+                window._cacheData = { people: p, kids: k, integracao: i, schedule_requests: r, followup: f, time: now };
+
+                return [p, k, i, r, f];
+            } catch (e) {
+                if (retryCount < 5) {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    return getPeopleKidsData(true, retryCount + 1);
+                }
+                throw e;
+            }
+        }
+
+        async function loadDashboard() {
+            const container = document.getElementById('page-dashboard');
+            const isBypass = localStorage.getItem('current_session_pin') === 'Catedral@2025!';
+            
+            let user = firebase.auth().currentUser;
+            if (!user && !isBypass) {
+                await new Promise(resolve => {
+                    let count = 0;
+                    const interval = setInterval(() => {
+                        user = firebase.auth().currentUser;
+                        count++;
+                        if (user || count > 6) { clearInterval(interval); resolve(); }
+                    }, 500);
+                });
+            }
+
+            if (!user && !isBypass) {
+                document.getElementById('pending-grid-overview').innerHTML = `<div style="padding:20px; color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> Erro de Autenticação. Reinicie a sessão.</div>`;
+                return;
+            }
+
+            await renderOverviewCards();
+            await renderDashboardCharts();
+            renderIntegrationAlerts('dashboard-integration-alerts');
+        }
+
+        window.currentFollowupTab = 'triagem';
+        function setFollowupTab(tab, btn) {
+            window.currentFollowupTab = tab;
+            document.querySelectorAll('#page-followup .category-tab').forEach(t => t.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+            else {
+                const btns = document.querySelectorAll('#page-followup .category-tab');
+                btns.forEach(b => {
+                    if (b.innerText.toLowerCase().includes(tab.toLowerCase())) b.classList.add('active');
+                    else b.classList.remove('active');
+                });
+            }
+            
+            document.getElementById('followup-content-triagem').style.display = tab === 'triagem' ? 'block' : 'none';
+            document.getElementById('followup-content-jornada').style.display = tab === 'jornada' ? 'block' : 'none';
+            document.getElementById('followup-content-decisao').style.display = tab === 'decisao' ? 'block' : 'none';
+            
+            if (tab === 'triagem') loadRequests();
+            if (tab === 'jornada') loadIntegrationDashboard();
+        }
+
+        function loadFollowup() {
+            setFollowupTab(window.currentFollowupTab);
+        }
+
+        async function loadIntegrationDashboard() {
+            renderIntegrationContent();
+            renderIntegrationAlerts('integration-alerts-summary');
+            runIntegrationHousekeeping();
+        }
+
+        async function renderIntegrationAlerts(targetId) {
+            const container = document.getElementById(targetId);
+            if (container) container.innerHTML = '';
+            return;
+        }
+
+        async function runIntegrationHousekeeping() {
+            try {
+                const ninetyDaysAgo = new Date();
+                ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                
+                const snap = await db.collection('followup')
+                    .where('timestamp', '<', ninetyDaysAgo)
+                    .get();
+                
+                if (snap.empty) return;
+                
+                const batch = db.batch();
+                let count = 0;
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    if (d.status === 'em_integracao') {
+                        batch.update(doc.ref, { 
+                            status: 'arquivado_auto', 
+                            archived_at: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        count++;
+                    }
+                });
+                
+                if (count === 0) return;
+                
+                await batch.commit();
+            } catch(e) {}
+        }
+
+        async function renderIntegrationContent() {
+            const container = document.getElementById('integration-stage-content');
+            if(!container) return;
+
+            const tab = window.currentIntegrationTab;
+
+            if (tab === 'acolhimento') {
+                container.innerHTML = `
+                    <div style="height:800px; border-radius:20px; overflow:hidden; border:2px solid #111827 !important; background:#f8fafc; position:relative; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
+                        <iframe src="connect.html?mode=admin&v=${Date.now()}" style="width:100%; height:100%; border:none;"></iframe>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `<div style="text-align:center; padding:100px;"><i class="fas fa-spinner fa-spin fa-3x" style="color:var(--gold-accent);"></i></div>`;
+                
+                try {
+                    const stageMap = { 'visitantes': 'visitante', 'discipulado': 'discipulado', 'cursos': 'cursos', 'celulas': 'celulas' };
+                    const targetStage = stageMap[tab];
+                    const snap = await db.collection('followup').where('integ_stage', '==', targetStage).get();
+                    renderIntegrationList(container, tab, snap.docs);
+                } catch(e) {
+                    container.innerHTML = `<div style="color:#ef4444; padding:40px; text-align:center;">Erro ao carregar etapa: ${e.message}</div>`;
+                }
+            }
+        }
+
+        function renderIntegrationList(container, tab, docs) {
+            if (docs.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:100px; color:#94a3b8;">Nenhum registro ativo nesta etapa.</div>`;
+                return;
+            }
+
+            let html = `<div style="gap:20px;">`;
+            docs.forEach(doc => {
+                const d = doc.data();
+                const identity = getRecordIdentity(d);
+                html += `<div class="glass-card-v2" style="padding:20px; border:1px solid #eef2f6;">${identity.name}</div>`;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        async function promoteIntegrationStage(id, currentTab) {
+            const sequence = ['acolhimento', 'visitantes', 'discipulado', 'cursos', 'celulas'];
+            const idx = sequence.indexOf(currentTab);
+            if (idx === -1 || idx === sequence.length - 1) return;
+            
+            const nextTab = sequence[idx + 1];
+            const stageMap = { 'visitantes': 'visitante', 'discipulado': 'discipulado', 'cursos': 'cursos', 'celulas': 'celulas' };
+            const nextStage = stageMap[nextTab];
+
+            if (confirm(`Deseja promover este registro para a etapa: ${nextTab.toUpperCase()}?`)) {
+                try {
+                    const docRef = db.collection('followup').doc(id);
+                    await docRef.update({ integ_stage: nextStage });
+                    renderIntegrationContent();
+                } catch(e) { _alert("Erro: " + e.message); }
+            }
+        }
+
+        async function updateCourseProgress(id, current) {
+            const newVal = prompt("Digite o novo percentual:", current);
+            if (newVal === null) return;
+            try {
+                await db.collection('followup').doc(id).update({ course_progress: parseInt(newVal) });
+                renderIntegrationContent();
+            } catch(e) { _alert(e.message); }
+        }
+
+        async function assignCell(id) {
+            const cell = prompt("Digite o nome da Célula:");
+            if (!cell) return;
+            try {
+                await db.collection('followup').doc(id).update({ assigned_cell: cell });
+                renderIntegrationContent();
+            } catch(e) { _alert(e.message); }
+        }
+
+        window.concluirDiretriz = async function(id) {
+            if(!confirm("Marcar como concluída?")) return;
+            try {
+                await db.collection('pastoral_tasks').doc(id).update({ status: 'concluido' });
+                loadAlertasEPendencias();
+            } catch(e) { alert("Erro: " + e.message); }
+        };
+
+        async function loadAtaDigitalFeed() {
+            const feedContainer = document.getElementById('ata-digital-feed');
+            if(!feedContainer) return;
+            try {
+                const snap = await db.collection('ata_digital').orderBy('data', 'desc').limit(10).get();
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html += `<div>${d.descricao}</div>`;
+                });
+                feedContainer.innerHTML = html;
+            } catch(e) {}
+        }
+
+        async function loadAlertasEPendencias() {
+            const feedContainer = document.getElementById('dashboard-alertas-feed');
+            if(!feedContainer) return;
+            try {
+                const snap = await db.collection('pastoral_tasks').where('status', '==', 'pendente').limit(5).get();
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html += `<div>${d.titulo} <button onclick="concluirDiretriz('${doc.id}')">OK</button></div>`;
+                });
+                feedContainer.innerHTML = html;
+            } catch(e) {}
+        }
+
+        async function renderOverviewCards() {
+            const grid = document.getElementById('pending-grid-overview');
+            if (!grid) return;
+            try {
+                const [peopleSnap, kidsSnap, integracaoSnap, requestsSnap] = await getPeopleKidsData();
+                const totalPeople = peopleSnap.size + kidsSnap.size;
+                const lideresAtivos = peopleSnap.docs.map(d=>d.data()).filter(p => p.leader_role).length;
+                const minSnap = await db.collection('ministries').get();
+                const ministeriosAtivos = minSnap ? minSnap.size : 0;
+
+                document.getElementById('stat-total-people').textContent = totalPeople;
+                document.getElementById('stat-lideres').textContent = lideresAtivos;
+                document.getElementById('stat-ministerios').textContent = ministeriosAtivos;
+            } catch (e) {}
+        }
+
+        async function renderDashboardCharts() {
+            // Placeholder for Chart rendering logic
+        }
+
+        function playNotificationSound() {}
+
+        async function loadRequests() {
+            // Implementation for loading requests
+        }
+
+        function handleNewArrival(key, currentCount, label) {
+            window._lastRequestCounts[key] = currentCount;
+        }
+
+        async function approveIntegrationFromAdmin(id, coll) {
+            // Approve integration flow
+        }
+
+        async function rescueToCRM(id) {
+            // Rescue logic
+        }
+
+        async function downloadMemberApplicationsCSV() {
+            // CSV Logic
+        }
+
+        function renderGenericTable(container, title, list, iconClass) {
+            // Table rendering logic
+        }
+
+        async function forwardToLeader(id, collection) {
+            // Forwarding logic
+        }
+
+        function filterForwardLeaders() {
+            // Filter logic
+        }
+
+        window.executeForward = function (id, collection, lName, lPhone, method, pName, pPhone, pDetail) {
+            // Forward execution logic
+        }
+
+        async function exportPrayerToGoogleDocs() {
+            // Google Docs export logic
+        }
+
+        function loadLeaders() {
+            // Load leaders logic
+        }
+
+        function loadNotifLeaders() {
+            // Load notification leaders logic
+        }
+
+        function renderNotifLeaders() {
+            // Render notification leaders logic
+        }
+
+        function addNotifLeader(sector) {
+            // Add notification leader logic
+        }
+
+        function removeNotifLeader(sector, idx) {
+            // Remove notification leader logic
+        }
+
+        async function viewProfile(personId, collectionName) {
+            // View profile modal logic
+        }
+
+        async function saveProfileChanges(personId, collectionName) {
+            // Save profile changes logic
+        }
+
+        function saveNotifLeaders() {
+            // Save notification leaders config
+        }
+
+        function clearAltarMessages() {
+            // Altar clearing logic
+        }
+
+        async function sendManualToAltar() {
+            // Manual altar send logic
+        }
+
+        async function sendBirthdayToAltar(name) {
+            // Send birthday to altar
+        }
+
+        function clearKidsRoomMessages() {
+            // Kids room clear logic
+        }
+
+        async function initSupernova() {
+            console.log("🚀 Supernova v70.3.60: Engine Started.");
+            initGlobalLiveObservers();
+            switchPage('dashboard');
+        }
+
+        function _toast(title, message, type = 'info') {
+            console.log(title, message);
+        }
+
+        function initGlobalLiveObservers() {
+            // Real-time listeners
+        }
+
+        // --- EVENTS SYSTEM ---
+        window._events = [];
+        window._activeEventId = null;
+
+        function loadEvents() {
+            // Load events logic
+        }
+
+        function renderEventCard(event, container) {
+            // Render event card logic
+        }
+
+        function openNewEventModal() {
+            document.getElementById('modal-event-new').style.display = 'flex';
+        }
+
+        function closeNewEventModal() {
+            document.getElementById('modal-event-new').style.display = 'none';
+        }
+
+        function saveNewEvent() {
+            // Save new event logic
+        }
+
+        function viewEventDetails(eventId) {
+            // View event details
+        }
+
+        function loadEventParticipants(event) {
+            // Load participants logic
+        }
+
+        function openAddParticipantModal() {
+            document.getElementById('modal-event-participant').style.display = 'flex';
+        }
+
+        function saveEventParticipant() {
+            // Save participant logic
+        }
+
+        async function exportEventReport(eventId) {
+            // Export event report logic
+        }
+
+        async function updatePaymentStatus(id, value) {
+            // Payment status logic
+        }
+
+        function deleteParticipant(id, collection) {
+            // Delete participant logic
+        }
+
+        function deleteEvent(id) {
+            }
+        }
+
+        function deletarMinisterio(id, nome) {
+            _confirm(`Deseja excluir a equipe ${nome}?`, async () => {
+                try {
+                    await db.collection('ministries').doc(id).delete();
+                    loadMinistriesGrid();
+                    if(window.registrarAtaDigital) {
+                        window.registrarAtaDigital('Exclusão', `Secretaria apagou a equipe ${nome}.`, 'Secretaria', 'Ministério');
+                    }
+                } catch(e) {
+                    _alert("Erro ao excluir: " + e.message);
+                }
+            });
+        }
+
+
+        /**
+         * === SUPERNOVA CORE ENGINE v70.3.1 ===
+         */
+        async function initSupernova() {
+            console.log("🚀 Supernova v70.3.59: Engine Started.");
+            
+            // [v70.3.37] Unified Session Listener
+            const authHandshake = new Promise((resolve) => {
+                window.addEventListener('message', function(event) {
+                    if (event.data.type === 'MASTER_BYPASS_SIGNAL') {
+                        console.log("💎 Master Bypass Received. Authenticating...");
+                        AuthManager.login('admin', event.data.pin).then(resolve);
+                    }
+                });
+                // Fallback if already logged in (local storage)
+                setTimeout(() => { if(firebase.auth().currentUser) resolve(); }, 2000);
+            });
+
+            await authHandshake;
+            console.log("✅ Auth Handshake OK. Starting Data Engine.");
+            
+            _toast("Lausanne Hub", "Sessão Master Ativa.", "success");
+            initGlobalLiveObservers();
+            switchPage('dashboard');
+        }
+
+        function _toast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const iconMap = {
+                'success': 'fa-check-circle',
+                'info': 'fa-info-circle',
+                'warning': 'fa-exclamation-triangle',
+                'error': 'fa-times-circle',
+                'arrival': 'fa-user-plus',
+                'conversion': 'fa-heart'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            if (type === 'error') toast.style.borderLeftColor = '#ef4444';
+            if (type === 'success') toast.style.borderLeftColor = '#10b981';
+            if (type === 'conversion') toast.style.borderLeftColor = '#be185d';
+
+            toast.innerHTML = `
+                <div class="toast-icon"><i class="fas ${iconMap[type] || 'fa-bell'}"></i></div>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto-remove
+            setTimeout(() => {
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function initGlobalLiveObservers() {
+            // Monitor real-time visitors for toast alerts
+            db.collection('pending').where('timestamp', '>', new Date())
+                .onSnapshot(snap => {
+                    snap.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const d = change.doc.data();
+                            const type = (d.type || '').toLowerCase();
+                            const name = d.name || d.person_name || 'Alguém';
+                            
+                            if (type.includes('visitant')) {
+                                _toast("Novo Visitante", `${name} acabou de chegar na recepção!`, "arrival");
+                            } else if (type.includes('convers') || type.includes('convert')) {
+                                _toast("Nova Decisão!", `${name} aceitou a Jesus! Celebrem!`, "conversion");
+                            } else if (type.includes('ora')) {
+                                _toast("Pedido de Oração", `${name} solicitou intercessão.`, "info");
+                            }
+                        }
+                    });
+                });
+        }
+
+        function updateSupernovaInsights(peopleDocs, requestsDocs, growthHistory) {
+            try {
+                const totalPeople = peopleDocs.length;
+                const visitorsDocs = peopleDocs.filter(d => (d.data().type || '').toLowerCase().includes('visitante'));
+                
+                // 1. Retention Math
+                // We consider 'returned' someone who has more than 1 attendance record in the last 30 days
+                // Since peopleDocs are current members/visitors, we'd need attendance history for true retention
+                // For now, let's use a heuristic based on 'type' transition or completeness
+                const completeProfiles = peopleDocs.filter(d => {
+                    let filled = 0;
+                    const data = d.data();
+                    for(let i=1; i<=42; i++) if (data['field_'+i]) filled++;
+                    return filled > 15;
+                }).length;
+                
+                const healthPct = totalPeople > 0 ? (completeProfiles / totalPeople) * 100 : 0;
+                
+                // 2. Growth Velocity
+                const growthArray = Object.values(growthHistory);
+                const lastThreeMonths = growthArray.slice(-3);
+                const avgLastThree = lastThreeMonths.reduce((a,b)=>a+b, 0) / 3;
+                const prevAvg = growthArray.slice(-6, -3).reduce((a,b)=>a+b, 0) / 3 || 1;
+                const velocity = ((avgLastThree - prevAvg) / prevAvg * 100).toFixed(0);
+                
+                const status = velocity > 10 ? "Acelerado 🚀" : velocity < -10 ? "Retração ⚠️" : "Estável ⚖️";
+                const insightText = `Health: <strong>${healthPct.toFixed(0)}%</strong> | Velocidade: <strong>${velocity}% (${status})</strong>`;
+                
+                document.getElementById('ia-insight-text').innerHTML = insightText;
+                
+                // 3. High-level KPI update
+                const kpiInsight = document.querySelector('.glass-card-v2[style*="background:#1e293b"] .stats-value-v2');
+                if (kpiInsight) {
+                    kpiInsight.innerText = (velocity > 0 ? "+" : "") + velocity + "%";
+                }
+            } catch (e) {
+                console.error("Supernova Insight Error:", e);
+            }
+        }
+
+        // Load on page init
+        loadNotifLeaders();
+    </script>
+    <!-- MODAL: NOVO EVENTO -->
+    <div id="modal-event-new" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px;">
+            <button onclick="closeNewEventModal()"
+                style="position:absolute; top:15px; right:20px; background:none; border:none; color:#999; cursor:pointer; font-size:1.8rem; width:auto; padding:0; line-height:1;">&times;</button>
+            <h3 style="margin-top:0; font-family:'Outfit'; font-weight:800; color:#111827;"><i class="fas fa-plus-circle"
+                    style="color:var(--gold-accent); margin-right:10px;"></i> Criar Novo Evento</h3>
+
+            <div style="display:flex; flex-direction:column; gap:15px; margin-top:20px;">
+                <div>
+                    <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Nome
+                        do Evento</label>
+                    <input type="text" id="new-event-name" placeholder="Ex: Conferência de Mulheres 2026"
+                        style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0; font-family:'Outfit';">
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label
+                            style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Data</label>
+                        <input type="date" id="new-event-date"
+                            style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0; font-family:'Outfit';">
+                    </div>
+                    <div style="flex:1;">
+                        <label
+                            style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Tipo</label>
+                        <select id="new-event-type"
+                            style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0; font-family:'Outfit';">
+                            <option value="open">Aberto (Check-in livre)</option>
+                            <option value="closed">Fechado (Lista de inscritos)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Responsável</label>
+                        <input type="text" id="new-event-creator" placeholder="Nome do Criador" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0; font-family:'Outfit';">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Valor (R$)</label>
+                        <input type="text" id="new-event-price" placeholder="0,00" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0; font-family:'Outfit';">
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Início</label>
+                        <input type="time" id="new-event-start" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0; font-family:'Outfit';">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Término</label>
+                        <input type="time" id="new-event-end" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0; font-family:'Outfit';">
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:5px;">Equipe de Apoio (integrantes)</label>
+                    <textarea id="new-event-team" placeholder="Nomes separados por vírgula" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0; font-family:'Outfit'; min-height:60px;"></textarea>
+                </div>
+
+                <button onclick="saveNewEvent()"
+                    style="background:#111827; color:var(--gold-accent); font-weight:800; padding:15px; border-radius:12px; border:none; cursor:pointer; margin-top:10px;">
+                    <i class="fas fa-save" style="margin-right:8px;"></i> Criar Evento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD PARTICIPANTE (EVENTO FECHADO) -->
+    <div id="modal-event-participant" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <button onclick="document.getElementById('modal-event-participant').style.display='none'"
+                style="position:absolute; top:15px; right:20px; background:none; border:none; color:#999; cursor:pointer; font-size:1.8rem; width:auto; padding:0; line-height:1;">&times;</button>
+            <h3 style="margin-top:0; font-family:'Outfit'; font-weight:800; color:#111827;">Adicionar Participante</h3>
+            <div style="display:flex; flex-direction:column; gap:15px; margin-top:20px;">
+                <input type="text" id="ep-name" placeholder="Nome Completo" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <input type="tel" id="ep-phone" placeholder="Contato" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <div style="display:flex; align-items:center; gap:10px; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                    <input type="checkbox" id="ep-paid" style="width:20px; height:20px; cursor:pointer;" onchange="document.getElementById('ep-receiver-div').style.display = this.checked ? 'block' : 'none'">
+                    <label for="ep-paid" style="font-size:0.9rem; font-weight:700; color:#1e293b; cursor:pointer;">Pagamento Confirmado</label>
+                </div>
+                <div id="ep-receiver-div" style="display:none;">
+                    <label style="display:block; font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:5px;">Recebido por (Equipe)</label>
+                    <input type="text" id="ep-receiver" placeholder="Quem recebeu o valor?" style="width:100%; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                </div>
+                <button onclick="saveEventParticipant()" style="background:var(--gold-accent); color:black; font-weight:800; padding:12px; border-radius:10px; border:none; cursor:pointer;">Confirmar Cadastro</button>
+            </div>
+        </div>
+    </div>
+    <!-- MODAL: MANUAL DO USUÁRIO -->
+    <div id="modal-user-manual" class="modal-overlay" style="display:none; z-index: 10001;">
+        <div class="modal-content" style="max-width: 800px; height: 85vh; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="padding: 20px 30px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fff;">
+                <h3 style="margin: 0; font-family: 'Outfit'; font-weight: 800; color: #111827;">
+                    <i class="fas fa-book-open" style="color: var(--gold-accent); margin-right: 10px;"></i> Manual Operacional - Lausanne Connect
+                </h3>
+                <button onclick="closeUserManualModal()" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.5rem;">&times;</button>
+            </div>
+            <div id="manual-content-body" style="flex: 1; overflow-y: auto; padding: 30px; line-height: 1.6; color: #334155; font-family: 'Inter', sans-serif;">
+                <div style="text-align: center; padding: 40px; color: #94a3b8;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+            </div>
+            <div style="padding: 15px 30px; border-top: 1px solid #f1f5f9; background: #f8fafc; text-align: right;">
+                <button onclick="closeUserManualModal()" style="background: #111827; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-weight: 700; cursor: pointer;">Entendido</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

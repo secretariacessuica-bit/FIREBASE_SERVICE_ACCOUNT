@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CES Bulle - Redirecionando...</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #050505;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            text-align: center;
+        }
+
+        .loader {
+            border: 4px solid rgba(212, 175, 55, 0.1);
+            border-top: 4px solid #d4af37;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fallback-links {
+            margin-top: 30px;
+            opacity: 0;
+            animation: fadeIn 2s forwards;
+            animation-delay: 2s;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        a {
+            color: #d4af37;
+            text-decoration: none;
+            font-weight: 700;
+            margin: 10px;
+            display: inline-block;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: 0.3s;
+        }
+
+        a:hover {
+            background: rgba(212, 175, 55, 0.1);
+            border-color: #d4af37;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loader"></div>
+    <div id="status">Iniciando sistema...</div>
+
+    <div class="fallback-links">
+        <p>Acesso rápido:</p>
+        <a href="connect.html" style="background: var(--gold-primary); color: #000; width: 85%; margin-bottom: 20px; font-size: 1.1rem; border: none;">
+            <i class="fas fa-heart"></i> SOU VISITANTE / CONECTAR
+        </a>
+        <br>
+        <p style="font-size: 0.8rem; opacity: 0.5;">Acesso para Obreiros:</p>
+        <a href="app.html?v=forcePC">Versão PC</a>
+        <a href="mobile.html?v=forceMobile">Versão Mobile</a>
+    </div>
+
+    <script>
+        // --- System Initialization v61.1.0 SUPERNOVA ---
+        console.log("🚀 System Booting v61.1.0 SUPERNOVA...");
+
+        // Extreme Detection for Smart Redirect
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const isMobileDevice = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+        const isSmallScreen = window.innerWidth <= 800; // Tablet inclusive
+
+        setTimeout(() => {
+            const v = new Date().getTime();
+            const search = window.location.search;
+            const vParam = search + (search ? '&' : '?') + 'v=' + v + '&clean=true';
+            const statusEl = document.getElementById('status');
+            
+            // Decisão inteligente de Interface com substituição de histórico (Replace)
+            if (isMobileDevice || isSmallScreen) {
+                if(statusEl) statusEl.innerText = "Conectando Mobile v61.1.0 Supernova...";
+                window.location.replace('mobile.html' + vParam);
+            } else {
+                if(statusEl) statusEl.innerText = "Conectando Master v61.1.0 Supernova...";
+                window.location.replace('app.html' + vParam);
+            }
+        }, 300); // Decisão quase instantânea
+
+        // --- Emergency Reset for Auth/Cache Locks v60.0 Supernova ---
+        async function emergencyReset() {
+            if (confirm("Isso vai limpar TODO o cache e reiniciar o aplicativo v61.0. Use apenas se houver erro de login. Continuar?")) {
+                const SW_VERSION = 'v61.0.0';
+                try {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (let r of regs) {
+                        console.log("Unregistering SW:", r.active.scriptURL);
+                        await r.unregister();
+                    }
+                    if ('caches' in window) {
+                        const keys = await caches.keys();
+                        for (let k of keys) {
+                            console.log("Deleting cache:", k);
+                            await caches.delete(k);
+                        }
+                    }
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    alert("✅ Limpeza Concluída! O sistema será reiniciado agora.");
+                    window.location.href = "https://catedralbulle.ch?v=" + new Date().getTime() + "&clean=true";
+                } catch (e) {
+                    console.error("Reset Error:", e);
+                    alert("Erro ao limpar: " + e.message);
+                }
+            }
+        }
+    </script>
+    <div style="text-align: center; margin-top: 20px; padding-bottom: 20px; opacity: 0.5; font-size: 0.8rem; color: white;">
+        <a href="#" onclick="emergencyReset(); return false;" style="color: #64748b; text-decoration: none; border:none; padding:0; background:none; font-weight:400;">
+            <i class="fas fa-trash-alt"></i> Limpar Tudo (Erro de Conexão)
+        </a>
+    </div>
+</body>
+</html>
