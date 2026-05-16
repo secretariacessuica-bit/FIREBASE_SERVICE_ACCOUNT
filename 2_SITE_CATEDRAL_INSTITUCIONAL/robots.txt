@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://cesbulle.ch/sitemap.xml
