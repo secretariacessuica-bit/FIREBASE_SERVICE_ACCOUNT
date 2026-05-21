@@ -53,7 +53,12 @@ service cloud.firestore {
       allow write: if hasRole('kids') || hasRole('reception') || isAdmin();
     }
     match /integracao/{docId} {
-      allow read, write: if hasRole('admin') || hasRole('reception') || hasRole('integracao') || hasRole('acolhimento');
+      allow create: if true;
+      allow read, update, delete: if hasRole('admin') || hasRole('reception') || hasRole('integracao') || hasRole('acolhimento');
+    }
+    match /schedule_requests/{docId} {
+      allow create: if true;
+      allow read, update, delete: if hasRole('admin') || hasRole('reception') || hasRole('integracao') || hasRole('acolhimento');
     }
     match /decisions/{docId} {
       allow read, write: if hasRole('admin') || hasRole('reception') || hasRole('acolhimento') || hasRole('integracao');
