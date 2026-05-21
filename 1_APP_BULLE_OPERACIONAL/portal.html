@@ -82,8 +82,8 @@
     </div>
 
     <script>
-        // --- System Initialization v71.0.0 SUPERNOVA ---
-        console.log("🚀 System Booting v71.0.0 SUPERNOVA...");
+        // --- System Initialization v71.0.1 SUPERNOVA ---
+        console.log("🚀 System Booting v71.0.1 SUPERNOVA...");
 
         // Extreme Detection for Smart Redirect
         const userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -98,18 +98,18 @@
             
             // Decisão inteligente de Interface com substituição de histórico (Replace)
             if (isMobileDevice || isSmallScreen) {
-                if(statusEl) statusEl.innerText = "Conectando Mobile v71.0.0 Supernova...";
+                if(statusEl) statusEl.innerText = "Conectando Mobile v71.0.1 Supernova...";
                 window.location.replace('mobile.html' + vParam);
             } else {
-                if(statusEl) statusEl.innerText = "Conectando Master v71.0.0 Supernova...";
+                if(statusEl) statusEl.innerText = "Conectando Master v71.0.1 Supernova...";
                 window.location.replace('app.html' + vParam);
             }
         }, 300); // Decisão quase instantânea
 
         // --- Emergency Reset for Auth/Cache Locks v60.0 Supernova ---
         async function emergencyReset() {
-            if (confirm("Isso vai limpar TODO o cache e reiniciar o aplicativo v71.0. Use apenas se houver erro de login. Continuar?")) {
-                const SW_VERSION = 'v71.0.0';
+            if (confirm("Isso vai limpar TODO o cache e reiniciar o aplicativo v71.0.1. Use apenas se houver erro de login. Continuar?")) {
+                const SW_VERSION = 'v71.0.1';
                 try {
                     const regs = await navigator.serviceWorker.getRegistrations();
                     for (let r of regs) {

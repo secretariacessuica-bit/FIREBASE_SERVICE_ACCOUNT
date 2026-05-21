@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jornada de Integração | CES Lausanne v70.3.76</title>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.76"></script>
+    <script src="js/auth-manager.js?v=70.3.76"></script>
+
+    <script>
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile_v2.html';
+            }
+        })();
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --gold: #C9A050;
+            --gold-dim: rgba(201, 160, 80, 0.08);
+            --gold-light: rgba(201, 160, 80, 0.2);
+            --bg: #0b0b0c;
+            --card-bg: #ffffff;
+            --panel-bg: #161516;
+            --text-dark: #1c1917;
+            --text-muted: #78716c;
+            --border: rgba(201, 160, 80, 0.12);
+            --green: #22c55e;
+            --blue: #3b82f6;
+            --purple: #8b5cf6;
+            --orange: #f97316;
+            --red: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; }
+
+        /* === LAYOUT === */
+        .app-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 1024px) {
+            .app-layout {
+                display: grid;
+                grid-template-columns: 240px 1fr;
+                gap: 28px;
+                max-width: 1300px;
+            }
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            display: none;
+            background: var(--panel-bg);
+            border-radius: 20px;
+            padding: 24px 16px;
+            border: 1px solid var(--border);
+            height: fit-content;
+            position: sticky;
+            top: 24px;
+        }
+
+        @media (min-width: 1024px) { .sidebar { display: block; } }
+
+        .sidebar-brand {
+            display: flex; align-items: center; gap: 10px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            margin-bottom: 20px;
+        }
+        .sidebar-brand-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: var(--gold-dim);
+            border: 1px solid var(--gold-light);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--gold); font-size: 1rem;
+        }
+        .sidebar-brand-name { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; }
+
+        .nav-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 14px; border-radius: 12px; cursor: pointer;
+            color: #a8a29e; font-size: 0.9rem; font-weight: 500;
+            transition: all 0.25s; margin-bottom: 4px;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.04); color: #fff; }
+        .nav-item.active { background: var(--gold-dim); color: #fff; font-weight: 700; border-left: 3px solid var(--gold); }
+        .nav-item .nav-left { display: flex; align-items: center; gap: 10px; }
+        .nav-badge {
+            background: var(--gold); color: #000; border-radius: 20px;
+            padding: 1px 8px; font-size: 0.68rem; font-weight: 800;
+            display: none;
+        }
+        .nav-badge.visible { display: inline-block; }
+
+        .sidebar-stats {
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding-top: 20px; margin-top: 20px;
+        }
+        .stat-label { font-size: 0.7rem; color: #a8a29e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .stat-value { font-size: 1.4rem; font-weight: 800; color: #fff; }
+        .stat-sub { font-size: 0.75rem; color: #a8a29e; margin-top: 2px; }
+        .progress-track {
+            background: rgba(255,255,255,0.08); height: 6px;
+            border-radius: 3px; overflow: hidden; margin-top: 10px;
+        }
+        .progress-fill { height: 100%; background: var(--gold); border-radius: 3px; transition: width 0.6s ease; }
+
+        /* === MAIN CONTENT === */
+        .main-content { flex: 1; min-width: 0; }
+
+        .page-header { margin-bottom: 28px; }
+        .page-title { font-size: 2rem; font-weight: 800; letter-spacing: -1px; }
+        .page-subtitle { color: #a8a29e; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+        /* === MOBILE TABS === */
+        .tabs-bar {
+            display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
+            background: var(--panel-bg); border-radius: 14px; padding: 5px;
+            margin-bottom: 24px; border: 1px solid var(--border);
+        }
+        .tabs-bar::-webkit-scrollbar { display: none; }
+
+        @media (min-width: 1024px) { .tabs-bar { display: none; } }
+
+        .tab-pill {
+            flex-shrink: 0; padding: 9px 16px; border-radius: 10px;
+            border: none; background: transparent; color: #a8a29e;
+            font-size: 0.82rem; font-weight: 600; cursor: pointer;
+            font-family: 'Inter', sans-serif; white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .tab-pill.active { background: var(--gold); color: #000; }
+        .tab-pill .pill-badge {
+            display: inline-block; background: rgba(0,0,0,0.15);
+            border-radius: 10px; padding: 0 5px; font-size: 0.65rem;
+            margin-left: 4px; font-weight: 800;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* === PERSON CARD === */
+        .person-card {
+            background: var(--card-bg); border-radius: 18px;
+            padding: 22px; margin-bottom: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            border: 1px solid rgba(201,160,80,0.06);
+            color: var(--text-dark);
+            animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .person-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(201,160,80,0.1); }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+        .person-name { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 700; }
+        .person-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+        .source-badge {
+            font-size: 0.65rem; font-weight: 800; padding: 3px 8px;
+            border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+        }
+        .source-recepcao { background: #eff6ff; color: #2563eb; }
+        .source-connect { background: #f0fdf4; color: #15803d; }
+        .source-manual { background: #fafaf9; color: #57534e; }
+
+        /* Day counter badge */
+        .day-counter {
+            display: flex; flex-direction: column; align-items: center;
+            background: #f8fafc; border-radius: 12px;
+            padding: 8px 14px; border: 2px solid #e2e8f0;
+            min-width: 70px; text-align: center; flex-shrink: 0;
+        }
+        .day-counter.complete { background: #f0fdf4; border-color: var(--green); }
+        .day-counter.post-exit { background: #f0f9ff; border-color: var(--blue); }
+        .day-counter.warning { background: #fffbeb; border-color: #f59e0b; }
+        .day-num { font-size: 1.3rem; font-weight: 800; line-height: 1; }
+        .day-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-top: 2px; }
+        .day-counter.complete .day-num { color: var(--green); }
+        .day-counter.post-exit .day-num { color: var(--blue); }
+
+        /* Progress bar inside card */
+        .card-progress { margin: 12px 0; }
+        .card-progress-track { background: #f1f5f9; height: 5px; border-radius: 3px; overflow: hidden; }
+        .card-progress-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+        .card-progress-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+
+        /* Info rows */
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+        .info-item { background: #fafaf9; border-radius: 10px; padding: 8px 12px; }
+        .info-item-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+        .info-item-value { font-size: 0.85rem; font-weight: 600; color: var(--text-dark); margin-top: 2px; }
+
+        /* Activity badges */
+        .activities-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+        .act-badge {
+            font-size: 0.68rem; font-weight: 700; padding: 4px 10px;
+            border-radius: 20px; display: flex; align-items: center; gap: 4px;
+        }
+        .act-evento { background: #fef3c7; color: #92400e; }
+        .act-pce { background: #ede9fe; color: #5b21b6; }
+        .act-pg { background: #dcfce7; color: #166534; }
+
+        /* Card actions */
+        .card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #f1f5f9; }
+        .btn-sm {
+            padding: 8px 14px; border-radius: 20px; border: none;
+            font-size: 0.78rem; font-weight: 700; cursor: pointer;
+            font-family: 'Inter', sans-serif; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .btn-dark { background: #1c1917; color: #fff; }
+        .btn-dark:hover { background: var(--gold); }
+        .btn-outline { background: transparent; border: 1.5px solid #e2e8f0; color: var(--text-muted); }
+        .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+        .btn-green { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .btn-green:hover { background: var(--green); color: #fff; }
+        .btn-gold { background: var(--gold); color: #000; }
+        .btn-gold:hover { background: #b8903f; }
+        .btn-disabled { background: #f1f5f9; color: #cbd5e1; cursor: not-allowed; }
+
+        /* Lock indicator */
+        .lock-indicator {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: #fef9ec; color: #92400e; border: 1px solid #fcd34d;
+            border-radius: 20px; padding: 6px 12px; font-size: 0.75rem; font-weight: 700;
+        }
+
+        /* Empty state */
+        .empty-state { text-align: center; padding: 60px 20px; opacity: 0.5; }
+        .empty-state i { font-size: 2.5rem; color: var(--gold); margin-bottom: 14px; display: block; }
+        .empty-state p { font-family: 'Playfair Display', serif; font-size: 1.2rem; }
+        .empty-state small { font-size: 0.85rem; color: #a8a29e; }
+
+        /* === MODALS === */
+        .modal-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            align-items: center; justify-content: center;
+            z-index: 99999; padding: 20px;
+        }
+        .modal-overlay.open { display: flex; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-box {
+            background: #fff; border-radius: 24px; width: 100%;
+            max-width: 520px; padding: 32px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+            color: var(--text-dark); max-height: 90vh; overflow-y: auto;
+            animation: slideUpModal 0.3s cubic-bezier(0.16,1,0.3,1);
+        }
+        .modal-box.wide { max-width: 680px; }
+        @keyframes slideUpModal {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 24px;
+        }
+        .modal-title { font-size: 1.4rem; font-weight: 700; }
+        .modal-close {
+            background: #f1f5f9; border: none; width: 32px; height: 32px;
+            border-radius: 50%; cursor: pointer; font-size: 1rem; color: #64748b;
+            display: flex; align-items: center; justify-content: center; transition: 0.2s;
+        }
+        .modal-close:hover { background: #e2e8f0; }
+
+        .form-group { margin-bottom: 18px; }
+        .form-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 6px; display: block; }
+        .form-label.gold { color: var(--gold); }
+        .form-control {
+            width: 100%; padding: 13px 16px; border: 1.5px solid #e2e8f0;
+            border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 0.92rem;
+            outline: none; background: #fafaf9; color: var(--text-dark); transition: 0.2s;
+        }
+        .form-control:focus { border-color: var(--gold); background: #fff; box-shadow: 0 0 0 3px var(--gold-dim); }
+        .form-control-textarea { resize: vertical; min-height: 80px; }
+
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .checkbox-item {
+            display: flex; align-items: center; gap: 7px;
+            background: #f8fafc; border: 1.5px solid #e2e8f0;
+            border-radius: 20px; padding: 7px 14px; cursor: pointer;
+            font-size: 0.82rem; font-weight: 600; transition: 0.2s; user-select: none;
+        }
+        .checkbox-item input { display: none; }
+        .checkbox-item.checked { background: var(--gold-dim); border-color: var(--gold); color: #92400e; }
+
+        /* Timeline */
+        .timeline { position: relative; padding-left: 20px; }
+        .timeline::before { content: ''; position: absolute; left: 6px; top: 0; bottom: 0; width: 2px; background: #f1f5f9; }
+        .timeline-item { position: relative; margin-bottom: 20px; }
+        .timeline-dot {
+            position: absolute; left: -20px; top: 4px;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--gold); border: 2px solid #fff;
+            box-shadow: 0 0 0 2px var(--gold-light);
+        }
+        .timeline-date { font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
+        .timeline-action { font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin: 2px 0; }
+        .timeline-by { font-size: 0.78rem; color: #64748b; }
+        .timeline-notes { font-size: 0.82rem; color: var(--text-muted); margin-top: 4px; background: #fafaf9; border-radius: 8px; padding: 8px 10px; }
+        .timeline-stage-badge { font-size: 0.65rem; background: var(--gold-dim); color: #92400e; border-radius: 8px; padding: 2px 7px; font-weight: 700; margin-left: 6px; }
+
+        /* Notification toast */
+        .notif-toast {
+            position: fixed; top: 16px; right: 16px; z-index: 999999;
+            background: #1c1917; color: #fff; border-radius: 14px;
+            padding: 14px 18px; display: none;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            border-left: 4px solid var(--gold); max-width: 300px;
+            animation: toastIn 0.4s cubic-bezier(0.16,1,0.3,1);
+        }
+        .notif-toast.show { display: block; }
+        @keyframes toastIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
+        .notif-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 3px; }
+        .notif-msg { font-size: 0.78rem; color: #a8a29e; }
+
+        /* Final report card */
+        .report-section { background: #fafaf9; border-radius: 12px; padding: 16px; margin-bottom: 14px; border: 1px solid #f1f5f9; }
+        .report-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gold); margin-bottom: 10px; }
+        .report-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #f1f5f9; font-size: 0.85rem; }
+        .report-row:last-child { border-bottom: none; }
+        .report-row-label { color: var(--text-muted); font-weight: 600; }
+        .report-row-value { font-weight: 700; color: var(--text-dark); text-align: right; }
+    </style>
+</head>
+<body>
+
+    <!-- Notification Toast -->
+    <div class="notif-toast" id="notif-toast">
+        <div class="notif-title" id="notif-title">Nova ficha chegou!</div>
+        <div class="notif-msg" id="notif-msg">Verificar Novos Amigos</div>
+    </div>
+
+    <div class="app-layout">
+        <!-- SIDEBAR (desktop) -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon"><i class="fas fa-route"></i></div>
+                <div class="sidebar-brand-name">Integração</div>
+            </div>
+
+            <nav>
+                <div class="nav-item active" onclick="switchTab('novos', this)" id="nav-novos">
+                    <div class="nav-left"><i class="fas fa-user-plus"></i> Novos Amigos</div>
+                    <span class="nav-badge" id="nav-badge-novos">0</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('monitor', this)" id="nav-monitor">
+                    <div class="nav-left"><i class="fas fa-eye"></i> Em Monitoramento</div>
+                    <span class="nav-badge" id="nav-badge-monitor">0</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('possaida', this)" id="nav-possaida">
+                    <div class="nav-left"><i class="fas fa-seedling"></i> Pós-Saída</div>
+                    <span class="nav-badge" id="nav-badge-possaida">0</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('concluidos', this)" id="nav-concluidos">
+                    <div class="nav-left"><i class="fas fa-check-circle"></i> Concluídos</div>
+                </div>
+            </nav>
+
+            <div class="sidebar-stats">
+                <div class="stat-label">Progresso Geral</div>
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-sub" id="stat-sub">pessoas na jornada</div>
+                <div class="progress-track" style="margin-top:8px;">
+                    <div class="progress-fill" id="stat-bar" style="width:0%"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Jornada de Integração</h1>
+                <p class="page-subtitle">Monitoramento Obrigatório · CES Lausanne</p>
+            </div>
+
+            <!-- Mobile tabs -->
+            <div class="tabs-bar">
+                <button class="tab-pill active" onclick="switchTab('novos', this)">
+                    <i class="fas fa-user-plus"></i> Novos <span class="pill-badge" id="pill-badge-novos"></span>
+                </button>
+                <button class="tab-pill" onclick="switchTab('monitor', this)">
+                    <i class="fas fa-eye"></i> Monitoramento <span class="pill-badge" id="pill-badge-monitor"></span>
+                </button>
+                <button class="tab-pill" onclick="switchTab('possaida', this)">
+                    <i class="fas fa-seedling"></i> Pós-Saída <span class="pill-badge" id="pill-badge-possaida"></span>
+                </button>
+                <button class="tab-pill" onclick="switchTab('concluidos', this)">
+                    <i class="fas fa-check-circle"></i> Concluídos
+                </button>
+            </div>
+
+            <!-- TAB: NOVOS AMIGOS -->
+            <div class="tab-content active" id="tab-novos">
+                <div style="margin-bottom:16px; padding:14px 18px; background:var(--panel-bg); border-radius:14px; border:1px solid var(--border); font-size:0.82rem; color:#a8a29e; line-height:1.5;">
+                    <i class="fas fa-info-circle" style="color:var(--gold); margin-right:6px;"></i>
+                    Pessoas que chegaram pela <strong style="color:#fff;">Receção</strong> ou <strong style="color:#fff;">Connect Visitante</strong>. Designar um monitor para iniciar os 30 dias de acompanhamento obrigatório.
+                </div>
+                <div id="list-novos"><div class="empty-state"><i class="fas fa-user-clock"></i><p>Nenhum novo registo</p><small>Novos visitantes aparecerão aqui automaticamente</small></div></div>
+            </div>
+
+            <!-- TAB: EM MONITORAMENTO -->
+            <div class="tab-content" id="tab-monitor">
+                <div style="margin-bottom:16px; padding:14px 18px; background:var(--panel-bg); border-radius:14px; border:1px solid var(--border); font-size:0.82rem; color:#a8a29e; line-height:1.5;">
+                    <i class="fas fa-shield-alt" style="color:var(--gold); margin-right:6px;"></i>
+                    Monitoramento obrigatório de <strong style="color:#fff;">30 dias</strong>. A pessoa pode estar em Evento, PCE ou PG em paralelo — o monitoramento não para. Botão de liberação só ativa após 30 dias.
+                </div>
+                <div id="list-monitor"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Carregando...</p></div></div>
+            </div>
+
+            <!-- TAB: PÓS-SAÍDA -->
+            <div class="tab-content" id="tab-possaida">
+                <div style="margin-bottom:16px; padding:14px 18px; background:var(--panel-bg); border-radius:14px; border:1px solid var(--border); font-size:0.82rem; color:#a8a29e; line-height:1.5;">
+                    <i class="fas fa-seedling" style="color:var(--gold); margin-right:6px;"></i>
+                    Fase de <strong style="color:#fff;">30 dias pós-saída</strong>. Acompanhamento leve. Após este período, concluir com relatório final e designar responsável.
+                </div>
+                <div id="list-possaida"><div class="empty-state"><i class="fas fa-seedling"></i><p>Nenhuma pessoa nesta fase</p></div></div>
+            </div>
+
+            <!-- TAB: CONCLUÍDOS -->
+            <div class="tab-content" id="tab-concluidos">
+                <div id="list-concluidos"><div class="empty-state"><i class="fas fa-check-circle"></i><p>Histórico vazio</p><small>Jornadas concluídas aparecerão aqui</small></div></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ===== MODAL: DESIGNAR MONITOR ===== -->
+    <div class="modal-overlay" id="modal-monitor">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 class="modal-title">Designar Monitor</h3>
+                <button class="modal-close" onclick="closeModal('modal-monitor')">✕</button>
+            </div>
+            <input type="hidden" id="mon-id">
+
+            <div id="mon-person-info" style="background:#fafaf9; border-radius:12px; padding:14px; margin-bottom:18px; font-size:0.9rem;"></div>
+
+            <div class="form-group">
+                <label class="form-label gold">Monitor Designado *</label>
+                <select id="mon-monitor" class="form-control">
+                    <option value="">Selecionar monitor...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Amigo / Acompanhante</label>
+                <input type="text" id="mon-companion" class="form-control" placeholder="Nome da pessoa que vai acompanhar">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Nota Inicial</label>
+                <textarea id="mon-note" class="form-control form-control-textarea" placeholder="Observações do primeiro contato..."></textarea>
+            </div>
+
+            <button onclick="saveMonitorAssignment()" class="btn-sm btn-gold" style="width:100%; padding:14px; font-size:0.9rem; border-radius:12px;">
+                <i class="fas fa-play-circle"></i> Iniciar Monitoramento de 30 Dias
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: REGISTRAR ACOLHIMENTO ===== -->
+    <div class="modal-overlay" id="modal-acolhimento">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 class="modal-title">Registrar Acolhimento</h3>
+                <button class="modal-close" onclick="closeModal('modal-acolhimento')">✕</button>
+            </div>
+            <input type="hidden" id="ac-id">
+
+            <div id="ac-person-info" style="background:#fafaf9; border-radius:12px; padding:14px; margin-bottom:18px; font-size:0.9rem;"></div>
+
+            <div class="form-group">
+                <label class="form-label">Ação Realizada</label>
+                <select id="ac-action" class="form-control">
+                    <option value="Ligação Realizada">Ligação Realizada</option>
+                    <option value="Mensagem WhatsApp">Mensagem WhatsApp</option>
+                    <option value="Visita Pessoal">Visita Pessoal</option>
+                    <option value="Encontro Presencial">Encontro Presencial</option>
+                    <option value="Oração de Acompanhamento">Oração de Acompanhamento</option>
+                    <option value="Atualização de Dados">Atualização de Dados</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Quem fez o acolhimento</label>
+                <input type="text" id="ac-by" class="form-control" placeholder="Nome do monitor/responsável">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Atividades em Paralelo (opcionais)</label>
+                <div class="checkbox-group" id="ac-activities">
+                    <label class="checkbox-item" onclick="toggleCheck(this)">
+                        <input type="checkbox" value="Evento"> <i class="fas fa-calendar-star"></i> Evento
+                    </label>
+                    <label class="checkbox-item" onclick="toggleCheck(this)">
+                        <input type="checkbox" value="PCE"> <i class="fas fa-book-open"></i> PCE
+                    </label>
+                    <label class="checkbox-item" onclick="toggleCheck(this)">
+                        <input type="checkbox" value="PG"> <i class="fas fa-users"></i> PG
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Necessidade / Motivo de Oração</label>
+                <input type="text" id="ac-need" class="form-control" placeholder="Ex: Cura, Família, Emprego...">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Resumo da Conversa / Notas</label>
+                <textarea id="ac-notes" class="form-control form-control-textarea" placeholder="O que foi conversado, estado emocional, próximas ações..."></textarea>
+            </div>
+
+            <button onclick="saveAcolhimento()" class="btn-sm btn-gold" style="width:100%; padding:14px; font-size:0.9rem; border-radius:12px;">
+                <i class="fas fa-save"></i> Salvar Registro
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: TIMELINE ===== -->
+    <div class="modal-overlay" id="modal-timeline">
+        <div class="modal-box wide">
+            <div class="modal-header">
+                <h3 class="modal-title" id="timeline-person-name">Jornada Completa</h3>
+                <button class="modal-close" onclick="closeModal('modal-timeline')">✕</button>
+            </div>
+            <div id="timeline-summary" style="background:#fafaf9; border-radius:12px; padding:14px; margin-bottom:20px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; text-align:center;"></div>
+            <div class="timeline" id="timeline-list"></div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: LIBERAR PARA PÓS-SAÍDA ===== -->
+    <div class="modal-overlay" id="modal-release">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 class="modal-title">Liberar para Pós-Saída</h3>
+                <button class="modal-close" onclick="closeModal('modal-release')">✕</button>
+            </div>
+            <input type="hidden" id="rel-id">
+
+            <div id="rel-person-info" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:14px; margin-bottom:18px; font-size:0.9rem;"></div>
+
+            <div class="form-group">
+                <label class="form-label">Avaliação do Monitor</label>
+                <textarea id="rel-notes" class="form-control form-control-textarea" placeholder="Como foi a jornada? A pessoa está estável e integrada?"></textarea>
+            </div>
+
+            <button onclick="saveRelease()" class="btn-sm btn-green" style="width:100%; padding:14px; font-size:0.9rem; border-radius:12px; border:none;">
+                <i class="fas fa-arrow-right"></i> Confirmar — Iniciar Fase Pós-Saída (30 dias)
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: CONCLUIR ===== -->
+    <div class="modal-overlay" id="modal-conclude">
+        <div class="modal-box wide">
+            <div class="modal-header">
+                <h3 class="modal-title">Concluir Integração</h3>
+                <button class="modal-close" onclick="closeModal('modal-conclude')">✕</button>
+            </div>
+            <input type="hidden" id="con-id">
+
+            <div id="con-report" style="margin-bottom:20px;"></div>
+
+            <div class="form-group">
+                <label class="form-label gold">Responsável Pós-Integração *</label>
+                <input type="text" id="con-responsible" class="form-control" placeholder="Nome do líder/célula/pastor que vai assumir">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Área / Ministério que vai assumir</label>
+                <input type="text" id="con-area" class="form-control" placeholder="Ex: Célula Norte, Louvor, Diaconato...">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Nota Final</label>
+                <textarea id="con-notes" class="form-control form-control-textarea" placeholder="Observações finais sobre a jornada da pessoa..."></textarea>
+            </div>
+
+            <button onclick="saveConclude()" class="btn-sm btn-gold" style="width:100%; padding:14px; font-size:0.9rem; border-radius:12px;">
+                <i class="fas fa-flag-checkered"></i> Finalizar e Arquivar Jornada
+            </button>
+        </div>
+    </div>
+
+    <script>
+        var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+        var _monitors = [];
+        var _dataCache = {};
+        var _previousNovosCount = -1;
+
+        // ========== AUTH ==========
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'MASTER_BYPASS_SIGNAL') {
+                if (firebase.auth().currentUser || window._autoLogging) return;
+                window._autoLogging = true;
+                AuthManager.login('integracao', e.data.pin).then(r => {
+                    window._autoLogging = false;
+                    if (r.success) initApp();
+                }).catch(() => { window._autoLogging = false; });
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            firebase.auth().onAuthStateChanged(function(user) {
+                if (user) {
+                    initApp();
+                } else {
+                    var pin = localStorage.getItem('current_session_pin');
+                    if (pin && pin.trim()) {
+                        window._autoLogging = true;
+                        AuthManager.login('integracao', pin).then(r => {
+                            window._autoLogging = false;
+                            if (r.success) initApp();
+                        }).catch(() => { window._autoLogging = false; });
+                    }
+                }
+            });
+        });
+
+        // ========== INIT ==========
+        function initApp() {
+            loadMonitors();
+            listenNovos();
+            listenMonitoramento();
+            listenPosSaida();
+            listenConcluidos();
+        }
+
+        function loadMonitors() {
+            db.collection('monitores').where('active', '==', true).get().then(snap => {
+                _monitors = [];
+                snap.forEach(doc => _monitors.push({ id: doc.id, ...doc.data() }));
+            });
+        }
+
+        // ========== LISTENERS ==========
+        function listenNovos() {
+            db.collection('integracao')
+              .where('integ_stage', '==', 'Novos Amigos')
+              .where('status', '==', 'em_integracao')
+              .onSnapshot(snap => {
+                var count = snap.size;
+                updateBadge('novos', count);
+
+                // Notification if new arrival (and not first load)
+                if (_previousNovosCount >= 0 && count > _previousNovosCount) {
+                    showToast('Nova ficha chegou!', 'Verificar aba Novos Amigos');
+                }
+                _previousNovosCount = count;
+
+                if (snap.empty) {
+                    document.getElementById('list-novos').innerHTML = '<div class="empty-state"><i class="fas fa-user-clock"></i><p>Nenhum novo registo</p><small>Novos visitantes aparecerão aqui automaticamente</small></div>';
+                    return;
+                }
+                var html = '';
+                snap.forEach(doc => {
+                    var d = { id: doc.id, ...doc.data() };
+                    _dataCache[d.id] = d;
+                    html += renderNovosCard(d);
+                });
+                document.getElementById('list-novos').innerHTML = html;
+                updateStats();
+            });
+        }
+
+        function listenMonitoramento() {
+            db.collection('integracao')
+              .where('integ_stage', '==', 'Em Monitoramento')
+              .where('status', '==', 'em_integracao')
+              .onSnapshot(snap => {
+                updateBadge('monitor', snap.size);
+                if (snap.empty) {
+                    document.getElementById('list-monitor').innerHTML = '<div class="empty-state"><i class="fas fa-eye-slash"></i><p>Ninguém em monitoramento</p></div>';
+                    return;
+                }
+                var html = '';
+                snap.forEach(doc => {
+                    var d = { id: doc.id, ...doc.data() };
+                    _dataCache[d.id] = d;
+                    html += renderMonitorCard(d);
+                });
+                document.getElementById('list-monitor').innerHTML = html;
+                updateStats();
+            });
+        }
+
+        function listenPosSaida() {
+            db.collection('integracao')
+              .where('integ_stage', '==', 'Pós-Saída')
+              .where('status', '==', 'pos_saida')
+              .onSnapshot(snap => {
+                updateBadge('possaida', snap.size);
+                if (snap.empty) {
+                    document.getElementById('list-possaida').innerHTML = '<div class="empty-state"><i class="fas fa-seedling"></i><p>Nenhuma pessoa nesta fase</p></div>';
+                    return;
+                }
+                var html = '';
+                snap.forEach(doc => {
+                    var d = { id: doc.id, ...doc.data() };
+                    _dataCache[d.id] = d;
+                    html += renderPosSaidaCard(d);
+                });
+                document.getElementById('list-possaida').innerHTML = html;
+                updateStats();
+            });
+        }
+
+        function listenConcluidos() {
+            db.collection('integracao')
+              .where('status', '==', 'concluido')
+              .onSnapshot(snap => {
+                if (snap.empty) {
+                    document.getElementById('list-concluidos').innerHTML = '<div class="empty-state"><i class="fas fa-check-circle"></i><p>Histórico vazio</p></div>';
+                    return;
+                }
+                var html = '';
+                snap.forEach(doc => {
+                    var d = { id: doc.id, ...doc.data() };
+                    _dataCache[d.id] = d;
+                    html += renderConcluidoCard(d);
+                });
+                document.getElementById('list-concluidos').innerHTML = html;
+                updateStats();
+            });
+        }
+
+        // ========== RENDER CARDS ==========
+        function getSourceLabel(source) {
+            if (source === 'recepcao') return '<span class="source-badge source-recepcao">Receção</span>';
+            if (source === 'connect_visitante') return '<span class="source-badge source-connect">Connect</span>';
+            return '<span class="source-badge source-manual">Manual</span>';
+        }
+
+        function getDateStr(ts) {
+            if (!ts) return '—';
+            var d = ts.toDate ? ts.toDate() : new Date(ts);
+            return d.toLocaleDateString('pt-PT');
+        }
+
+        function getDays(ts) {
+            if (!ts) return 0;
+            var d = ts.toDate ? ts.toDate() : new Date(ts);
+            return Math.floor((new Date() - d) / 86400000);
+        }
+
+        function getActivitiesBadges(activities) {
+            if (!activities || activities.length === 0) return '';
+            return '<div class="activities-row">' +
+                activities.map(a => {
+                    var cls = a === 'Evento' ? 'act-evento' : a === 'PCE' ? 'act-pce' : 'act-pg';
+                    return '<span class="act-badge ' + cls + '"><i class="fas fa-circle" style="font-size:0.4rem;"></i>' + a + '</span>';
+                }).join('') +
+            '</div>';
+        }
+
+        function renderNovosCard(d) {
+            return '<div class="person-card">' +
+                '<div class="card-top">' +
+                    '<div>' +
+                        '<div class="person-name">' + (d.name || 'Sem nome') + '</div>' +
+                        '<div class="person-meta">' + (d.contact || '—') + ' · ' + getDateStr(d.entry_date || d.timestamp) + '</div>' +
+                    '</div>' +
+                    '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">' +
+                        getSourceLabel(d.entry_source) +
+                        '<div style="font-size:0.72rem; color:#a8a29e;">Aguardando monitor</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:10px; padding:10px 14px; font-size:0.82rem; color:#92400e; font-weight:600;">' +
+                    '<i class="fas fa-exclamation-triangle" style="margin-right:6px;"></i>' +
+                    'Designar monitor para iniciar o período de 30 dias' +
+                '</div>' +
+                '<div class="card-actions">' +
+                    '<button class="btn-sm btn-dark" onclick="openAssignMonitor(\'' + d.id + '\')">' +
+                        '<i class="fas fa-user-shield"></i> Designar Monitor' +
+                    '</button>' +
+                    '<button class="btn-sm btn-outline" style="border-color: var(--gold); color: var(--gold);" onclick="sendToSecretariaTriage(\'' + d.id + '\')">' +
+                        '<i class="fas fa-church"></i> Outra Igreja' +
+                    '</button>' +
+                    '<button class="btn-sm btn-outline" onclick="openTimeline(\'' + d.id + '\')">' +
+                        '<i class="fas fa-history"></i> Histórico' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function renderMonitorCard(d) {
+            var days = getDays(d.monitoring_start);
+            var progress = Math.min(100, Math.round((days / 30) * 100));
+            var canExit = days >= 30;
+            var progressColor = canExit ? '#22c55e' : days >= 20 ? '#f59e0b' : '#C9A050';
+            var counterClass = canExit ? 'complete' : days >= 20 ? 'warning' : '';
+
+            return '<div class="person-card">' +
+                '<div class="card-top">' +
+                    '<div style="flex:1;">' +
+                        '<div class="person-name">' + (d.name || 'Sem nome') + '</div>' +
+                        '<div class="person-meta">' + (d.contact || '—') + ' · ' + getSourceLabel(d.entry_source) + '</div>' +
+                    '</div>' +
+                    '<div class="day-counter ' + counterClass + '">' +
+                        '<div class="day-num">' + days + '</div>' +
+                        '<div class="day-label">de 30 dias</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="card-progress">' +
+                    '<div class="card-progress-track">' +
+                        '<div class="card-progress-fill" style="width:' + progress + '%; background:' + progressColor + ';"></div>' +
+                    '</div>' +
+                    '<div class="card-progress-label">' +
+                        '<span>Monitoramento: ' + progress + '%</span>' +
+                        (canExit ? '<span style="color:#22c55e; font-weight:700;">✓ Pronto para liberação</span>' : '<span>' + (30-days) + ' dias restantes</span>') +
+                    '</div>' +
+                '</div>' +
+                '<div class="info-grid">' +
+                    '<div class="info-item"><div class="info-item-label">Monitor</div><div class="info-item-value">' + (d.monitor || '—') + '</div></div>' +
+                    '<div class="info-item"><div class="info-item-label">Amigo/Acomp.</div><div class="info-item-value">' + (d.companion || '—') + '</div></div>' +
+                '</div>' +
+                getActivitiesBadges(d.parallel_activities) +
+                '<div class="card-actions">' +
+                    '<button class="btn-sm btn-dark" onclick="openAcolhimento(\'' + d.id + '\')">' +
+                        '<i class="fas fa-pen"></i> Registrar' +
+                    '</button>' +
+                    '<button class="btn-sm btn-outline" onclick="openTimeline(\'' + d.id + '\')">' +
+                        '<i class="fas fa-history"></i> Jornada' +
+                    '</button>' +
+                    (canExit ?
+                        '<button class="btn-sm btn-green" onclick="openRelease(\'' + d.id + '\')">' +
+                            '<i class="fas fa-arrow-right"></i> Liberar →' +
+                        '</button>'
+                        :
+                        '<span class="lock-indicator"><i class="fas fa-lock"></i> Libera em ' + (30-days) + ' dia(s)</span>'
+                    ) +
+                '</div>' +
+            '</div>';
+        }
+
+        function renderPosSaidaCard(d) {
+            var days = getDays(d.post_exit_start);
+            var progress = Math.min(100, Math.round((days / 30) * 100));
+            var canConclude = days >= 30;
+
+            return '<div class="person-card">' +
+                '<div class="card-top">' +
+                    '<div style="flex:1;">' +
+                        '<div class="person-name">' + (d.name || 'Sem nome') + '</div>' +
+                        '<div class="person-meta">' + (d.contact || '—') + ' · Pós-Saída desde ' + getDateStr(d.post_exit_start) + '</div>' +
+                    '</div>' +
+                    '<div class="day-counter post-exit ' + (canConclude ? 'complete' : '') + '">' +
+                        '<div class="day-num" style="color:' + (canConclude ? '#22c55e' : '#3b82f6') + ';">' + days + '</div>' +
+                        '<div class="day-label">de 30 dias</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="card-progress">' +
+                    '<div class="card-progress-track">' +
+                        '<div class="card-progress-fill" style="width:' + progress + '%; background:#3b82f6;"></div>' +
+                    '</div>' +
+                    '<div class="card-progress-label">' +
+                        '<span>Pós-Saída: ' + progress + '%</span>' +
+                        (canConclude ? '<span style="color:#22c55e; font-weight:700;">✓ Pronto para concluir</span>' : '<span>' + (30-days) + ' dias restantes</span>') +
+                    '</div>' +
+                '</div>' +
+                '<div class="info-grid">' +
+                    '<div class="info-item"><div class="info-item-label">Monitor</div><div class="info-item-value">' + (d.monitor || '—') + '</div></div>' +
+                    '<div class="info-item"><div class="info-item-label">Monit. Inicial</div><div class="info-item-value">' + getDays(d.monitoring_start) + ' dias</div></div>' +
+                '</div>' +
+                '<div class="card-actions">' +
+                    '<button class="btn-sm btn-dark" onclick="openAcolhimento(\'' + d.id + '\')">' +
+                        '<i class="fas fa-pen"></i> Registrar' +
+                    '</button>' +
+                    '<button class="btn-sm btn-outline" onclick="openTimeline(\'' + d.id + '\')">' +
+                        '<i class="fas fa-history"></i> Jornada' +
+                    '</button>' +
+                    (canConclude ?
+                        '<button class="btn-sm btn-gold" onclick="openConclude(\'' + d.id + '\')">' +
+                            '<i class="fas fa-flag-checkered"></i> Concluir' +
+                        '</button>'
+                        :
+                        '<span class="lock-indicator"><i class="fas fa-lock"></i> Conclui em ' + (30-days) + ' dia(s)</span>'
+                    ) +
+                '</div>' +
+            '</div>';
+        }
+
+        function renderConcluidoCard(d) {
+            var totalDays = getDays(d.entry_date || d.timestamp);
+            return '<div class="person-card" style="border-left:4px solid #22c55e;">' +
+                '<div class="card-top">' +
+                    '<div>' +
+                        '<div class="person-name">' + (d.name || 'Sem nome') + '</div>' +
+                        '<div class="person-meta">Concluído em ' + getDateStr(d.concluded_at) + ' · ' + totalDays + ' dias de jornada</div>' +
+                    '</div>' +
+                    '<span style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; border-radius:20px; padding:4px 12px; font-size:0.72rem; font-weight:800;">✓ INTEGRADO</span>' +
+                '</div>' +
+                '<div class="info-grid">' +
+                    '<div class="info-item"><div class="info-item-label">Monitor</div><div class="info-item-value">' + (d.monitor || '—') + '</div></div>' +
+                    '<div class="info-item"><div class="info-item-label">Responsável Final</div><div class="info-item-value">' + (d.final_responsible || '—') + '</div></div>' +
+                '</div>' +
+                '<div class="card-actions">' +
+                    '<button class="btn-sm btn-outline" onclick="openTimeline(\'' + d.id + '\')">' +
+                        '<i class="fas fa-history"></i> Ver Relatório Completo' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+        }
+
+        // ========== MODALS ==========
+        function openAssignMonitor(id) {
+            var d = _dataCache[id];
+            document.getElementById('mon-id').value = id;
+            document.getElementById('mon-person-info').innerHTML =
+                '<strong>' + (d.name || 'Sem nome') + '</strong> · ' + (d.contact || '') +
+                '<br><small style="color:#64748b;">Entrada: ' + getDateStr(d.entry_date || d.timestamp) + ' via ' + (d.entry_source || 'manual') + '</small>';
+
+            // Populate monitor select
+            var sel = document.getElementById('mon-monitor');
+            sel.innerHTML = '<option value="">Selecionar monitor...</option>';
+            _monitors.forEach(m => {
+                sel.innerHTML += '<option value="' + m.name + '">' + m.name + (m.phone ? ' · ' + m.phone : '') + '</option>';
+            });
+
+            document.getElementById('mon-companion').value = d.companion || '';
+            document.getElementById('mon-note').value = '';
+            document.getElementById('modal-monitor').classList.add('open');
+        }
+
+        function saveMonitorAssignment() {
+            var id = document.getElementById('mon-id').value;
+            var monitor = document.getElementById('mon-monitor').value;
+            var companion = document.getElementById('mon-companion').value;
+            var note = document.getElementById('mon-note').value;
+
+            if (!monitor) { alert('Selecione um monitor.'); return; }
+
+            var now = firebase.firestore.FieldValue.serverTimestamp();
+            var entry = {
+                action: 'Monitor Designado',
+                by: monitor,
+                notes: note || 'Monitoramento obrigatório de 30 dias iniciado.',
+                stage: 'Em Monitoramento',
+                date: new Date().toLocaleDateString('pt-PT')
+            };
+
+            db.collection('integracao').doc(id).update({
+                monitor: monitor,
+                companion: companion,
+                monitoring_start: now,
+                integ_stage: 'Em Monitoramento',
+                timeline: firebase.firestore.FieldValue.arrayUnion(entry)
+            }).then(() => {
+                closeModal('modal-monitor');
+            }).catch(e => alert('Erro: ' + e.message));
+        }
+
+        function sendToSecretariaTriage(id) {
+            var d = _dataCache[id];
+            if (!d) return;
+
+            var confirmMsg = "Deseja enviar " + (d.name || "este visitante") + " diretamente para a triagem da secretaria como visitante de outra igreja?";
+            if (!confirm(confirmMsg)) return;
+
+            var now = firebase.firestore.FieldValue.serverTimestamp();
+            
+            db.collection('pending').add({
+                name: d.name || '',
+                contact: d.contact || '',
+                type: 'visitante_outra_igreja',
+                action: 'Triagem — Visitante de Outra Igreja',
+                detail: 'Visitante de outra igreja. Encaminhado diretamente para a triagem da secretaria pela equipe de Integração.',
+                status: 'pending',
+                timestamp: now
+            }).then(() => {
+                var timelineEntry = {
+                    action: 'Encaminhado p/ Secretaria (Outra Igreja)',
+                    by: 'Equipe de Integração',
+                    notes: 'Visitante vindo de outra igreja encaminhado diretamente para a triagem da secretaria.',
+                    stage: 'Secretaria',
+                    date: new Date().toLocaleDateString('pt-PT')
+                };
+
+                return db.collection('integracao').doc(id).update({
+                    status: 'visitante_outra_igreja',
+                    integ_stage: 'Enviado para Secretaria',
+                    timeline: firebase.firestore.FieldValue.arrayUnion(timelineEntry)
+                });
+            }).then(() => {
+                showToast("Encaminhado", "Visitante encaminhado para a secretaria!");
+            }).catch(e => {
+                alert("Erro ao encaminhar visitante: " + e.message);
+            });
+        }
+
+        function openAcolhimento(id) {
+            var d = _dataCache[id];
+            document.getElementById('ac-id').value = id;
+            document.getElementById('ac-person-info').innerHTML =
+                '<strong>' + (d.name || 'Sem nome') + '</strong> · ' + (d.contact || '') +
+                '<br><small style="color:#64748b;">Monitor: ' + (d.monitor || '—') + '</small>';
+            document.getElementById('ac-by').value = d.monitor || '';
+            document.getElementById('ac-need').value = '';
+            document.getElementById('ac-notes').value = '';
+
+            // Reset checkboxes
+            document.querySelectorAll('#ac-activities .checkbox-item').forEach(el => el.classList.remove('checked'));
+            var current = d.parallel_activities || [];
+            document.querySelectorAll('#ac-activities .checkbox-item input').forEach(inp => {
+                if (current.includes(inp.value)) inp.parentElement.classList.add('checked');
+            });
+
+            document.getElementById('modal-acolhimento').classList.add('open');
+        }
+
+        function saveAcolhimento() {
+            var id = document.getElementById('ac-id').value;
+            var action = document.getElementById('ac-action').value;
+            var by = document.getElementById('ac-by').value;
+            var need = document.getElementById('ac-need').value;
+            var notes = document.getElementById('ac-notes').value;
+            var d = _dataCache[id];
+
+            var activities = [];
+            document.querySelectorAll('#ac-activities .checkbox-item.checked input').forEach(inp => activities.push(inp.value));
+
+            var entry = {
+                action: action,
+                by: by || 'Equipa',
+                notes: notes,
+                need: need,
+                stage: (d.integ_stage || '') + (activities.length > 0 ? ' + ' + activities.join(', ') : ''),
+                date: new Date().toLocaleDateString('pt-PT')
+            };
+
+            var updates = {
+                timeline: firebase.firestore.FieldValue.arrayUnion(entry)
+            };
+            if (activities.length > 0) updates.parallel_activities = activities;
+
+            db.collection('integracao').doc(id).update(updates).then(() => {
+                closeModal('modal-acolhimento');
+            }).catch(e => alert('Erro: ' + e.message));
+        }
+
+        function openTimeline(id) {
+            var d = _dataCache[id];
+            document.getElementById('timeline-person-name').textContent = (d.name || 'Pessoa') + ' — Jornada Completa';
+
+            var days = getDays(d.monitoring_start);
+            var totalDays = getDays(d.entry_date || d.timestamp);
+            var acts = (d.parallel_activities || []).join(', ') || 'Nenhuma';
+
+            document.getElementById('timeline-summary').innerHTML =
+                '<div><div style="font-size:0.65rem;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Entrada</div><div style="font-weight:700;">' + getDateStr(d.entry_date || d.timestamp) + '</div></div>' +
+                '<div><div style="font-size:0.65rem;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Dias Monitor</div><div style="font-weight:700;color:' + (days >= 30 ? '#22c55e' : '#C9A050') + ';">' + days + '/30</div></div>' +
+                '<div><div style="font-size:0.65rem;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Atividades</div><div style="font-weight:700;font-size:0.8rem;">' + acts + '</div></div>';
+
+            var timeline = (d.timeline || []).slice().reverse();
+            if (timeline.length === 0) {
+                document.getElementById('timeline-list').innerHTML = '<p style="color:#a8a29e; text-align:center; padding:20px;">Nenhum registo ainda.</p>';
+            } else {
+                document.getElementById('timeline-list').innerHTML = timeline.map(t =>
+                    '<div class="timeline-item">' +
+                        '<div class="timeline-dot"></div>' +
+                        '<div class="timeline-date">' + t.date + '</div>' +
+                        '<div class="timeline-action">' + t.action + (t.stage ? '<span class="timeline-stage-badge">' + t.stage + '</span>' : '') + '</div>' +
+                        '<div class="timeline-by">Por: ' + (t.by || '—') + (t.need ? ' · Necessidade: ' + t.need : '') + '</div>' +
+                        (t.notes ? '<div class="timeline-notes">' + t.notes + '</div>' : '') +
+                    '</div>'
+                ).join('');
+            }
+
+            document.getElementById('modal-timeline').classList.add('open');
+        }
+
+        function openRelease(id) {
+            var d = _dataCache[id];
+            var days = getDays(d.monitoring_start);
+            document.getElementById('rel-id').value = id;
+            document.getElementById('rel-person-info').innerHTML =
+                '<i class="fas fa-check-circle" style="color:#22c55e; margin-right:8px;"></i>' +
+                '<strong>' + (d.name || 'Sem nome') + '</strong> completou <strong>' + days + ' dias</strong> de monitoramento.' +
+                '<br><small style="color:#166534; margin-top:4px; display:block;">Monitor: ' + (d.monitor || '—') + '</small>';
+            document.getElementById('rel-notes').value = '';
+            document.getElementById('modal-release').classList.add('open');
+        }
+
+        function saveRelease() {
+            var id = document.getElementById('rel-id').value;
+            var notes = document.getElementById('rel-notes').value;
+            var d = _dataCache[id];
+
+            var now = firebase.firestore.FieldValue.serverTimestamp();
+            var entry = {
+                action: 'Liberado para Pós-Saída',
+                by: d.monitor || 'Monitor',
+                notes: notes || 'Período de 30 dias concluído com sucesso.',
+                stage: 'Pós-Saída',
+                date: new Date().toLocaleDateString('pt-PT')
+            };
+
+            db.collection('integracao').doc(id).update({
+                integ_stage: 'Pós-Saída',
+                status: 'pos_saida',
+                post_exit_start: now,
+                timeline: firebase.firestore.FieldValue.arrayUnion(entry)
+            }).then(() => {
+                closeModal('modal-release');
+            }).catch(e => alert('Erro: ' + e.message));
+        }
+
+        function openConclude(id) {
+            var d = _dataCache[id];
+            document.getElementById('con-id').value = id;
+            document.getElementById('con-responsible').value = '';
+            document.getElementById('con-area').value = '';
+            document.getElementById('con-notes').value = '';
+
+            var totalDays = getDays(d.entry_date || d.timestamp);
+            var acts = (d.parallel_activities || []).join(', ') || 'Nenhuma';
+            var contacts = (d.timeline || []).length;
+
+            document.getElementById('con-report').innerHTML =
+                '<div class="report-section">' +
+                    '<div class="report-section-title">Resumo da Jornada</div>' +
+                    '<div class="report-row"><span class="report-row-label">Nome</span><span class="report-row-value">' + (d.name || '—') + '</span></div>' +
+                    '<div class="report-row"><span class="report-row-label">Entrada</span><span class="report-row-value">' + getDateStr(d.entry_date || d.timestamp) + '</span></div>' +
+                    '<div class="report-row"><span class="report-row-label">Via</span><span class="report-row-value">' + (d.entry_source || 'manual') + '</span></div>' +
+                    '<div class="report-row"><span class="report-row-label">Monitor</span><span class="report-row-value">' + (d.monitor || '—') + '</span></div>' +
+                    '<div class="report-row"><span class="report-row-label">Amigo/Acomp.</span><span class="report-row-value">' + (d.companion || '—') + '</span></div>' +
+                    '<div class="report-row"><span class="report-row-label">Atividades</span><span class="report-row-value">' + acts + '</span></div>' +
+                    '<div class="report-row"><span class="report-row-label">Total de dias</span><span class="report-row-value">' + totalDays + ' dias</span></div>' +
+                    '<div class="report-row"><span class="report-row-label">Registros de acolhimento</span><span class="report-row-value">' + contacts + '</span></div>' +
+                '</div>';
+
+            document.getElementById('modal-conclude').classList.add('open');
+        }
+
+        function saveConclude() {
+            var id = document.getElementById('con-id').value;
+            var responsible = document.getElementById('con-responsible').value;
+            var area = document.getElementById('con-area').value;
+            var notes = document.getElementById('con-notes').value;
+
+            if (!responsible) { alert('Informe o responsável pós-integração.'); return; }
+
+            var entry = {
+                action: 'Integração Concluída',
+                by: responsible,
+                notes: notes + (area ? '\nÁrea: ' + area : ''),
+                stage: 'Concluído',
+                date: new Date().toLocaleDateString('pt-PT')
+            };
+
+            db.collection('integracao').doc(id).update({
+                integ_stage: 'Concluído',
+                status: 'concluido',
+                final_responsible: responsible,
+                final_area: area,
+                concluded_at: firebase.firestore.FieldValue.serverTimestamp(),
+                timeline: firebase.firestore.FieldValue.arrayUnion(entry)
+            }).then(() => {
+                closeModal('modal-conclude');
+            }).catch(e => alert('Erro: ' + e.message));
+        }
+
+        // ========== HELPERS ==========
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+
+            document.querySelectorAll('.nav-item, .tab-pill').forEach(b => b.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            var navEl = document.getElementById('nav-' + tabId);
+            if (navEl) navEl.classList.add('active');
+        }
+
+        function updateBadge(tab, count) {
+            var nb = document.getElementById('nav-badge-' + tab);
+            var pb = document.getElementById('pill-badge-' + tab);
+            if (nb) { nb.textContent = count; nb.classList.toggle('visible', count > 0); }
+            if (pb) { pb.textContent = count > 0 ? count : ''; }
+        }
+
+        function updateStats() {
+            var total = 0;
+            var concluded = 0;
+            document.querySelectorAll('.person-card').forEach(() => total++);
+            var el = document.getElementById('stat-total');
+            if (el) el.textContent = total;
+        }
+
+        function toggleCheck(el) {
+            el.classList.toggle('checked');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        function showToast(title, msg) {
+            var t = document.getElementById('notif-toast');
+            document.getElementById('notif-title').textContent = title;
+            document.getElementById('notif-msg').textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 4000);
+        }
+
+        // Close modal on backdrop click
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) modal.classList.remove('open');
+            });
+        });
+    </script>
+</body>
+</html>

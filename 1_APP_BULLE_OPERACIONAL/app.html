@@ -9,17 +9,17 @@
     <meta http-equiv="Expires" content="0">
     <title>CES Bulle | Master Connect</title>
     <link rel="icon" type="image/jpeg" href="assets/logo bulle.jpeg?v=3">
-    <!-- Antigravity 2.4 - Unified Shell v71.0.0 Diamond Phoenix -->
-    <link rel="stylesheet" href="css/style-v2.css?v=71.0.0">
-    <link rel="stylesheet" href="css/mobile-v2.css?v=71.0.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css?v=71.0.0">
+    <!-- Antigravity 2.4 - Unified Shell v71.0.1 Diamond Phoenix -->
+    <link rel="stylesheet" href="css/style-v2.css?v=71.0.1">
+    <link rel="stylesheet" href="css/mobile-v2.css?v=71.0.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css?v=71.0.1">
     
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js?v=71.0.0"></script>
-    <script src="js/auth-manager.js?v=71.0.0"></script>
+    <script src="js/firebase-config.js?v=71.0.1"></script>
+    <script src="js/auth-manager.js?v=71.0.1"></script>
     <script>
         // --- SECURITY GUARD v48.28.0 ---
         (async function() {
@@ -461,7 +461,7 @@
             <iframe data-src="altar.html" id="iframe-altar"></iframe>
         </div>
         <div id="view-integracao" class="app-view">
-            <iframe data-src="integracao_v2.html" id="iframe-integracao"></iframe>
+            <iframe data-src="integracao_v3.html" id="iframe-integracao"></iframe>
         </div>
     </div>
 
@@ -526,10 +526,10 @@
             // SW v61.1.0 - DIAMOND UPDATE
             if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
                 window.addEventListener('load', () => {
-                    const swUrl = 'sw-v4.js?v=71.0.0'; 
-                    const CURRENT_VERSION = "v71.0.0";
+                    const swUrl = 'sw-v4.js?v=71.0.1'; 
+                    const CURRENT_VERSION = "v71.0.1";
                     navigator.serviceWorker.register(swUrl).then(reg => {
-                        console.log("🚀 SW v71.0.0 Registered");
+                        console.log("🚀 SW v71.0.1 Registered");
                         
                         // Critical Update Handler
                         reg.onupdatefound = () => {

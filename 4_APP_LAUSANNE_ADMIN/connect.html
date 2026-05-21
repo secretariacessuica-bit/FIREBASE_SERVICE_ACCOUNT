@@ -1,323 +1,1367 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hub Connect | Lausanne v51.2.4 Diamond Phoenix</title>
+    <title>Catedral Lausanne | Connect</title>
+    <meta name="description" content="Bem-vindo à Catedral Lausanne. Conecte-se, faça pedidos de oração, registre-se e explore nossa comunidade.">
 
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Firebase SDKs (Compat v8.10.1) -->
+
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js?v=51.2.4"></script>
+    <script src="js/firebase-config.js?v=70.3.76"></script>
 
     <style>
         :root {
-            --gold-primary: #D4AF37;
-            --gold-gradient: linear-gradient(to right, #cfaf5d 0%, #fcf6ba 25%, #d4af37 50%, #fcf6ba 75%, #cfaf5d 100%);
-            --bg-deep: #060608;
-            --card-glass: rgba(20, 20, 25, 0.8);
-            --text-white: #ffffff;
-            --text-dim: rgba(255, 255, 255, 0.6);
+            --gold: #d4af37;
+            --gold-glow: rgba(212, 175, 55, 0.15);
+            --gold-gradient: linear-gradient(to right, #cfaf5d 0%, #fcf6ba 30%, #d4af37 50%, #fcf6ba 70%, #cfaf5d 100%);
+            --bg-dark: #050508;
+            --card-bg: #0c0c12;
+            --border-color: rgba(212, 175, 55, 0.12);
+            --text-color: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.55);
+            --font-main: 'Outfit', sans-serif;
+            --font-serif: 'Playfair Display', serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100%; min-height: 100vh;
+            background: var(--bg-dark); color: var(--text-color);
+            font-family: var(--font-main); overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Outfit', sans-serif;
-            background: var(--bg-deep);
-            color: #ffffff;
-            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 10% 10%, rgba(212, 175, 55, 0.07) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 50%);
             display: flex;
             justify-content: center;
-            overflow-x: hidden;
         }
 
-        .phone-container {
-            width: 100%;
-            max-width: 480px;
-            background: transparent;
+        /* ── MOBILE CONTAINER ── */
+        .app-container {
+            width: 100%; max-width: 480px;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
             position: relative;
+            padding-bottom: 95px; /* bottom bar spacing */
+            border-left: 1px solid rgba(255, 255, 255, 0.03);
+            border-right: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(5, 5, 8, 0.95);
         }
 
-        /* Header */
-        .header {
-            padding: 40px 20px 20px;
+        /* ── HEADER ── */
+        /* ── HEADER ── */
+        .app-header {
             text-align: center;
+            padding: 0px 20px 0px;
+            margin-top: -5px;
+        }
+        .app-logo {
+            width: 110px; height: auto;
+            margin-bottom: 2px;
+            filter: drop-shadow(0 4px 15px rgba(212, 175, 55, 0.25));
+        }
+        .app-header h1 {
+            font-size: 1.1rem; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 2px;
+            color: var(--gold); margin-bottom: 0px;
+        }
+        .app-header p {
+            font-size: 0.62rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--text-muted);
         }
 
-        .header h1 {
-            font-size: 1.8rem;
-            font-weight: 900;
-            margin: 0;
-            background: var(--gold-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: 1px;
+        /* ── SCREENS / TABS ── */
+        .app-screen { display: none; padding: 0 20px; animation: screenFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .app-screen.active { display: block; }
+        @keyframes screenFadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── TYPOGRAPHY ── */
+        .screen-title-serif {
+            font-family: var(--font-serif);
+            font-size: 2.1rem; font-weight: 600;
+            color: #f7f5f0; line-height: 1.25;
+            text-align: center; margin: 8px 0 2px;
+        }
+        .screen-subtitle {
+            font-size: 0.85rem; color: var(--text-muted);
+            text-align: center; margin-bottom: 16px; line-height: 1.45;
+        }
+        .screen-section-title {
+            font-size: 1.2rem; font-weight: 700;
+            color: var(--gold); margin: 12px 0 4px 4px;
+        }
+        .screen-section-subtitle {
+            font-size: 0.8rem; color: var(--text-muted);
+            margin: 0 0 8px 4px;
         }
 
-        .header p {
-            font-size: 0.8rem;
-            color: var(--gold-primary);
-            margin: 5px 0 0 0;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        /* ── APP CARDS ── */
+        .app-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 14px 18px;
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 4px; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative; overflow: hidden;
         }
-
-        /* Content Area */
-        .content-area {
-            flex: 1;
-            padding: 10px 20px 100px;
-            overflow-y: auto;
+        .app-card::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.03), transparent);
+            transition: 0.5s;
         }
-
-        .tab-section {
-            display: none;
-            animation: fadeIn 0.4s ease;
+        .app-card:hover::before { left: 100%; }
+        .app-card:hover {
+            border-color: var(--gold);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(212, 175, 55, 0.08);
         }
+        .app-card-icon {
+            width: 44px; height: 44px; border-radius: 10px;
+            border: 1px solid rgba(212, 175, 55, 0.18);
+            background: rgba(212, 175, 55, 0.05);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--gold); font-size: 1.2rem; flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        .app-card:hover .app-card-icon {
+            background: var(--gold); color: #000000;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+        .app-card-content { flex: 1; }
+        .app-card-title { font-size: 0.95rem; font-weight: 700; color: var(--text-color); margin-bottom: 3px; }
+        .app-card-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.35; }
+        .app-card-arrow { color: rgba(212, 175, 55, 0.4); font-size: 0.85rem; transition: transform 0.3s; }
+        .app-card:hover .app-card-arrow { color: var(--gold); transform: translateX(2px); }
 
-        .tab-section.active {
+        /* ── BLUE GLOWING CARD STYLES ── */
+        .welcome-card-blue {
+            background: linear-gradient(135deg, #050b1a 0%, #0a142c 100%);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin: 12px 0 16px;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
             display: block;
+            transition: all 0.3s ease;
         }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Action Cards */
-        .action-card {
-            background: var(--card-glass);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 15px;
-            transition: 0.3s;
+        .welcome-card-blue::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+            pointer-events: none;
         }
-
-        .action-card:hover {
-            border-color: var(--gold-primary);
-            transform: translateY(-2px);
+        .welcome-card-blue:hover {
+            border-color: rgba(59, 130, 246, 0.6);
+            box-shadow: 0 12px 28px rgba(59, 130, 246, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
         }
-
-        .action-card h3 {
-            margin: 0 0 10px;
-            font-size: 1.2rem;
-            color: var(--gold-primary);
-        }
-
-        .action-card p {
-            margin: 0 0 15px;
-            font-size: 0.9rem;
-            color: var(--text-dim);
-            line-height: 1.5;
-        }
-
-        .btn-prime {
-            background: var(--gold-gradient);
-            color: #000;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 12px;
+        .welcome-card-title {
+            font-family: var(--font-main);
+            font-size: 1.35rem;
             font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 6px;
+            line-height: 1.25;
+            letter-spacing: -0.2px;
+        }
+        .welcome-card-desc {
             font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer;
-            width: 100%;
+            color: #93c5fd;
+            line-height: 1.4;
+            font-weight: 400;
         }
 
-        /* Bottom Nav - 4 Pillars */
+        .app-card-blue {
+            background: linear-gradient(135deg, #050b1a 0%, #091228 100%) !important;
+            border: 1px solid rgba(59, 130, 246, 0.35) !important;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1) !important;
+        }
+        .app-card-blue::before {
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.05), transparent) !important;
+        }
+        .app-card-blue:hover {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 6px 18px rgba(59, 130, 246, 0.2) !important;
+        }
+        .app-card-blue .app-card-icon {
+            border-color: rgba(59, 130, 246, 0.25) !important;
+            background: rgba(59, 130, 246, 0.06) !important;
+            color: #3b82f6 !important;
+        }
+        .app-card-blue:hover .app-card-icon {
+            background: #3b82f6 !important;
+            color: #000000 !important;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.45) !important;
+        }
+        .app-card-blue .app-card-arrow {
+            color: rgba(59, 130, 246, 0.4) !important;
+        }
+        .app-card-blue:hover .app-card-arrow {
+            color: #3b82f6 !important;
+        }
+
+        /* ── SECTION DIVIDERS ── */
+        .section-divider {
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            margin: 4px 0 2px;
+        }
+        .section-divider::before, .section-divider::after {
+            content: ''; flex: 1; height: 1px;
+            background: linear-gradient(to right, transparent, rgba(212, 175, 55, 0.12), transparent);
+        }
+        .section-divider span {
+            font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 1.2px; color: var(--text-muted);
+        }
+
+        /* ── SOCIAL BUTTONS ── */
+        .social-container { display: flex; justify-content: center; gap: 14px; margin: 2px 0 4px; }
+        .social-circle-btn {
+            width: 44px; height: 44px; border-radius: 50%;
+            border: 1px solid var(--border-color); background: var(--card-bg);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-color); font-size: 1.1rem; text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .social-circle-btn:hover {
+            border-color: var(--gold); color: #000000; background: var(--gold);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25);
+        }
+
+        /* ── FULL WIDTH ACTION BUTTON ── */
+        .full-action-btn {
+            width: 100%; padding: 14px; border-radius: 12px;
+            border: 1px solid var(--gold); background: transparent;
+            color: var(--gold); font-weight: 700; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            cursor: pointer; transition: all 0.3s; text-decoration: none;
+        }
+        .full-action-btn:hover {
+            background: var(--gold-glow);
+            box-shadow: 0 3px 10px rgba(212, 175, 55, 0.12);
+        }
+        .full-action-btn .btn-arrow { margin-left: auto; font-size: 0.8rem; }
+
+        /* ── LOCATION CARD ── */
+        .location-card {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 10px; padding: 10px; display: flex; align-items: center; gap: 10px;
+            margin-top: 4px; text-decoration: none;
+        }
+        .location-pin-wrap {
+            width: 42px; height: 42px; border-radius: 10px;
+            background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.15);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--gold); font-size: 1.1rem;
+        }
+        .location-text { flex: 1; }
+        .location-text h4 { font-size: 0.9rem; font-weight: 700; color: var(--text-color); margin-bottom: 2px; }
+        .location-text p { font-size: 0.72rem; color: var(--text-muted); }
+        .location-btn {
+            background: transparent; border: 1px solid var(--gold);
+            border-radius: 8px; padding: 6px 12px; font-size: 0.65rem; font-weight: 800;
+            color: var(--gold); display: flex; align-items: center; gap: 5px;
+            letter-spacing: 0.5px; transition: 0.3s;
+        }
+        .location-card:hover .location-btn {
+            background: var(--gold); color: #000000;
+        }
+
+        /* ── BOTTOM NAVIGATION ── */
         .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 480px;
-            background: rgba(10, 10, 15, 0.95);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255,255,255,0.05);
-            display: flex;
-            justify-content: space-around;
-            padding: 12px 0 25px;
-            z-index: 1000;
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 480px;
+            background: rgba(5, 5, 8, 0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex; justify-content: space-around;
+            padding: 10px 10px 22px; z-index: 500;
+            box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.5);
         }
-
         .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            color: var(--text-dim);
-            cursor: pointer;
-            transition: 0.3s;
-            flex: 1;
+            flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
+            color: var(--text-muted); cursor: pointer; text-decoration: none;
+            transition: all 0.3s ease;
         }
+        .nav-item i { font-size: 1.25rem; }
+        .nav-item span { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2px; }
+        .nav-item.active { color: var(--gold); }
 
-        .nav-item i { font-size: 1.2rem; }
-        .nav-item span { font-size: 0.65rem; font-weight: 700; }
-
-        .nav-item.active {
-            color: var(--gold-primary);
+        /* ── CALENDAR SCHEDULE VIEW ── */
+        .schedule-card {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 16px; padding: 14px 18px; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: space-between;
         }
+        .schedule-details h4 { font-size: 0.95rem; font-weight: 800; color: var(--text-color); margin-bottom: 2px; }
+        .schedule-details p { font-size: 0.75rem; color: var(--text-muted); }
+        .schedule-time { color: var(--gold); font-weight: 800; font-size: 0.95rem; }
 
-        /* Modals */
+        /* ── MODAL SYSTEM ── */
         .modal-overlay {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px);
-            z-index: 2000; align-items: center; justify-content: center;
-            padding: 20px;
+            display: none; position: fixed; inset: 0;
+            background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
+            z-index: 1000; align-items: flex-end; justify-content: center;
         }
-
-        .modal-overlay.active { display: flex; }
-
+        .modal-overlay.open { display: flex; }
         .modal-card {
-            background: #121218;
-            border: 1px solid var(--gold-primary);
-            border-radius: 24px;
-            padding: 30px;
-            width: 100%;
-            max-width: 400px;
+            background: #0b0b10; border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 28px 28px 0 0; padding: 24px 20px 40px;
+            width: 100%; max-width: 480px;
+            max-height: 88vh; overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-overlay.open .modal-card { transform: translateY(0); }
+        .modal-handle { width: 36px; height: 4px; background: rgba(255, 255, 255, 0.15); border-radius: 2px; margin: 0 auto 20px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h2 { font-size: 1.25rem; font-weight: 800; color: var(--text-color); }
+        .modal-close {
+            background: rgba(255, 255, 255, 0.06); border: none;
+            width: 32px; height: 32px; border-radius: 50%;
+            color: var(--text-muted); font-size: 0.9rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: 0.2s;
+        }
+        .modal-close:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+        /* ── FORMS & WIZARDS ── */
+        .field-group { margin-bottom: 16px; }
+        .field-group label { display: block; font-size: 0.72rem; font-weight: 800; color: var(--gold); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .field-group input, .field-group textarea, .field-group select {
+            width: 100%; padding: 13px 15px; border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03); color: var(--text-color);
+            font-family: var(--font-main); font-size: 0.92rem;
+            transition: all 0.3s; -webkit-appearance: none;
+        }
+        .field-group input:focus, .field-group textarea:focus, .field-group select:focus {
+            outline: none; border-color: rgba(212, 175, 55, 0.45);
+            background: rgba(212, 175, 55, 0.03);
+        }
+        .field-group select option { background: #13131c; color: #fff; }
+        .field-row { display: flex; gap: 10px; }
+        .field-row .field-group { flex: 1; }
+
+        .btn-submit {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            background: var(--gold-gradient); color: #000000;
+            border: none; padding: 14px 22px; border-radius: 12px;
+            font-weight: 800; font-size: 0.85rem; width: 100%;
+            text-transform: uppercase; letter-spacing: 1px;
+            cursor: pointer; transition: all 0.3s ease;
+            box-shadow: 0 6px 18px rgba(212, 175, 55, 0.25);
+        }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(212, 175, 55, 0.35); }
+
+        .success-state { display: none; text-align: center; padding: 15px 0; }
+        .success-state i { font-size: 3.2rem; margin-bottom: 12px; }
+        .success-state h3 { font-size: 1.2rem; font-weight: 800; color: var(--text-color); margin-bottom: 6px; }
+        .success-state p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; }
+
+        /* ── WIZARD DOTS ── */
+        .wizard-dots { display: flex; justify-content: center; gap: 10px; margin-bottom: 22px; }
+        .wizard-dot {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06);
+            color: var(--text-muted); font-size: 0.72rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+        .wizard-dot.active { background: var(--gold); color: #000; border-color: var(--gold); transform: scale(1.15); box-shadow: 0 0 12px rgba(212, 175, 55, 0.3); }
+        .wizard-dot.done { background: #10b981; color: #fff; border-color: #10b981; }
+        .wizard-step { display: none; }
+        .wizard-step.active { display: block; }
+        .wizard-footer { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-prev { flex: 1; background: rgba(255,255,255,0.05); color: var(--text-color); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; font-weight: 700; cursor: pointer; }
+        .btn-next { flex: 2; }
+        #draft-status { text-align: center; font-size: 0.7rem; color: #10b981; margin-top: 8px; font-weight: 700; opacity: 0; transition: opacity 0.5s; }
+
+        /* Help banner */
+        .help-banner-card {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 16px; padding: 18px; display: flex; align-items: center; justify-content: space-between;
+            margin-top: 15px;
+        }
+        .help-banner-text h4 { font-size: 0.9rem; font-weight: 700; color: var(--gold); margin-bottom: 2px; }
+        .help-banner-text p { font-size: 0.75rem; color: var(--text-muted); }
+        .help-banner-btn {
+            background: transparent; border: 1px solid var(--gold);
+            border-radius: 8px; padding: 8px 14px; font-size: 0.7rem; font-weight: 800;
+            color: var(--gold); text-decoration: none; display: flex; align-items: center; gap: 5px;
+            transition: 0.3s;
+        }
+        .help-banner-btn:hover { background: var(--gold); color: #000; }
+
+        /* Banking layout */
+        .bank-details { margin: 15px 0; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; }
+        .bank-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; }
+        .bank-row:last-child { margin-bottom: 0; }
+        .bank-row strong { color: var(--gold); }
+        .bank-row span { color: #fff; word-break: break-all; }
+        
+        .c-copy-btn {
+            background: var(--gold-glow); border: 1px solid var(--gold); color: var(--gold);
+            padding: 6px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;
+            cursor: pointer; margin-top: 10px; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .c-copy-btn:hover { background: var(--gold); color: #000; }
+
+        /* ── BACK BUTTON ── */
+        .screen-back-header {
+            margin: 10px 0 14px 4px;
+        }
+        .btn-back {
+            background: transparent;
+            border: 1px solid var(--gold);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--gold);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s;
+        }
+        .btn-back:hover {
+            background: var(--gold);
+            color: #000000;
         }
 
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; font-size: 0.7rem; color: var(--gold-primary); margin-bottom: 5px; text-transform: uppercase; font-weight: 800; }
-        .input-group input, .input-group textarea, .input-group select {
-            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
-            background: rgba(255,255,255,0.05); color: #fff; font-family: inherit; box-sizing: border-box;
+        .system-online-badge {
+            text-align: center; padding: 8px 20px 5px; font-size: 0.72rem; color: var(--text-muted);
         }
+        .system-dot { display: inline-block; width: 6px; height: 6px; background: #22c55e; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 6px #22c55e; vertical-align: middle; }
     </style>
 </head>
-
 <body>
-    <div class="phone-container">
-        <header class="header">
-            <h1>CATEDRAL LAUSANNE</h1>
-            <p>Diamond Phoenix v51.2.4</p>
-        </header>
 
-        <div class="content-area">
-            <!-- TAB: INÍCIO -->
-            <div id="tab-home" class="tab-section active">
-                <div class="action-card">
-                    <h3>Pedido de Oração</h3>
-                    <p>Nós queremos lutar junto com você. Seus pedidos serão levados ao altar.</p>
-                    <button class="btn-prime" onclick="openModal('modal-oracao')">Fazer Pedido</button>
+<div class="app-container">
+
+    <!-- HEADER (Persistent logo on all screens) -->
+    <header class="app-header">
+        <img class="app-logo" src="assets/logo_3.png" alt="Logo Catedral Lausanne">
+    </header>
+
+    <!-- ═══ SCREEN 1: INÍCIO (ACOLHIMENTO) ═══ -->
+    <div id="screen-inicio" class="app-screen active">
+        <h2 class="screen-title-serif">Que alegria<br>ter você aqui!</h2>
+        <p class="screen-subtitle">Queremos que você se sinta em casa. Conte com a gente!</p>
+
+        <!-- Actions -->
+        <div class="app-card" onclick="switchTab('oracao')">
+            <div class="app-card-content">
+                <h3 class="app-card-title">Pedido de Oração</h3>
+                <p class="app-card-desc">Compartilhe seu pedido. Nossa equipe vai orar por você.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <div class="app-card" onclick="switchTab('visita')">
+            <div class="app-card-content">
+                <h3 class="app-card-title">Falar com a Equipe</h3>
+                <p class="app-card-desc">Estamos aqui para te ouvir, ajudar e servir.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <div class="app-card" onclick="switchTab('agenda')">
+            <div class="app-card-content">
+                <h3 class="app-card-title">Nossos Cultos</h3>
+                <p class="app-card-desc">Confira horários e informações dos nossos cultos.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <!-- Social Media Section -->
+        <div class="section-divider">
+            <span>Siga nossas redes</span>
+        </div>
+        <div class="social-container">
+            <a href="https://www.instagram.com/catedraldaesperancasuica/" target="_blank" class="social-circle-btn" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="https://www.facebook.com/catedraldaesperancasuica" target="_blank" class="social-circle-btn" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+            <a href="https://www.youtube.com/c/CatedraldaEsperan%C3%A7aSu%C3%AD%C3%A7a" target="_blank" class="social-circle-btn" title="YouTube"><i class="fab fa-youtube"></i></a>
+        </div>
+
+        <div class="app-card app-card-blue" onclick="switchTab('membros')">
+            <div class="app-card-content">
+                <h3 class="app-card-title">Entrar na área do membro</h3>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <!-- Location Card -->
+        <div class="location-card" onclick="window.open('https://maps.google.com/?q=Rue+de+l%27Industrie+39,+1023+Crissier', '_blank')">
+            <div class="location-pin-wrap">
+                <i class="fas fa-map-marker-alt"></i>
+            </div>
+            <div class="location-text">
+                <h4>Catedral Lausanne</h4>
+                <p>Rue de l'Industrie 39<br>1023 Crissier</p>
+            </div>
+            <button class="location-btn">
+                COMO CHEGAR <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+
+        <div class="system-online-badge">
+            <span class="system-dot"></span>Sistema online · Lausanne v70.3.76
+        </div>
+    </div>
+
+    <!-- ═══ SCREEN 2: AGENDA ═══ -->
+    <div id="screen-agenda" class="app-screen">
+        <h2 class="screen-title-serif">Nossos Cultos</h2>
+        <p class="screen-subtitle">Abaixo estão os dias e horários de nossas programações semanais.</p>
+
+        <div class="schedule-card">
+            <div class="schedule-details">
+                <h4>Culto da Família</h4>
+                <p>Domingo</p>
+            </div>
+            <span class="schedule-time">10h00</span>
+        </div>
+
+        <div class="schedule-card">
+            <div class="schedule-details">
+                <h4>Culto Alicerce</h4>
+                <p>Terça-feira</p>
+            </div>
+            <span class="schedule-time">19h30</span>
+        </div>
+
+        <div class="schedule-card">
+            <div class="schedule-details">
+                <h4>Oração da Manhã</h4>
+                <p>Quarta-feira</p>
+            </div>
+            <span class="schedule-time">09h00</span>
+        </div>
+
+        <div class="schedule-card">
+            <div class="schedule-details">
+                <h4>Culto Conectadas</h4>
+                <p>Sexta-feira</p>
+            </div>
+            <span class="schedule-time">19h30</span>
+        </div>
+
+        <div class="schedule-card">
+            <div class="schedule-details">
+                <h4>Flame (Jovens)</h4>
+                <p>Sábado</p>
+            </div>
+            <span class="schedule-time">19h00</span>
+        </div>
+
+        <div class="system-online-badge">
+            <span class="system-dot"></span>Confira novidades no nosso Instagram
+        </div>
+    </div>
+
+    <!-- ═══ SCREEN 3: MEMBROS CES ═══ -->
+    <div id="screen-membros" class="app-screen">
+        <h3 class="screen-section-title">Membros CES</h3>
+        <p class="screen-section-subtitle">Área exclusiva para membros da igreja.</p>
+
+        <div class="app-card" onclick="openModal('modal-agendamentos')">
+            <div class="app-card-content">
+                <h3 class="app-card-title">Agendamentos</h3>
+                <p class="app-card-desc">Batismo, Apresentação de Bebê e Células.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <div class="app-card" onclick="openModal('modal-ficha')">
+            <div class="app-card-content">
+                <h3 class="app-card-title">Cadastro Completo</h3>
+                <p class="app-card-desc">Atualize seus dados e mantenha seu cadastro em dia.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <div class="app-card" onclick="openModal('modal-servir')">
+            <div class="app-card-content">
+                <h3 class="app-card-title">Servir no Reino</h3>
+                <p class="app-card-desc">Encontre seu lugar e sirva naquilo que Deus te chamou.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <div class="app-card" onclick="openModal('modal-dizimos')">
+            <div class="app-card-content">
+                <h3 class="app-card-title">Dízimos e Ofertas</h3>
+                <p class="app-card-desc">Veja os dados bancários para contribuições.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <!-- Help Banner -->
+        <div class="help-banner-card">
+            <div class="help-banner-text">
+                <h4>Precisa de ajuda?</h4>
+                <p>Fale com nossa equipe.</p>
+            </div>
+            <a href="https://wa.me/41000000000" target="_blank" class="help-banner-btn">
+                Entrar em contato <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- ═══ SCREEN 4: MAIS ═══ -->
+    <div id="screen-mais" class="app-screen">
+        <h3 class="screen-section-title">Sobre Nós</h3>
+        <p class="screen-section-subtitle">Mais informações e links da Catedral Lausanne.</p>
+
+        <div class="app-card" onclick="window.open('https://maps.google.com/?q=Rue+de+l%27Industrie+39,+1023+Crissier', '_blank')">
+            <div class="app-card-icon"><i class="fas fa-location-dot"></i></div>
+            <div class="app-card-content">
+                <h3 class="app-card-title">Endereço da Igreja</h3>
+                <p class="app-card-desc">Rue de l'Industrie 39, 1023 Crissier, Suíça.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <div class="app-card" onclick="window.open('https://www.instagram.com/catedraldaesperancasuica/', '_blank')">
+            <div class="app-card-icon"><i class="fab fa-instagram"></i></div>
+            <div class="app-card-content">
+                <h3 class="app-card-title">Siga no Instagram</h3>
+                <p class="app-card-desc">@catedraldaesperancasuica</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+
+        <div class="app-card" onclick="window.open('https://wa.me/41000000000', '_blank')">
+            <div class="app-card-icon"><i class="fab fa-whatsapp"></i></div>
+            <div class="app-card-content">
+                <h3 class="app-card-title">Secretaria (WhatsApp)</h3>
+                <p class="app-card-desc">Fale conosco para mais informações ou dúvidas.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+    </div>
+
+    <!-- ═══ SCREEN: PEDIDO DE ORAÇÃO ═══ -->
+    <div id="screen-oracao" class="app-screen">
+        <div class="screen-back-header">
+            <button class="btn-back" onclick="switchTab('inicio')"><i class="fas fa-chevron-left"></i> Voltar</button>
+        </div>
+        <h2 class="screen-title-serif">Pedido de Oração</h2>
+        <p class="screen-subtitle">Compartilhe seu pedido. Nossa equipe vai orar por você.</p>
+
+        <div id="oracao-form">
+            <div class="field-group">
+                <label>Seu Nome (opcional)</label>
+                <input type="text" id="oracao-nome" placeholder="Nome em segredo se preferir...">
+            </div>
+            <div class="field-group">
+                <label>Seu Pedido *</label>
+                <textarea id="oracao-pedido" rows="4" placeholder="Escreva aqui pelo que devemos orar..."></textarea>
+            </div>
+            <button class="btn-submit" onclick="submitForm('oracao', this)">
+                <i class="fas fa-paper-plane"></i> Enviar ao Altar
+            </button>
+        </div>
+        <div class="success-state" id="oracao-success">
+            <i class="fas fa-check-circle" style="color:#10b981;"></i>
+            <h3>Pedido Entregue!</h3>
+            <p>Estaremos orando por você. Deus te abençoe poderosamente!</p>
+        </div>
+        <div class="system-online-badge">
+            <span class="system-dot"></span>Sistema online · Lausanne v70.3.76
+        </div>
+    </div>
+
+    <!-- ═══ SCREEN: FALAR COM A EQUIPE ═══ -->
+    <div id="screen-visita" class="app-screen">
+        <div class="screen-back-header">
+            <button class="btn-back" onclick="switchTab('inicio')"><i class="fas fa-chevron-left"></i> Voltar</button>
+        </div>
+        <h2 class="screen-title-serif">Falar com a Equipe</h2>
+        <p class="screen-subtitle">Estamos aqui para te ouvir, ajudar e servir.</p>
+
+        <div id="visita-form">
+            <div class="field-group">
+                <label>Nome Completo *</label>
+                <input type="text" id="visita-nome" placeholder="Seu nome...">
+            </div>
+            <div class="field-group">
+                <label>WhatsApp / Telefone *</label>
+                <input type="tel" id="visita-fone" placeholder="+41 79 000 00 00">
+            </div>
+            <div class="field-group">
+                <label>Como podemos te ajudar?</label>
+                <input type="text" id="visita-assunto" placeholder="Descreva brevemente...">
+            </div>
+            <button class="btn-submit btn-blue" onclick="submitForm('visita', this)">
+                <i class="fas fa-headset"></i> Solicitar Suporte
+            </button>
+        </div>
+        <div class="success-state" id="visita-success">
+            <i class="fas fa-check-circle" style="color:#3b82f6;"></i>
+            <h3>Solicitação Enviada!</h3>
+            <p>Nossa equipe de acolhimento entrará em contato em breve. Estamos aqui!</p>
+        </div>
+        <div class="system-online-badge">
+            <span class="system-dot"></span>Sistema online · Lausanne v70.3.76
+        </div>
+    </div>
+
+    <!-- ── BOTTOM NAVIGATION BAR ── -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" id="nav-inicio" onclick="switchTab('inicio')">
+            <i class="fas fa-home"></i>
+            <span>Início</span>
+        </div>
+        <div class="nav-item" id="nav-agenda" onclick="switchTab('agenda')">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Agenda</span>
+        </div>
+        <div class="nav-item" id="nav-membros" onclick="switchTab('membros')">
+            <i class="fas fa-users"></i>
+            <span>Membros</span>
+        </div>
+        <div class="nav-item" id="nav-mais" onclick="switchTab('mais')">
+            <i class="fas fa-ellipsis-h"></i>
+            <span>Mais</span>
+        </div>
+    </nav>
+
+</div>
+
+<!-- ═══════════════ MODAIS SYSTEM ═══════════════ -->
+
+<!-- Modals for Membros/Agenda screens -->
+
+<!-- MODAL: Agendamentos Hub -->
+<div id="modal-agendamentos" class="modal-overlay" onclick="closeOuter(event)">
+    <div class="modal-card">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2>Escolha o Agendamento</h2>
+            <button class="modal-close" onclick="closeModals()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="app-card" onclick="openModal('modal-batismo')">
+            <div class="app-card-icon"><i class="fas fa-water"></i></div>
+            <div class="app-card-content">
+                <h3 class="app-card-title">Batismo nas Águas</h3>
+                <p class="app-card-desc">Inscreva-se para dar seu passo de fé pública.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+        <div class="app-card" onclick="openModal('modal-bebe')">
+            <div class="app-card-icon"><i class="fas fa-baby"></i></div>
+            <div class="app-card-content">
+                <h3 class="app-card-title">Apresentação de Bebê</h3>
+                <p class="app-card-desc">Consagração solene do seu bebê na igreja.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+        <div class="app-card" onclick="openModal('modal-grupo')">
+            <div class="app-card-icon"><i class="fas fa-users"></i></div>
+            <div class="app-card-content">
+                <h3 class="app-card-title">Pequenos Grupos / Células</h3>
+                <p class="app-card-desc">Participe de um grupo em sua região.</p>
+            </div>
+            <i class="fas fa-chevron-right app-card-arrow"></i>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Batismo -->
+<div id="modal-batismo" class="modal-overlay" onclick="closeOuter(event)">
+    <div class="modal-card">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2>Batismo nas Águas</h2>
+            <button class="modal-close" onclick="closeModals()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="batismo-form">
+            <div class="field-group">
+                <label>Nome do Candidato *</label>
+                <input type="text" id="batismo-nome" placeholder="Nome Completo...">
+            </div>
+            <div class="field-group">
+                <label>WhatsApp *</label>
+                <input type="tel" id="batismo-fone" placeholder="+41 79 000 00 00">
+            </div>
+            <button class="btn-submit btn-blue" onclick="submitForm('batismo', this)">
+                <i class="fas fa-droplet"></i> Quero me Batizar
+            </button>
+        </div>
+        <div class="success-state" id="batismo-success">
+            <i class="fas fa-check-circle" style="color:#3b82f6;"></i>
+            <h3>Inscrição Realizada!</h3>
+            <p>Glória a Deus por este passo! Entraremos em contato com os detalhes do próximo batismo.</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Apresentação Bebê -->
+<div id="modal-bebe" class="modal-overlay" onclick="closeOuter(event)">
+    <div class="modal-card">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2>Apresentação de Bebê</h2>
+            <button class="modal-close" onclick="closeModals()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="bebe-form">
+            <div class="field-group">
+                <label>Nome da Criança *</label>
+                <input type="text" id="bebe-nome" placeholder="Nome Completo da criança...">
+            </div>
+            <div class="field-row">
+                <div class="field-group">
+                    <label>Data de Nascimento</label>
+                    <input type="date" id="bebe-nasc">
                 </div>
-                <div class="action-card">
-                    <h3>Equipe Acolher</h3>
-                    <p>Precisa de uma palavra, visita ou suporte? Nossa equipe está aqui.</p>
-                    <button class="btn-prime" onclick="openModal('modal-acolher')">Chamar Acolhimento</button>
+            </div>
+            <div class="field-group">
+                <label>Nome do Pai</label>
+                <input type="text" id="bebe-pai">
+            </div>
+            <div class="field-group">
+                <label>Nome da Mãe</label>
+                <input type="text" id="bebe-mae">
+            </div>
+            <div class="field-group">
+                <label>WhatsApp de Contacto *</label>
+                <input type="tel" id="bebe-fone" placeholder="+41 79 000 00 00">
+            </div>
+            <button class="btn-submit btn-pink" onclick="submitForm('bebe', this)">
+                <i class="fas fa-heart"></i> Solicitar Agendamento
+            </button>
+        </div>
+        <div class="success-state" id="bebe-success">
+            <i class="fas fa-baby" style="color:#ec4899;"></i>
+            <h3>Pedido Enviado!</h3>
+            <p>A secretaria entrará em contato para confirmar a data da apresentação. Que alegria!</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Grupo -->
+<div id="modal-grupo" class="modal-overlay" onclick="closeOuter(event)">
+    <div class="modal-card">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2>Pequenos Grupos</h2>
+            <button class="modal-close" onclick="closeModals()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="grupo-form">
+            <div class="field-group">
+                <label>Seu Nome *</label>
+                <input type="text" id="grupo-nome" placeholder="Nome Completo...">
+            </div>
+            <div class="field-group">
+                <label>WhatsApp *</label>
+                <input type="tel" id="grupo-fone" placeholder="+41 79 000 00 00">
+            </div>
+            <div class="field-group">
+                <label>Área de Interesse</label>
+                <select id="grupo-tipo">
+                    <option value="Jovens">Rede de Jovens</option>
+                    <option value="Homens">Rede de Homens</option>
+                    <option value="Mulheres">Rede de Mulheres</option>
+                    <option value="Familia">Casais / Família</option>
+                    <option value="Kids">Ministério Infantil</option>
+                    <option value="Nao Sei">Quero me envolver, mas não sei onde</option>
+                </select>
+            </div>
+            <button class="btn-submit" onclick="submitForm('grupo', this)">
+                <i class="fas fa-search-location"></i> Quero Participar
+            </button>
+        </div>
+        <div class="success-state" id="grupo-success">
+            <i class="fas fa-check-circle" style="color:#f59e0b;"></i>
+            <h3>Inscrição Realizada!</h3>
+            <p>O líder responsável pela rede falará com você em breve. Bem-vindo à família!</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Servir -->
+<div id="modal-servir" class="modal-overlay" onclick="closeOuter(event)">
+    <div class="modal-card">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2>Servir no Reino</h2>
+            <button class="modal-close" onclick="closeModals()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="servir-form">
+            <div class="field-group">
+                <label>Seu Nome *</label>
+                <input type="text" id="servir-nome" placeholder="Nome Completo...">
+            </div>
+            <div class="field-group">
+                <label>WhatsApp *</label>
+                <input type="tel" id="servir-fone" placeholder="+41 79 000 00 00">
+            </div>
+            <div class="field-group">
+                <label>Onde gostaria de servir? *</label>
+                <select id="servir-area">
+                    <option value="">Selecione uma área...</option>
+                    <option value="KIDS">KIDS</option>
+                    <option value="RECEPÇÃO">RECEPÇÃO</option>
+                    <option value="LOUVOR">LOUVOR</option>
+                    <option value="MÍDIA">MÍDIA / TRANSMISSÃO</option>
+                    <option value="INFRAESTRUTURA">INFRAESTRUTURA / LIMPEZA</option>
+                    <option value="ACOLHIMENTO">EQUIPE ACOLHER</option>
+                    <option value="OUTROS">OUTRAS ÁREAS</option>
+                </select>
+            </div>
+            <button class="btn-submit btn-teal" onclick="submitForm('servir', this)">
+                <i class="fas fa-star"></i> Enviar Interesse
+            </button>
+        </div>
+        <div class="success-state" id="servir-success">
+            <i class="fas fa-heart" style="color:#14b8a6;"></i>
+            <h3>Que Alegria!</h3>
+            <p>Recebemos seu interesse em servir. Um líder de área entrará em contato em breve!</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Dízimos e Ofertas -->
+<div id="modal-dizimos" class="modal-overlay" onclick="closeOuter(event)">
+    <div class="modal-card">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2>Dízimos e Ofertas</h2>
+            <button class="modal-close" onclick="closeModals()"><i class="fas fa-times"></i></button>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.4; margin-bottom:15px;">
+            "Trazei todos os dízimos à casa do tesouro, para que haja mantimento na minha casa..." — Malaquias 3:10
+        </p>
+        <div class="bank-details">
+            <div class="bank-row">
+                <strong>Beneficiário:</strong>
+                <span>Catedral da Esperança Lausanne</span>
+            </div>
+            <div class="bank-row">
+                <strong>Banco:</strong>
+                <span>PostFinance AG</span>
+            </div>
+            <div class="bank-row">
+                <strong>IBAN:</strong>
+                <span id="church-iban">CH76 0900 0000 1234 5678 9</span>
+            </div>
+        </div>
+        <button class="c-copy-btn" onclick="copyIban()"><i class="fas fa-copy"></i> Copiar IBAN</button>
+    </div>
+</div>
+
+<!-- MODAL: Ficha Completa -->
+<div id="modal-ficha" class="modal-overlay" onclick="closeOuter(event)">
+    <div class="modal-card">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2>Ficha de Membro</h2>
+            <button class="modal-close" onclick="closeModals()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div id="ficha-form">
+            <div class="wizard-dots">
+                <div class="wizard-dot active" id="wd-1">1</div>
+                <div class="wizard-dot" id="wd-2">2</div>
+                <div class="wizard-dot" id="wd-3">3</div>
+                <div class="wizard-dot" id="wd-4">4</div>
+            </div>
+
+            <!-- STEP 1 -->
+            <div class="wizard-step active" id="ws-1">
+                <div class="field-group"><label>1. Nome Completo *</label><input type="text" id="f-1" placeholder="Seu nome completo"></div>
+                <div class="field-group"><label>2. Igreja</label><input type="text" id="f-2" value="CATEDRAL-LAUSANNE"></div>
+                <div class="field-group">
+                    <label>3. Gênero *</label>
+                    <select id="f-3"><option value="">Selecione...</option><option>Masculino</option><option>Feminino</option></select>
+                </div>
+                <div class="field-row">
+                    <div class="field-group"><label>4. Nome do Pai</label><input type="text" id="f-4"></div>
+                    <div class="field-group"><label>5. Nome da Mãe</label><input type="text" id="f-5"></div>
+                </div>
+                <div class="field-row">
+                    <div class="field-group"><label>6. Nascimento *</label><input type="date" id="f-6"></div>
+                    <div class="field-group">
+                        <label>7. Estado Civil</label>
+                        <select id="f-7"><option>Solteiro(a)</option><option>Casado(a)</option><option>Divorciado(a)</option><option>Viúvo(a)</option></select>
+                    </div>
+                </div>
+                <div class="field-group"><label>12. Profissão</label><input type="text" id="f-12"></div>
+                <div class="field-group">
+                    <label>11. Grau Académico</label>
+                    <select id="f-11"><option value="Superior">Superior</option><option value="Médio">Médio</option><option value="Fundamental">Fundamental</option><option value="Pós">Pós-Graduação</option></select>
+                </div>
+                <div class="wizard-footer">
+                    <button class="btn-submit btn-next" onclick="goStep(2)">Próximo <i class="fas fa-arrow-right"></i></button>
                 </div>
             </div>
 
-            <!-- TAB: BÍBLIA -->
-            <div id="tab-bible" class="tab-section">
-                <div style="height: 60vh; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-                    <iframe src="https://www.bibliaonline.com.br/nvi/gn/1" style="width:100%; height:100%; border:none;"></iframe>
+            <!-- STEP 2 -->
+            <div class="wizard-step" id="ws-2">
+                <div class="field-group"><label>18. Endereço Completo *</label><textarea id="f-18" rows="2" placeholder="Rua, número, andar..."></textarea></div>
+                <div class="field-row">
+                    <div class="field-group"><label>19. Cód. Postal</label><input type="text" id="f-19" placeholder="1007"></div>
+                    <div class="field-group"><label>20. Cidade *</label><input type="text" id="f-20" placeholder="Lausanne"></div>
+                </div>
+                <div class="field-group"><label>21. WhatsApp *</label><input type="tel" id="f-21" placeholder="+41 79 000 00 00"></div>
+                <div class="field-group"><label>22. Email</label><input type="email" id="f-22" placeholder="seu@email.com"></div>
+                <input type="hidden" id="f-8"><input type="hidden" id="f-9"><input type="hidden" id="f-10">
+                <input type="hidden" id="f-13"><input type="hidden" id="f-14"><input type="hidden" id="f-15">
+                <input type="hidden" id="f-16"><input type="hidden" id="f-17">
+                <div class="wizard-footer">
+                    <button class="btn-prev" onclick="goStep(1)"><i class="fas fa-arrow-left"></i></button>
+                    <button class="btn-submit btn-next" onclick="goStep(3)">Próximo <i class="fas fa-arrow-right"></i></button>
                 </div>
             </div>
 
-            <!-- TAB: AGENDA -->
-            <div id="tab-agenda" class="tab-section">
-                <h2 style="color: var(--gold-primary); font-size: 1.2rem; margin-bottom: 20px;">Agenda da Semana</h2>
-                <div class="action-card">
-                    <p style="color: #fff; font-weight: 700; margin-bottom: 5px;">Culto da Família</p>
-                    <p style="margin: 0;">Domingos às 10h00</p>
-                </div>
-                <div class="action-card">
-                    <p style="color: #fff; font-weight: 700; margin-bottom: 5px;">Células / Grupos</p>
-                    <p style="margin: 0;">Diversos horários durante a semana.</p>
-                    <button class="btn-prime" style="margin-top: 10px;" onclick="openModal('modal-celula')">Encontrar Célula</button>
+            <!-- STEP 3 -->
+            <div class="wizard-step" id="ws-3">
+                <div class="field-group"><label>23. Data da 1ª Visita</label><input type="date" id="f-23"></div>
+                <div class="field-group"><label>24. Igreja Anterior</label><input type="text" id="f-24" placeholder="Nome da igreja anterior..."></div>
+                <div class="field-group"><label>27. Data de Batismo</label><input type="date" id="f-27"></div>
+                <div class="field-group"><label>28. Local do Batismo</label><input type="text" id="f-28" placeholder="Nome da igreja onde foi batizado(a)..."></div>
+                <div class="field-group"><label>29. Função / Ministério</label><input type="text" id="f-29" placeholder="Ex: Membro, Diácono, Líder..."></div>
+                <div class="field-group"><label>30. Tem filhos?</label><select id="f-30"><option value="">Selecione...</option><option value="Não">Não</option><option value="Sim">Sim</option></select></div>
+                <input type="hidden" id="f-25"><input type="hidden" id="f-26"><input type="hidden" id="f-31">
+                <div class="wizard-footer">
+                    <button class="btn-prev" onclick="goStep(2)"><i class="fas fa-arrow-left"></i></button>
+                    <button class="btn-submit btn-next" onclick="goStep(4)">Próximo <i class="fas fa-arrow-right"></i></button>
                 </div>
             </div>
 
-            <!-- TAB: MEMBROS -->
-            <div id="tab-members" class="tab-section">
-                <div class="action-card">
-                    <h3>Cadastro de Membro</h3>
-                    <p>Dê o seu próximo passo de aliança com a nossa família.</p>
-                    <button class="btn-prime" onclick="openModal('modal-cadastro')">Preencher Ficha</button>
+            <!-- STEP 4 -->
+            <div class="wizard-step" id="ws-4">
+                <div class="field-group"><label>33. Membro CES desde</label><input type="date" id="f-33"></div>
+                <div class="field-group">
+                    <label>34. Como soube da Catedral?</label>
+                    <select id="f-34"><option value="">Selecione...</option><option value="Amigo">Convite de amigo</option><option value="Redes Sociais">Redes Sociais</option><option value="Internet">Busca na Internet</option><option value="Passei em frente">Passei em frente</option><option value="Outro">Outro</option></select>
                 </div>
-                <div class="action-card">
-                    <h3>Batismo</h3>
-                    <p>Inscrições abertas para o próximo batismo nas águas.</p>
-                    <button class="btn-prime" onclick="openModal('modal-batismo')">Quero me Batizar</button>
+                <div class="field-group"><label>35. Nacionalidade</label><input type="text" id="f-35" placeholder="Ex: Brasileira, Portuguesa..."></div>
+                <div class="field-group"><label>36. Idiomas Falados</label><input type="text" id="f-36" placeholder="Ex: Português, Francês, Inglês..."></div>
+                <div class="field-group"><label>Observações</label><textarea id="f-42" rows="3" placeholder="Algo mais que gostaria de nos contar?"></textarea></div>
+                <input type="hidden" id="f-32"><input type="hidden" id="f-37"><input type="hidden" id="f-38">
+                <input type="hidden" id="f-39"><input type="hidden" id="f-40"><input type="hidden" id="f-41">
+                <div id="draft-status"><i class="fas fa-check-circle"></i> Rascunho salvo</div>
+                <div class="wizard-footer">
+                    <button class="btn-prev" onclick="goStep(3)"><i class="fas fa-arrow-left"></i></button>
+                    <button class="btn-submit" onclick="submitForm('ficha', this)">
+                        <i class="fas fa-certificate"></i> Finalizar Cadastro
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- 4-PILLAR NAV -->
-        <nav class="bottom-nav">
-            <div class="nav-item active" id="nav-home" onclick="switchTab('home')">
-                <i class="fas fa-home"></i>
-                <span>INÍCIO</span>
-            </div>
-            <div class="nav-item" id="nav-bible" onclick="switchTab('bible')">
-                <i class="fas fa-book-open"></i>
-                <span>BÍBLIA</span>
-            </div>
-            <div class="nav-item" id="nav-agenda" onclick="switchTab('agenda')">
-                <i class="fas fa-calendar-alt"></i>
-                <span>AGENDA</span>
-            </div>
-            <div class="nav-item" id="nav-members" onclick="switchTab('members')">
-                <i class="fas fa-users"></i>
-                <span>MEMBROS</span>
-            </div>
-        </nav>
-    </div>
-
-    <!-- Modals (Simple Implementations) -->
-    <div id="modal-oracao" class="modal-overlay" onclick="closeModal(event)">
-        <div class="modal-card">
-            <h2 style="color: #fff; margin: 0 0 20px;">Pedir Oração</h2>
-            <div class="input-group">
-                <label>Seu Nome</label>
-                <input type="text" id="o-nome">
-            </div>
-            <div class="input-group">
-                <label>Pedido</label>
-                <textarea id="o-pedido" rows="4"></textarea>
-            </div>
-            <button class="btn-prime" onclick="submitForm('oracao')">Enviar ao Altar</button>
+        <div class="success-state" id="ficha-success">
+            <i class="fas fa-certificate" style="color:var(--gold);"></i>
+            <h3>Ficha Recebida!</h3>
+            <p>Sua ficha está em análise pela secretaria. Em breve você receberá a confirmação. Bem-vindo(a) à família Lausanne!</p>
         </div>
     </div>
+</div>
 
-    <script>
-        function switchTab(id) {
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
-            
-            document.getElementById('nav-' + id).classList.add('active');
-            document.getElementById('tab-' + id).classList.add('active');
+<script>
+    // ── GREETING ──
+    (function() {
+        const name = localStorage.getItem('visitor_first_name');
+        if (name) {
+            const el = document.getElementById('welcome-name');
+            if (el) el.textContent = ', ' + name;
         }
+        const ref = new URLSearchParams(window.location.search).get('ref');
+        if (ref) localStorage.setItem('acolhedor_origem', ref);
+    })();
 
-        function openModal(id) {
-            document.getElementById(id).classList.add('active');
-        }
-
-        function closeModal(e) {
-            if (e.target.classList.contains('modal-overlay')) {
-                e.target.classList.remove('active');
+    // ── TABS ──
+    function switchTab(id) {
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
+        
+        const navBtn = document.getElementById('nav-' + id);
+        const screen = document.getElementById('screen-' + id);
+        if (navBtn) navBtn.classList.add('active');
+        if (screen) screen.classList.add('active');
+        
+        if (id === 'oracao' || id === 'visita') {
+            const f = document.getElementById(id + '-form');
+            const s = document.getElementById(id + '-success');
+            if (f) f.style.display = 'block';
+            if (s) s.style.display = 'none';
+            if (id === 'oracao') {
+                const ped = document.getElementById('oracao-pedido');
+                if (ped) ped.value = '';
+                const btn = document.querySelector('#oracao-form button');
+                if (btn) {
+                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar ao Altar';
+                    btn.style.opacity = '1';
+                    btn.style.pointerEvents = 'auto';
+                }
+            } else {
+                const n = document.getElementById('visita-nome');
+                const p = document.getElementById('visita-fone');
+                const a = document.getElementById('visita-assunto');
+                if (n) n.value = '';
+                if (p) p.value = '';
+                if (a) a.value = '';
+                const btn = document.querySelector('#visita-form button');
+                if (btn) {
+                    btn.innerHTML = '<i class="fas fa-headset"></i> Solicitar Suporte';
+                    btn.style.opacity = '1';
+                    btn.style.pointerEvents = 'auto';
+                }
             }
         }
+        
+        // Scroll screen to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
-        async function submitForm(type) {
-            alert("Solicitação enviada com sucesso! (v51.2.4 Logic)");
-            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+    // ── MODALS ──
+    function openModal(id) {
+        document.getElementById(id).classList.add('open');
+        document.body.style.overflow = 'hidden';
+        if (id === 'modal-ficha') { goStep(1); loadDraft(); }
+    }
+    function closeModals() {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+        document.body.style.overflow = '';
+        // Reset forms
+        setTimeout(() => {
+            ['oracao','visita','batismo','bebe','grupo','servir','ficha'].forEach(k => {
+                const f = document.getElementById(k+'-form');
+                const s = document.getElementById(k+'-success');
+                if (f) { f.style.display = 'block'; }
+                if (s) { s.style.display = 'none'; }
+            });
+        }, 400);
+    }
+    function closeOuter(e) {
+        if (e.target.classList.contains('modal-overlay')) closeModals();
+    }
+
+    // ── WIZARD ──
+    function goStep(n) {
+        document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.wizard-dot').forEach(d => d.classList.remove('active', 'done'));
+        const step = document.getElementById('ws-' + n);
+        const dot = document.getElementById('wd-' + n);
+        if (step) step.classList.add('active');
+        if (dot) dot.classList.add('active');
+        
+        for (let i = 1; i < n; i++) {
+            const pd = document.getElementById('wd-' + i);
+            if (pd) { pd.classList.remove('active'); pd.classList.add('done'); pd.innerHTML = '<i class="fas fa-check" style="font-size:0.65rem;"></i>'; }
         }
-    </script>
+        for (let i = n; i <= 4; i++) {
+            const pd = document.getElementById('wd-' + i);
+            if (pd && !pd.classList.contains('done')) pd.innerHTML = i;
+        }
+        const mc = document.querySelector('#modal-ficha .modal-card');
+        if (mc) mc.scrollTop = 0;
+        saveDraft();
+    }
+
+    // ── DRAFT ──
+    function saveDraft() {
+        const draft = {};
+        for (let i = 1; i <= 42; i++) {
+            const el = document.getElementById('f-' + i);
+            if (el) draft['field_' + i] = el.value;
+        }
+        localStorage.setItem('connect_draft', JSON.stringify(draft));
+        const st = document.getElementById('draft-status');
+        if (st) { st.style.opacity = '1'; setTimeout(() => st.style.opacity = '0', 2000); }
+    }
+    function loadDraft() {
+        try {
+            const raw = localStorage.getItem('connect_draft');
+            if (!raw) return;
+            const d = JSON.parse(raw);
+            for (let i = 1; i <= 42; i++) {
+                const el = document.getElementById('f-' + i);
+                if (el && d['field_' + i] !== undefined) el.value = d['field_' + i];
+            }
+        } catch(e) {}
+    }
+    document.addEventListener('input', e => {
+        if (e.target.closest('#modal-ficha') && e.target.id.startsWith('f-')) saveDraft();
+    });
+
+    // ── COPY IBAN ──
+    function copyIban() {
+        const iban = document.getElementById('church-iban').textContent;
+        navigator.clipboard.writeText(iban).then(() => {
+            alert('IBAN copiado para a área de transferência!');
+        }).catch(err => {
+            console.error('Erro ao copiar IBAN:', err);
+        });
+    }
+
+    // ── DUPLICATE CHECK ──
+    async function checkDuplicate(phone) {
+        if (!window.db || !phone || phone.replace(/\D/g,'').length < 7) return null;
+        try {
+            const snap = await db.collection('people').where('field_21', '==', phone).limit(1).get();
+            if (!snap.empty) return snap.docs[0].data();
+            const snap2 = await db.collection('integracao').where('contact', '==', phone).limit(1).get();
+            if (!snap2.empty) return snap2.docs[0].data();
+        } catch(e) { console.warn('Duplicate check error:', e); }
+        return null;
+    }
+
+    // ── FIREBASE SUBMIT ──
+    async function submitForm(tipo, btn) {
+        if (!window.db) { alert('Sistema offline. Tente novamente.'); return; }
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Enviando...';
+        btn.style.opacity = '0.7'; btn.style.pointerEvents = 'none';
+
+        try {
+            let data = {
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'pending_integracao',
+                origem: 'connect_publico',
+                acolhedor_ref: localStorage.getItem('acolhedor_origem') || 'Geral'
+            };
+
+            if (tipo === 'oracao') {
+                const pedido = document.getElementById('oracao-pedido').value.trim();
+                if (!pedido) { alert('Por favor, escreva seu pedido.'); throw new Error('empty'); }
+                data.type = 'oracao';
+                data.action = 'Pedido Público de Oração';
+                data.person_name = document.getElementById('oracao-nome').value.trim() || 'Anônimo';
+                data.message = pedido;
+                await db.collection('schedule_requests').add(data);
+
+            } else if (tipo === 'visita') {
+                const nome = document.getElementById('visita-nome').value.trim();
+                const fone = document.getElementById('visita-fone').value.trim();
+                if (!nome || !fone) { alert('Nome e WhatsApp são obrigatórios.'); throw new Error('empty'); }
+                data.type = 'visita';
+                data.action = 'Solicitação de Acolhimento';
+                data.person_name = nome; data.name = nome;
+                data.contact = fone; data.phone = fone;
+                data.message = document.getElementById('visita-assunto').value.trim();
+                await db.collection('integracao').add(data);
+
+            } else if (tipo === 'batismo') {
+                const nome = document.getElementById('batismo-nome').value.trim();
+                const fone = document.getElementById('batismo-fone').value.trim();
+                if (!nome || !fone) { alert('Nome e WhatsApp são obrigatórios.'); throw new Error('empty'); }
+                data.type = 'Batismo';
+                data.action = 'Inscrição para Batismo';
+                data.person_name = nome; data.name = nome;
+                data.contact = fone; data.phone = fone;
+                await db.collection('schedule_requests').add(data);
+
+            } else if (tipo === 'bebe') {
+                const nome = document.getElementById('bebe-nome').value.trim();
+                const fone = document.getElementById('bebe-fone').value.trim();
+                if (!nome || !fone) { alert('Nome da criança e WhatsApp são obrigatórios.'); throw new Error('empty'); }
+                data.type = 'Apresentação de Bebê';
+                data.action = 'Registro de Consagração';
+                data.person_name = nome; data.name = nome;
+                data.contact = fone;
+                data.father_name = document.getElementById('bebe-pai').value.trim();
+                data.mother_name = document.getElementById('bebe-mae').value.trim();
+                data.details = `Nasc: ${document.getElementById('bebe-nasc').value}, Pai: ${data.father_name}, Mãe: ${data.mother_name}`;
+                await db.collection('schedule_requests').add(data);
+
+            } else if (tipo === 'grupo') {
+                const nome = document.getElementById('grupo-nome').value.trim();
+                const fone = document.getElementById('grupo-fone').value.trim();
+                if (!nome || !fone) { alert('Nome e WhatsApp são obrigatórios.'); throw new Error('empty'); }
+                data.type = 'grupo';
+                data.action = 'Interesse em Grupo';
+                data.person_name = nome; data.name = nome;
+                data.contact = fone; data.phone = fone;
+                data.group_interest = document.getElementById('grupo-tipo').value;
+                await db.collection('integracao').add(data);
+
+            } else if (tipo === 'servir') {
+                const nome = document.getElementById('servir-nome').value.trim();
+                const fone = document.getElementById('servir-fone').value.trim();
+                const area = document.getElementById('servir-area').value;
+                if (!nome || !fone || !area) { alert('Preencha todos os campos obrigatórios.'); throw new Error('empty'); }
+                data.type = 'Servir no Reino';
+                data.action = 'Interesse em Voluntariado';
+                data.person_name = nome; data.name = nome;
+                data.contact = fone; data.phone = fone;
+                data.message = 'Interesse na área: ' + area;
+                await db.collection('schedule_requests').add(data);
+
+            } else if (tipo === 'ficha') {
+                const nome = document.getElementById('f-1').value.trim();
+                const fone = document.getElementById('f-21').value.trim();
+                if (!nome) { alert('Nome (Etapa 1) é obrigatório.'); throw new Error('empty'); }
+                if (!fone) { alert('WhatsApp (Etapa 2) é obrigatório.'); throw new Error('empty'); }
+
+                const dup = await checkDuplicate(fone);
+                if (dup && !confirm(`Atenção: Já existe um cadastro com este número (${dup.type || 'Visitante'}). Deseja enviar mesmo assim?`)) {
+                    throw new Error('cancelled');
+                }
+
+                data.type = 'membro_completo';
+                data.action = 'Cadastro Nacional de Membros';
+                data.person_name = nome; data.name = nome;
+                data.contact = fone; data.phone = fone;
+                for (let i = 1; i <= 42; i++) {
+                    const el = document.getElementById('f-' + i);
+                    if (el) data['field_' + i] = el.value;
+                }
+                await db.collection('schedule_requests').add(data);
+                localStorage.removeItem('connect_draft');
+
+                localStorage.setItem('visitor_first_name', nome.split(' ')[0]);
+                const wn = document.getElementById('welcome-name');
+                if (wn) wn.textContent = ', ' + nome.split(' ')[0];
+            }
+
+            if (data.person_name && data.person_name !== 'Anônimo') {
+                localStorage.setItem('visitor_first_name', data.person_name.split(' ')[0]);
+                const wn = document.getElementById('welcome-name');
+                if (wn) wn.textContent = ', ' + data.person_name.split(' ')[0];
+            }
+
+            const formEl = document.getElementById(tipo + '-form');
+            const succEl = document.getElementById(tipo + '-success');
+            if (formEl) formEl.style.display = 'none';
+            if (succEl) succEl.style.display = 'block';
+
+        } catch(err) {
+            if (err.message !== 'empty' && err.message !== 'cancelled') {
+                alert('Erro ao enviar: ' + err.message);
+                console.error(err);
+            }
+            btn.innerHTML = origText;
+            btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+        }
+    }
+</script>
 </body>
 </html>

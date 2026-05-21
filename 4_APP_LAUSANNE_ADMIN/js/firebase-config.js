@@ -45,10 +45,15 @@ if (typeof firebase !== 'undefined') {
     // Check if auth is available (some pages might not load it)
     if (firebase.auth) {
         window.auth = firebase.auth();
-        // PERSISTENCE SESSION: Login will reset on tab close as per user request
-        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION)
-            .then(() => console.log("Firebase Auth: Persistence set to SESSION (No Auto-Login)"))
-            .catch(e => console.warn("Persistence Error:", e));
+        // PERSISTENCE SESSION: Default to SESSION unless user requested to stay logged in (Remember Me)
+        const remember = localStorage.getItem('remember_me') === 'true';
+        if (!remember) {
+            firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION)
+                .then(() => console.log("Firebase Auth: Persistence set to SESSION (No Auto-Login)"))
+                .catch(e => console.warn("Persistence Error:", e));
+        } else {
+            console.log("Firebase Auth: Maintaining LOCAL persistence (Remember Me active).");
+        }
     }
     window.db = firebase.firestore();
     window.storage = firebase.storage ? firebase.storage() : null;

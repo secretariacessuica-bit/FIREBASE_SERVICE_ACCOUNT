@@ -5,20 +5,20 @@
     <meta charset="UTF-8">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hub Presencial | Bulle v71.0.0 Diamond Core</title>
+    <title>Hub Presencial | Bulle v71.0.1 Diamond Core</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
-    <link rel="apple-touch-icon" href="assets/logo bulle.jpeg?v=71.0.0">
-    <link rel="icon" type="image/jpeg" href="assets/logo bulle.jpeg?v=71.0.0">
-    <link rel="stylesheet" href="css/style-v2.css?v=71.0.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css?v=71.0.0">
+    <link rel="apple-touch-icon" href="assets/logo bulle.jpeg?v=71.0.1">
+    <link rel="icon" type="image/jpeg" href="assets/logo bulle.jpeg?v=71.0.1">
+    <link rel="stylesheet" href="css/style-v2.css?v=71.0.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css?v=71.0.1">
     
     <!-- Firebase SDKs (Compat v8.10.1) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js?v=71.0.0"></script>
+    <script src="js/firebase-config.js?v=71.0.1"></script>
 
     <style>
         :root {
@@ -1388,11 +1388,11 @@
             }
         }
 
-        // --- SERVICE WORKER REGISTRATION (v66.0.0) ---
+        // --- SERVICE WORKER REGISTRATION (v71.0.1) ---
         if ('serviceWorker' in navigator && location.protocol !== 'file:') {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw-v4.js?v=66.0.2').then(reg => {
-                    console.log('🚀 SW v66.0.2 Registered (Bulle Connect)');
+                navigator.serviceWorker.register('sw-v4.js?v=71.0.1').then(reg => {
+                    console.log('🚀 SW v71.0.1 Registered (Bulle Connect)');
                 }).catch(err => console.warn('SW registration failed:', err));
             });
         }

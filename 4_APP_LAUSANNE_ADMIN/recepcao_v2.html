@@ -1,0 +1,2460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <script>
+        // EMERGENCY CACHE BUSTER v70.3.76 - FULL LOGICAL PARITY
+        (function() {
+            const CURRENT_VER = "70.3.76";
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('v') !== CURRENT_VER && window.location.protocol !== 'file:') {
+                urlParams.set('v', CURRENT_VER);
+                window.location.search = urlParams.toString();
+            }
+        })();
+    </script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.76"></script>
+    <script src="js/auth-manager.js?v=70.3.76"></script>
+    <!-- Core Reception Logic v70.3.76 (Cache Force) -->
+    <script src="js/reception_kids_logic.js?v=70.3.76"></script>
+    <script>
+        // SECURITY GUARD v47.2 - iframe-safe
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile_v2.html';
+            }
+        })();
+    </script>
+
+    <script>
+        // FIX SW ERROR on Local Protocol (Polyfill or Guard)
+        if (window.location.protocol === 'file:') {
+            // Override SW to prevent errors from external libs early
+            Object.defineProperty(navigator, 'serviceWorker', {
+                value: {
+                    register: () => Promise.resolve(),
+                    getRegistrations: () => Promise.resolve([]),
+                    ready: Promise.resolve()
+                }
+            });
+            console.log("Local Dev: ServiceWorker Stubbed in HEAD.");
+        }
+
+        // SECURITY: Already handled above, skip duplicate check
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recepção - Catedral Lausanne | v51.2.4</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#f8f9fa">
+    <link rel="stylesheet" href="css/style-v2.css?v=61.0.0">
+    <link rel="stylesheet" href="css/mobile-v2.css?v=61.0.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script>
+        // Singleton pattern to prevent "already declared" errors
+        window.db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+    </script>
+
+
+    <style>
+        /* RECEPTION LAUSANNE - CHATGPT WHITE/RED THEME */
+        :root {
+            --gold: #ffb300;
+            --red-active: #d32f2f;
+            --bg: #0b0c10;
+            --bg-card: #ffffff;
+            --bg-dark-element: #15161d;
+            --border: #eeeeee;
+            --border-dark: rgba(255, 255, 255, 0.08);
+            --text-primary: #1a1a1a;
+            --text-white: #ffffff;
+            --text-muted: #8e8e93;
+            --font-body: 'Outfit', sans-serif;
+            --font-serif: 'Playfair Display', serif;
+        }
+
+        html, body {
+            background-color: var(--bg) !important;
+            background: var(--bg) !important;
+            color: var(--text-white) !important;
+            padding-bottom: 80px;
+            overflow-y: auto;
+            scrollbar-width: none;
+            border-top: 2px solid var(--gold);
+        }
+
+        body::before {
+            content: "LAUSANNE";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 15vw;
+            font-weight: 900;
+            color: rgba(201, 160, 80, 0.012);
+            z-index: -1;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        body::-webkit-scrollbar { display: none; }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+
+        h2 span { color: var(--gold); font-weight: 800; }
+
+        /* RECEPTIONIST IDENTIFICATION BAR */
+        .acolhedor-bar {
+            background: var(--bg-dark-element);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .acolhedor-bar i { color: var(--gold); font-size: 1.2rem; }
+        .acolhedor-bar input {
+            border: none !important;
+            background: transparent !important;
+            margin: 0 !important;
+            font-size: 0.95rem !important;
+            font-weight: 600 !important;
+            color: var(--text-white) !important;
+            width: 100%;
+            outline: none;
+        }
+        .acolhedor-bar input::placeholder { color: var(--text-muted); font-weight: 400; }
+        .acolhedor-bar label {
+            font-size: 0.8rem;
+            color: var(--gold);
+            text-transform: uppercase;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        /* CARD FLOATING (Wizard Container) */
+        .card-floating {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            box-shadow: 0 0 50px rgba(255, 179, 0, 0.15);
+        }
+
+        /* ACCORDION STYLES */
+        .section-card {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 0;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: 0.3s;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .card-header {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid transparent;
+            transition: 0.2s;
+        }
+
+        .card-header:hover { background: rgba(255, 255, 255, 0.04); }
+        .card-header h3 { margin: 0; font-size: 1rem; display: flex; align-items: center; width: 100%; color: var(--text-primary); }
+        .card-icon { margin-right: 15px; width: 30px; text-align: center; font-size: 1.2rem; color: var(--gold); }
+        .toggle-icon { color: var(--text-muted); transition: 0.3s; }
+
+        .section-card.active {
+            border-color: var(--gold);
+            box-shadow: 0 4px 20px rgba(255, 179, 0, 0.05);
+        }
+
+        .section-card.active .card-header {
+            border-bottom: 1px solid var(--border);
+            background: rgba(201, 160, 80, 0.04);
+        }
+
+        .section-card.active .toggle-icon {
+            transform: rotate(180deg);
+            color: var(--gold);
+        }
+
+        .card-content {
+            display: none;
+            /* Hidden by default */
+            padding: 20px;
+            animation: slideDown 0.3s;
+        }
+
+        .section-card.active .card-content {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Specific Check-in Border Highlight */
+        /* #tab-checkin .section-card {
+            border-left: 3px solid var(--gold-primary);
+        } */
+
+        /* --- INPUTS --- */
+        input[type="text"],
+        input[type="tel"],
+        input[type="email"],
+        input[type="password"],
+        input[type="datetime-local"],
+        select {
+            width: 100%;
+            padding: 14px 18px;
+            background: #f9f9f9 !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 10px;
+            color: var(--text-primary) !important;
+            font-family: var(--font-body);
+            font-size: 1rem;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            transition: 0.3s;
+            outline: none;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--gold) !important;
+        }
+
+        /* --- BUTTONS --- */
+        button {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-family: var(--font-body);
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-gold {
+            background: var(--gold);
+            color: #000;
+        }
+
+        .btn-gold:active {
+            transform: scale(0.98);
+        }
+
+        /* Tech/Live Button (Blue/Purple) */
+        .btn-tech {
+            background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%);
+            color: white;
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-secondary);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--gold-primary);
+            color: var(--gold-primary);
+        }
+
+        /* Logo Circle */
+        .logo-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid var(--gold-primary);
+            padding: 3px;
+            background: transparent;
+            object-fit: cover;
+            margin-bottom: 15px;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+        }
+
+        /* Checkbox Active Color */
+        .check-box {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .check-box:hover {
+            border-color: var(--gold-primary);
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .check-box input {
+            margin-right: 15px;
+            transform: scale(1.3);
+            accent-color: var(--gold-primary);
+            margin-bottom: 0;
+            height: auto;
+            width: auto;
+        }
+
+        .sub-option {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            margin-left: 10px;
+            border-left: 2px solid var(--gold-primary);
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* --- WIZARD STEPS --- */
+        .step-container {
+            display: none;
+            animation: fade 0.4s;
+        }
+
+        .step-container.active {
+            display: block;
+        }
+
+        @keyframes fade {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* RECEPTION BOTTOM NAV */
+        .bottom-nav {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 360px;
+            max-width: 90%;
+            background: var(--bg-dark-element);
+            border: 1px solid var(--border-dark);
+            border-radius: 35px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .nav-item {
+            color: var(--text-muted);
+            text-align: center;
+            flex: 1;
+            transition: 0.3s;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .nav-item span {
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        .nav-item.active { color: var(--gold); }
+
+        .nav-item i {
+            display: block;
+            font-size: 1.3rem;
+            transition: 0.3s;
+        }
+
+        .nav-item.active {
+            color: var(--gold);
+        }
+
+        .nav-item.active i {
+            background: rgba(255, 179, 0, 0.08);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 1.2rem;
+        }
+
+        /* Adjust body padding for bottom nav */
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            padding-top: 20px;
+            padding-bottom: 120px;
+            /* Extra space for floating nav */
+        }
+
+        /* Live Warning */
+        .live-warning {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* PREMIUM TABS */
+        .segmented-control {
+            display: flex;
+            background: var(--bg-dark-element);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-dark);
+            gap: 4px;
+        }
+
+        .segment-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            padding: 12px 6px;
+            border-radius: 8px;
+            font-family: var(--font-body);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .segment-btn.active {
+            background: var(--red-active);
+            color: #ffffff;
+            border: none;
+            font-weight: 800;
+        }
+
+        /* Content Areas */
+        .tab-content-area {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .tab-content-area.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* MEMBER & CONVERT CARDS (Secondary Look) */
+        /* MEMBER & CONVERT CARDS (Secondary Look) */
+        .secondary-card {
+            background: rgba(0, 0, 0, 0.03);
+            /* Slight dark bg */
+            border: 1px dashed rgba(0, 0, 0, 0.2);
+            /* Visible dashed border */
+            border-radius: 12px;
+            padding: 20px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body>
+
+    <!-- RECEPTION BOTTOM NAV -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" id="nav-checkin" onclick="setTab('checkin')">
+            <i class="fas fa-check-circle"></i>
+            <span>Check-in</span>
+        </div>
+        <div class="nav-item" id="nav-live" onclick="setTab('live')">
+            <i class="fas fa-broadcast-tower"></i>
+            <span>Ao Vivo</span>
+        </div>
+        <div class="nav-item" id="nav-schedule" onclick="setTab('schedule')">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Agendar</span>
+        </div>
+        <div class="nav-item" id="nav-services" onclick="setTab('services')">
+            <i class="fas fa-hands-helping"></i>
+            <span>Servir</span>
+        </div>
+        <div class="nav-item" id="nav-events" onclick="setTab('events')">
+            <i class="fas fa-calendar-check"></i>
+            <span>Eventos</span>
+        </div>
+    </nav>
+
+    <div class="container" style="padding-bottom: 150px;">
+
+        <!-- ACOHLEDOR IDENTIFICATION -->
+        <div class="acolhedor-bar" id="acolhedor-container">
+            <i class="fas fa-user-tag"></i>
+            <label>Acolhedor(a):</label>
+            <input type="text" id="acolhedor-name" placeholder="Digite seu nome..." oninput="saveAcolhedor(this.value)">
+        </div>
+
+        <script>
+            // PERSISTENCE FOR ACOLHEDOR NAME
+            function saveAcolhedor(name) {
+                localStorage.setItem('acolhedor_name_persistent', name);
+            }
+            
+            // LOAD PERSISTED NAME
+            window.addEventListener('load', () => {
+                const savedName = localStorage.getItem('acolhedor_name_persistent');
+                if (savedName) {
+                    document.getElementById('acolhedor-name').value = savedName;
+                }
+            });
+        </script>
+
+        <!-- === TAB 0: EVENTOS (Unified) === -->
+        <div id="tab-events" class="tab-section" style="display:none; height: 85vh;">
+            <iframe id="iframe-checkin-eventos" style="width:100%; height:100%; border:none; border-radius: 20px;"></iframe>
+            <script>document.getElementById('iframe-checkin-eventos').src = 'checkin.html?v=' + Date.now();</script>
+        </div>
+
+        <!-- === TAB 1: CHECK-IN ROOT (Merged Flow) === -->
+        <div id="tab-checkin" class="tab-section active">
+
+            <div style="text-align:center; margin-bottom:30px;">
+                <h2 style="color:#ffffff; margin:0; font-size:1.6rem; font-weight: 800;">Bem-vindo</h2>
+                <p style="color:var(--text-muted); margin-top: 5px; font-size: 0.9rem;">Selecione uma opcao para iniciar</p>
+            </div>
+
+            <!-- SEGMENTED CONTROL -->
+            <div class="segmented-control" style="margin-bottom: 25px;">
+                <button class="segment-btn active" onclick="switchCheckinMode('visitor', this)">VISITANTE</button>
+                <button class="segment-btn" onclick="switchCheckinMode('child', this)">CRIANCA</button>
+                <button class="segment-btn" onclick="switchCheckinMode('online', this)">
+                    <i class="fas fa-qrcode" style="margin-right:2px;"></i>ONLINE
+                </button>
+                <button class="segment-btn" onclick="switchCheckinMode('mural', this)">
+                    <i class="fas fa-list-check" style="margin-right:2px;"></i>MURAL
+                </button>
+            </div>
+
+            <!-- 0. ONLINE CONTENT (QR Code Prominence) -->
+            <div id="mode-online" class="tab-content-area">
+                <div class="card-floating"
+                    style="text-align:center; padding:25px 15px !important; border: 2px solid #ec4899 !important;">
+                    <div
+                        style="position:absolute; top:8px; right:12px; font-size:0.65rem; font-weight:900; color:#ec4899; letter-spacing:1px; display:flex; align-items:center; gap:5px;">
+                        <div class="pulse-dot"
+                            style="width:5px; height:5px; background:#ec4899; border-radius:50%; animation: pulse 1s infinite;">
+                        </div> LIVE
+                    </div>
+                    <div style="font-size:2rem; margin-bottom:8px; color:#ec4899;"></div>
+                    <h3 class="title-modern" style="margin:0 0 8px; font-size:1.3rem; letter-spacing:-0.5px;">
+                        Auto-Cadastro KIDS</h3>
+                    <p style="font-size:0.9rem; color:#666; margin:0 0 20px; line-height:1.4;">Aponte sua camera para o
+                        QR Code abaixo e cadastre seu filho rapido pelo seu celular.</p>
+
+                    <div
+                        style="display:inline-block; padding:15px; background:#fff; border-radius:30px; box-shadow:0 15px 45px rgba(236, 72, 153, 0.2); border:1px solid #fce7f3; margin-bottom: 40px;">
+                        <div id="qr-code-online" style="display:inline-block;"></div>
+                    </div>
+
+                    <div
+                        style="margin-top:20px; padding:12px; background:#f9f9f9; border-radius:12px; border:1px solid #eee;">
+                        <p
+                            style="font-size:0.75rem; color:#999; margin:0 0 4px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">
+                            Link Direto</p>
+                        <p style="font-size:0.85rem; color:#ec4899; font-weight:700; word-break:break-all; margin:0;">
+                            catedral-connect-bf717.web.app/register_kids.html</p>
+                    </div>
+                </div>
+                <script>
+                    (function () {
+                        function loadOnlineQR() {
+                            var el = document.getElementById('qr-code-online');
+                            if (!el) return;
+                            if (typeof QRCode !== 'undefined') {
+                                el.innerHTML = '';
+                                new QRCode(el, {
+                                    text: 'https://catedral-connect-bf717.web.app/register_kids.html',
+                                    width: 180,
+                                    height: 180,
+                                    colorDark: '#1a1a1a',
+                                    colorLight: '#ffffff',
+                                    correctLevel: QRCode.CorrectLevel.H
+                                });
+                            } else {
+                                setTimeout(loadOnlineQR, 300);
+                            }
+                        }
+                        loadOnlineQR();
+                    })();
+                </script>
+            </div>
+
+            <!-- MURAL KIDS CONTENT -->
+            <div id="mode-mural" class="tab-content-area">
+                <div class="card-floating" style="padding:20px !important;">
+                    <h3 class="title-modern" style="margin:0 0 10px; font-size:1.3rem; color:#10b981;">
+                        <i class="fas fa-check-circle"></i> Mural de Entrada Kids
+                    </h3>
+                    <p style="color:#666; font-size:0.9rem; margin-bottom:20px; line-height:1.4;">
+                        Lista de todas as criancas que ja foram <b>recebidas e confirmadas</b> pela equipe da Sala das Criancas hoje.
+                    </p>
+
+                    <div id="mural-kids-container" style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="text-align:center; color:#aaa; font-style:italic; padding:20px;">
+                            <i class="fas fa-spinner fa-spin"></i> Aguardando atualizacoes...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1. VISITOR CONTENT -->
+            <div id="mode-visitor" class="tab-content-area active">
+                <div class="card-floating">
+                    <!-- INNER SEGMENTED CONTROL -->
+                    <div class="segmented-control" style="margin-bottom:15px;">
+                        <button class="segment-btn active" onclick="switchVisitorSubMode('new', this)">NOVO</button>
+                        <button class="segment-btn" onclick="switchVisitorSubMode('exist', this)">JA VISITOU</button>
+                    </div>
+
+                    <!-- SUB-MODE: NEW REGISTRATION -->
+                    <div id="visitor-sub-new" class="visitor-sub-area">
+                        <!-- WIZARD STEP 1 -->
+                        <div id="step-1" class="step-container active">
+                            <div style="display: flex; align-items: center; margin-bottom: 25px; margin-top: 10px;">
+                                <div style="width: 55px; height: 55px; border-radius: 50%; border: 1px solid var(--gold); display: flex; align-items: center; justify-content: center; margin-right: 18px;">
+                                    <i class="fas fa-user" style="color: var(--gold); font-size: 1.6rem;"></i>
+                                </div>
+                                <div>
+                                    <h3 style="font-family: 'Playfair Display', serif; font-size: 2rem; margin: 0; color: var(--text-primary); font-weight: 400;">Visitante</h3>
+                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.95rem;">Queremos te conhecer melhor.</p>
+                                </div>
+                            </div>
+
+                            <input type="text" id="vis-name" placeholder="Nome do Visitante (Obrigatorio)...">
+                            <button onclick="nextStep(1)" class="btn-large btn-gold" style="margin-top:10px;">
+                                CONTINUAR <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+
+                        <!-- WIZARD STEP 2 -->
+                        <div id="step-2" class="step-container">
+                            <h3 class="title-modern" style="margin-top:0;">Mais Informacoes</h3>
+                            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                <select id="vis-ddi"
+                                    style="width: 110px; font-size: 1.1rem; padding: 18px 10px; border: 2px solid #eee; border-radius: 12px; background: #FAFAFA; color: #333;">
+                                    <option value="+41">CH +41</option>
+                                    <option value="+351">PT +351</option>
+                                    <option value="+34">ES +34</option>
+                                    <option value="+33">FR +33</option>
+                                    <option value="+39">IT +39</option>
+                                    <option value="+49">DE +49</option>
+                                    <option value="+44">GB +44</option>
+                                    <option value="+55">BR +55</option>
+                                </select>
+                                <input type="tel" id="vis-phone" placeholder="WhatsApp / Celular (Opcional)"
+                                    style="font-size:1.1rem; padding:18px; flex: 1; border: 2px solid #eee; border-radius: 12px; background: #FAFAFA;">
+                            </div>
+                            <div style="display:flex; gap:10px; margin-top:20px;">
+                                <button onclick="prevStep(2)" class="btn-large btn-outline"
+                                    style="color:#333; border-color:#ccc;">Voltar</button>
+                                <button onclick="nextStep(2)" class="btn-large btn-gold">Continuar</button>
+                            </div>
+                        </div>
+
+                        <!-- WIZARD STEP 3 -->
+                        <div id="step-3" class="step-container">
+                            <h3 class="title-modern" style="margin-top:0;">Finalizar</h3>
+                            <label style="color:var(--text-muted);">E Evangelico?</label>
+                            <select id="vis-christian">
+                                <option value="nao">Nao</option>
+                                <option value="sim">Sim</option>
+                            </select>
+
+                            <label style="color:var(--text-muted);">Igreja de Origem</label>
+                            <input type="text" id="vis-church" placeholder="Se houver...">
+
+                            <label style="color:var(--text-muted);">Quem convidou?</label>
+                            <input type="text" id="vis-invited-by">
+
+                            <label style="color:var(--text-muted);">Finalidade da Visita</label>
+                            <select id="vis-reason">
+                                <option value="culto">Culto de Celebração (Integrar)</option>
+                                <option value="evento">Evento Especial (Apenas Registro)</option>
+                            </select>
+
+                            <div style="display:flex; gap:10px; margin-top:20px;">
+                                <button onclick="prevStep(3)" class="btn-large btn-outline"
+                                    style="color:#333; border-color:#ccc;">Voltar</button>
+                                <button onclick="submitVisitor()" class="btn-large btn-gold">Finalizar Cadastro</button>
+                            </div>
+                        </div>
+                    </div> <!-- END visitor-sub-new -->
+
+                    <!-- SUB-MODE: SEARCH EXISTING -->
+                    <div id="visitor-sub-exist" class="visitor-sub-area" style="display:none; text-align:left;">
+                        <h3 class="title-modern" style="color:var(--primary); margin-top:0;">Encontrar Visitante
+                        </h3>
+                        <p style="color:#666; font-size:0.9rem; margin-bottom:15px; line-height: 1.4;">Digite o nome
+                            do visitante abaixo para localizar seu cadastro e registrar uma nova visita. Ao
+                            completar 3 visitas, ele sera promovido automaticamente a <b>Congregado</b>.</p>
+
+                        <input type="text" id="visitor-search-input"
+                            placeholder="Digite 3 letras ou mais para buscar..." onkeyup="searchReturningVisitor()"
+                            style="font-size:1.1rem; padding:18px; border:2px solid #eee; width:100%; box-sizing:border-box; border-radius:12px; font-weight: bold;">
+
+                        <div id="visitor-search-results" style="margin-top:15px; min-height: 50px;">
+                            <div style="color:#aaa; text-align:center; padding:20px; font-style: italic;">
+                                <i class="fas fa-search"
+                                    style="font-size: 2rem; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
+                                Use a barra acima para pesquisar...
+                            </div>
+                        </div>
+                    </div> <!-- END visitor-sub-exist -->
+
+                </div> <!-- END card-floating -->
+            </div> <!-- END mode-visitor -->
+
+
+            <!-- 3. CHILD CONTENT -->
+            <div id="mode-child" class="tab-content-area">
+                <div class="card-floating">
+                    <!-- INNER SEGMENTED CONTROL -->
+                    <div class="segmented-control" style="margin-bottom:15px;">
+                        <button class="segment-btn active" onclick="switchChildSubMode('new', this)">NOVO</button>
+                        <button class="segment-btn" onclick="switchChildSubMode('exist', this)">JA CADASTRO</button>
+                    </div>
+
+                    <!-- SUB-MODE: NEW REGISTRATION -->
+                    <div id="child-sub-new" class="child-sub-area">
+                        <h3 class="title-modern" style="color:var(--primary); margin-top:0;">Cadastro Infantil</h3>
+
+                        <!-- Step 1: Parent Phone for Search -->
+                        <div id="child-step-1" class="step-container active">
+                            <label
+                                style="color:var(--text-muted); font-size:0.9rem; margin-top:10px; display:block;">WhatsApp
+                                do Responsavel</label>
+                            <input type="tel" id="child-phone" placeholder="(Ex: +41 79 123 45 67)"
+                                oninput="searchParentForChild(this.value)"
+                                style="font-size:1.1rem; padding:18px; border:2px solid #eee; width:100%; box-sizing:border-box;">
+                            <div id="parent-search-status"
+                                style="font-size:0.8rem; height:20px; color:#999; margin-top:5px;">Digite para
+                                buscar...
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Parent Name & Child Name -->
+                        <div id="child-step-2" style="display:none; animation:fadeIn 0.3s;">
+                            <input type="text" id="child-parent" placeholder="Nome do Responsavel..."
+                                oninput="checkChildStep(2)"
+                                style="font-size:1.1rem; padding:18px; border:2px solid #eee; margin-top:15px; width:100%; background:#f9f9f9; box-sizing:border-box;">
+
+                            <input type="text" id="child-name" placeholder="Nome da Crianca..."
+                                oninput="checkChildStep(2)"
+                                style="font-size:1.1rem; padding:18px; border:2px solid #eee; margin-top:15px; width:100%; box-sizing:border-box;">
+                        </div>
+
+                        <!-- Step 3: Child Age -->
+                        <div id="child-step-3" style="display:none; animation:fadeIn 0.3s;">
+                            <label
+                                style="color:var(--text-muted); font-size:0.9rem; margin-top:15px; display:block;">Idade
+                                da Crianca</label>
+                            <select id="child-age" onchange="checkChildStep(3)"
+                                style="font-size:1.1rem; padding:15px; border:2px solid #eee; width:100%; box-sizing:border-box;">
+                                <option value="">Selecione...</option>
+                                <option value="0-3">0 a 3 anos</option>
+                                <option value="4-7">4 a 7 anos</option>
+                                <option value="8-11">8 a 11 anos</option>
+                            </select>
+                        </div>
+
+                        <!-- Step 4: Advanced Safety (Only for Members) -->
+                        <div id="child-step-4"
+                            style="display:none; animation:fadeIn 0.3s; padding:15px; border:2px dashed #f59e0b; border-radius:10px; background:#fffbeb; margin-top:15px;">
+                            <div style="font-weight:800; color:#b45309; margin-bottom:10px;"><i
+                                    class="fas fa-shield-alt"></i> Ficha de Seguranca Avancada</div>
+                            <label style="color:#b45309; font-size:0.85rem; display:block;">Possui Alergias?</label>
+                            <input type="text" id="child-allergies" placeholder="Descreva se houver (Ex: Amendoim)..."
+                                style="font-size:1rem; padding:12px; border:1px solid #fcd34d; width:100%; margin-bottom:10px; border-radius:8px; box-sizing:border-box;">
+
+                            <label style="color:#b45309; font-size:0.85rem; display:block;">Atencao Especial /
+                                Laudos?</label>
+                            <input type="text" id="child-special" placeholder="Ex: Autismo (TEA), TDAH..."
+                                style="font-size:1rem; padding:12px; border:1px solid #fcd34d; width:100%; border-radius:8px; box-sizing:border-box;">
+                        </div>
+                        
+                        <div style="margin-top:15px; background:#fffbeb; border:1px solid #fcd34d; padding:15px; border-radius:12px; display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="document.getElementById('child-presentation-new').click()">
+                            <input type="checkbox" id="child-presentation-new" style="width:22px; height:22px; accent-color:#f59e0b; margin:0;">
+                            <span style="font-weight:800; color:#b45309; font-size:1rem; line-height:1;"> Apresentacao de Bebe Hoje</span>
+                        </div>
+
+                        <button id="btn-child-submit" onclick="submitChildNew()" class="btn-large btn-gold"
+                            style="display:none; margin-top:15px;">Cadastrar Crianca</button>
+                    </div>
+
+                    <!-- SUB-MODE: EXISTING SEARCH -->
+                    <div id="child-sub-exist" class="child-sub-area" style="display:none;">
+                        <div style="margin-bottom:15px; position:relative;">
+                            <i class="fas fa-search" style="position:absolute; left:15px; top:50%; transform:translateY(-50%); color:#666;"></i>
+                            <input type="text" id="child-search-input" placeholder="Filtrar por nome da crianca..."
+                                onkeyup="renderKidsSelection(this.value)"
+                                style="font-size:1.1rem; padding:18px 18px 18px 45px; border:2px solid #eee; margin-bottom:10px;">
+                        </div>
+                        
+                        <div style="margin-bottom:15px; background:#fffbeb; border:1px solid #fcd34d; padding:15px; border-radius:12px; display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="document.getElementById('child-presentation-exist').click()">
+                            <input type="checkbox" id="child-presentation-exist" style="width:22px; height:22px; accent-color:#fcd34d; margin:0;">
+                            <span style="font-weight:800; color:#b45309; font-size:1rem; line-height:1;"> Apresentacao de Bebe Hoje</span>
+                        </div>
+
+                        <div id="child-search-results" style="max-height:400px; overflow-y:auto; padding-right:5px;">
+                            <!-- Dynamic List Loaded Here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div> <!-- END TAB CHECKIN (Merged) -->
+
+        <script>
+            // Inline Fallback for Tab Switching to ensure it works even if external script delays
+            function switchCheckinMode(mode, btn) {
+                console.log("Inline switchCheckinMode:", mode);
+                // UI
+                document.querySelectorAll('#tab-checkin .segment-btn').forEach(b => b.classList.remove('active'));
+                if (btn) btn.classList.add('active');
+
+                // Views
+                document.querySelectorAll('#tab-checkin .tab-content-area').forEach(div => div.classList.remove('active'));
+                const target = document.getElementById('mode-' + mode);
+                if (target) {
+                    target.classList.add('active');
+                } else {
+                    console.error("Target ID not found: mode-" + mode);
+                }
+            }
+        </script>
+
+        <!-- === TAB 2: AO VIVO (Events) === -->
+        <div id="tab-live" class="tab-section" style="display:none;">
+            <div class="segmented-control">
+                <button class="segment-btn active" onclick="switchLiveMode('prayer', this)">ORACAO</button>
+                <button class="segment-btn" onclick="switchLiveMode('baby', this)">BEBE</button>
+                <button class="segment-btn" onclick="switchLiveMode('baptism', this)">BATISMO</button>
+            </div>
+
+            <!-- 1. PRAYER -->
+            <div id="live-mode-prayer" class="tab-content-area active">
+                <div class="card-floating" style="padding: 20px;">
+                    <h3 class="title-modern" style="margin-top:0;">Pedido de Oracao</h3>
+                    <div id="live-names-list-prayer">
+                        <input type="text" class="live-name-input-prayer" placeholder="Nome da Pessoa 1..."
+                            style="margin-bottom:10px;">
+                    </div>
+
+
+                    <textarea id="live-obs-prayer" rows="3" placeholder="Motivo da oracao..."
+                        style="width:100%; padding:15px; border-radius:12px; border:2px solid #eee; background:#FAFAFA; resize:none; font-family:inherit; font-size:1rem;"></textarea>
+
+                    <button onclick="submitLiveAction('prayer')" class="btn-large btn-gold" style="margin-top:20px;">
+                        Enviar ao Altar
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. BABY -->
+            <div id="live-mode-baby" class="tab-content-area">
+                <div class="card-floating" style="padding: 20px;">
+                    <h3 class="title-modern" style="margin-top:0;">Apresentacao de Bebe</h3>
+                    <input type="text" id="live-baby-name" placeholder="Nome do Bebe">
+                    <input type="text" id="live-baby-parents" placeholder="Nome dos Pais">
+                    <button onclick="submitLiveAction('baby')" class="btn-large btn-gold">Registrar
+                        Apresentacao</button>
+                </div>
+            </div>
+
+            <!-- 3. BAPTISM -->
+            <div id="live-mode-baptism" class="tab-content-area">
+                <div class="card-floating" style="padding: 20px;">
+                    <h3 class="title-modern" style="margin-top:0;">Batismo</h3>
+                    <input type="text" id="live-bapt-name" placeholder="Nome do Candidato">
+                    <div style="display:flex; gap:10px;">
+                        <select id="live-bapt-age" style="flex:1;">
+                            <option value="">Faixa Etaria...</option>
+                            <option value="Jovem">Jovem</option>
+                            <option value="Adulto">Adulto</option>
+                            <option value="Idoso">Idoso</option>
+                        </select>
+                        <select id="live-bapt-gender" style="flex:1;">
+                            <option value="">Genero...</option>
+                            <option value="Homem">Homem</option>
+                            <option value="Mulher">Mulher</option>
+                        </select>
+                    </div>
+                    <button onclick="submitLiveAction('baptism')" class="btn-large btn-gold"
+                        style="margin-top:10px;">Registrar Batismo</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function switchLiveMode(mode, btn) {
+                // Update Buttons
+                btn.parentNode.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Update Content (Scoped to Live Tab)
+                const parent = document.getElementById('tab-live');
+                parent.querySelectorAll('.tab-content-area').forEach(c => c.classList.remove('active'));
+                document.getElementById('live-mode-' + mode).classList.add('active');
+            }
+
+            function addLivePerson(type) {
+                // Currently only for prayer, but adaptable
+                const list = document.getElementById('live-names-list-' + type);
+                const count = list.children.length + 1;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'live-name-input-' + type;
+                input.placeholder = `Nome da Pessoa ${count}...`;
+                input.style = "margin-top: 10px;";
+                list.appendChild(input);
+                input.focus();
+            }
+
+            function submitLiveAction(type) {
+                const batch = db.batch();
+                let names = [];
+                let obs = "";
+                let actionTitle = "";
+                let detailForAltar = "";
+
+                if (type === 'prayer') {
+                    const inputs = document.querySelectorAll('.live-name-input-prayer');
+                    inputs.forEach(i => { if (i.value.trim()) names.push(i.value.trim()); });
+                    if (names.length === 0) return alert("Adicione pelo menos um nome!");
+
+                    obs = document.getElementById('live-obs-prayer').value;
+                    actionTitle = "Pedido de Oracao";
+                    detailForAltar = obs || "Pedido no Altar";
+                }
+                else if (type === 'baby') {
+                    const name = document.getElementById('live-baby-name').value;
+                    if (!name) return alert("Nome do bebe e obrigatorio!");
+
+                    names.push(name);
+                    const parents = document.getElementById('live-baby-parents').value;
+                    obs = `Pais: ${parents}`;
+                    actionTitle = "Apresentacao de Bebe";
+                    detailForAltar = `Bebe: ${name} (Pais: ${parents})`;
+                }
+                else if (type === 'baptism') {
+                    const name = document.getElementById('live-bapt-name').value;
+                    if (!name) return alert("Nome do candidato e obrigatorio!");
+
+                    names.push(name);
+                    const age = document.getElementById('live-bapt-age').value;
+                    const gender = document.getElementById('live-bapt-gender').value;
+                    obs = `${age} / ${gender}`;
+                    actionTitle = "Batismo";
+                    detailForAltar = `Batismo: ${age}`;
+                }
+
+                names.forEach(personName => {
+                    const refPending = db.collection('pending').doc();
+                    batch.set(refPending, {
+                        type: actionTitle,
+                        person_name: personName,
+                        obs: obs,
+                        status: 'pending',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    const refAtt = db.collection('attendance').doc();
+                    let interests = [actionTitle];
+                    if (type === 'baby') interests.push(`Apresentacao Bebe: ${personName}`);
+                    if (type === 'baptism') interests.push('Batismo');
+
+                    batch.set(refAtt, {
+                        name: personName,
+                        type: 'request',
+                        interests: interests,
+                        detail: detailForAltar,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        origin: 'reception_live_' + type
+                    });
+                });
+
+                batch.commit().then(() => {
+                    alert("Enviada com sucesso!");
+                    const SW_VERSION = 'v48.12.17';
+                    // Security v48.12.17 Enforce
+                    navigator.serviceWorker.register('sw-v3.js?v=' + SW_VERSION).then(reg => {
+                        console.log('SW ' + SW_VERSION + ' Registered (Mobile-v48.12.17)');
+                    });
+                }).catch(err => {
+                    console.error("Erro:", err);
+                    alert("Erro ao enviar: " + err.message);
+                });
+            }
+        </script>
+
+        <!-- === TAB 3: AGENDAMENTO (Secretariat) === -->
+        <div id="tab-schedule" class="tab-section" style="display:none;">
+            <div style="text-align:center; margin-bottom:20px; padding-top:10px;">
+                <h3 class="title-modern" style="margin:0; font-size:1.5rem; color:#ffffff;">Agendamentos</h3>
+                <p style="color:#aaaaaa; margin:6px 0 0 0;">Secretaria e Solicitações</p>
+            </div>
+
+            <!-- SEGMENTED CONTROL (Scrollable for 4 items) -->
+            <div class="segmented-control" style="overflow-x: auto; white-space: nowrap;">
+                <button class="segment-btn active" onclick="switchScheduleMode('visit', this)"
+                    style="min-width: 80px;">VISITA</button>
+                <button class="segment-btn" onclick="switchScheduleMode('group', this)"
+                    style="min-width: 80px;">GRUPO</button>
+                <button class="segment-btn" onclick="switchScheduleMode('baby', this)"
+                    style="min-width: 80px;">BEBE</button>
+                <button class="segment-btn" onclick="switchScheduleMode('baptism', this)"
+                    style="min-width: 80px;">BATISMO</button>
+                <button class="segment-btn" onclick="switchScheduleMode('member', this)"
+                    style="min-width: 80px;">MEMBRO</button>
+            </div>
+
+            <!-- 1. VISIT SCHEDULE -->
+            <div id="sched-mode-visit" class="tab-content-area active">
+                <div class="card-floating">
+                    <div style="text-align:center; margin-bottom:15px;">
+
+                        <h3 class="title-modern" style="margin:0; font-size:1.3rem;">Receber Visita</h3>
+                        <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">Agende uma visita pastoral.
+                        </p>
+                    </div>
+
+                    <label>Seu Nome</label>
+                    <input type="text" id="sched-name-visit" placeholder="Nome...">
+
+                    <label>Contato</label>
+                    <input type="tel" id="sched-contact-visit" placeholder="Telefone..." pattern="[0-9]*"
+                        inputmode="numeric">
+
+                    <label>Data Preferida</label>
+                    <input type="datetime-local" id="sched-visit-date">
+
+                    <button onclick="submitScheduleAction('visit')" class="btn-large btn-gold">Solicitar
+                        Visita</button>
+                </div>
+            </div>
+
+            <!-- 2. GROUP SCHEDULE -->
+            <div id="sched-mode-group" class="tab-content-area">
+                <div class="card-floating">
+                    <div style="text-align:center; margin-bottom:15px;">
+                        <i class="fas fa-users" style="font-size:2rem; color: #a78bfa; margin-bottom:10px;"></i>
+                        <h3 class="title-modern" style="margin:0; font-size:1.3rem;">Entrar em Grupo</h3>
+                        <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">Participe de um pequeno
+                            grupo.
+                        </p>
+                    </div>
+
+                    <label>Seu Nome</label>
+                    <input type="text" id="sched-name-group" placeholder="Nome...">
+
+                    <label>Contato</label>
+                    <input type="tel" id="sched-contact-group" placeholder="Telefone..." pattern="[0-9]*"
+                        inputmode="numeric">
+
+                    <label>Interesse</label>
+                    <select id="sched-group-opt">
+                        <option value="">Selecione...</option>
+                        <option value="Criancas">Criancas</option>
+                        <option value="Jovens">Jovens</option>
+                        <option value="Mulheres">Mulheres</option>
+                        <option value="Homens">Homens</option>
+                        <option value="Casais">Casais</option>
+                    </select>
+
+                    <button onclick="submitScheduleAction('group')" class="btn-large btn-gold">Quero
+                        Participar</button>
+                </div>
+            </div>
+
+            <!-- 3. BABY SCHEDULE -->
+            <div id="sched-mode-baby" class="tab-content-area">
+                <div class="card-floating" style="padding: 20px;">
+                    <div style="text-align:center; margin-bottom:15px;">
+                        <i class="fas fa-baby-carriage" style="font-size:2rem; color: #ec4899; margin-bottom:10px;"></i>
+                        <h3 class="title-modern" style="margin:0; font-size:1.3rem;">Apresentacao de Bebe</h3>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Registro para Certificado de Consagracao</p>
+                    </div>
+
+                    <label style="color:#666; font-size:0.75rem;">Nome Completo da Crianca*</label>
+                    <input type="text" id="sched-baby-name" placeholder="Nome Completo..." style="margin-bottom:10px;">
+
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <label style="color:#666; font-size:0.75rem;">Data de Nascimento</label>
+                            <input type="date" id="sched-baby-dob">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="color:#666; font-size:0.75rem;">Cidade de Nasc.</label>
+                            <input type="text" id="sched-baby-city" placeholder="Cidade">
+                        </div>
+                    </div>
+
+                    <label style="color:#666; font-size:0.75rem;">Nome do Pai</label>
+                    <input type="text" id="sched-baby-father" placeholder="Nome do Pai..." style="margin-bottom:10px;">
+                    
+                    <label style="color:#666; font-size:0.75rem;">Nome da Mae</label>
+                    <input type="text" id="sched-baby-mother" placeholder="Nome da Mae..." style="margin-bottom:10px;">
+
+                    <label style="color:#666; font-size:0.75rem;">Nome da Testemunha</label>
+                    <input type="text" id="sched-baby-godparents" placeholder="Nome da Testemunha..." style="margin-bottom:10px;">
+
+                    <label style="color:#666; font-size:0.75rem;">WhatsApp do Responsavel*</label>
+                    <input type="tel" id="sched-contact-baby" placeholder="Telefone para contato..." style="margin-bottom:15px;">
+
+                    <button onclick="submitScheduleAction('baby')" class="btn-large btn-gold">Solicitar Agendamento</button>
+                </div>
+            </div>
+
+            <!-- 4. BAPTISM SCHEDULE -->
+            <div id="sched-mode-baptism" class="tab-content-area">
+                <div class="card-floating">
+                    <div style="text-align:center; margin-bottom:15px;">
+                        <i class="fas fa-water" style="font-size:2rem; color: #60a5fa; margin-bottom:10px;"></i>
+                        <h3 class="title-modern" style="margin:0; font-size:1.3rem;">Proximo Batismo</h3>
+                        <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">Inscreva-se para o proximo.
+                        </p>
+                    </div>
+
+                    <label>Nome do Candidato</label>
+                    <input type="text" id="sched-name-baptism" placeholder="Nome Completo...">
+
+                    <label>Contato</label>
+                    <input type="text" id="sched-contact-baptism" placeholder="Telefone...">
+
+                    <button onclick="submitScheduleAction('baptism')" class="btn-large btn-gold">Inscrever-se</button>
+                </div>
+            </div>
+
+            <!-- 5. QUERO SER MEMBRO (WIZARD 42 FIELDS) -->
+            <div id="sched-mode-member" class="tab-content-area">
+                <div class="card-floating" style="margin-bottom: 20px; padding: 15px;">
+
+                    <!-- Wizard Header -->
+                    <div style="text-align:center; margin-bottom:20px;">
+                        <i class="fas fa-id-card-alt" style="font-size:1.8rem; color: #10b981; margin-bottom:10px;"></i>
+                        <h3 class="title-modern" style="margin:0; font-size:1.2rem;">Ficha Completa de Membro</h3>
+                        <div id="diagnostic-panel" style="position:fixed; bottom:0; width:100%; background:rgba(0,0,0,0.8); color:#0f0; font-family:monospace; font-size:10px; padding:5px; z-index:10000; border-top:1px solid #0f0; display:none !important; justify-content:space-between; font-weight:bold;">
+                            <span>V: v48.12.17</span>
+                            <span id="diag-project-id">Proj: ---</span>
+                            <span id="diag-auth-status">Status: ...</span>
+                            <span id="diag-user-email">Email: ---</span>
+                        </div>
+                        <div id="member-wizard-progress"
+                            style="margin-top:15px; display:flex; justify-content:center; gap:5px;">
+                            <div class="wizard-dot active" id="wizard-dot-1">1</div>
+                            <div class="wizard-dot" id="wizard-dot-2">2</div>
+                            <div class="wizard-dot" id="wizard-dot-3">3</div>
+                            <div class="wizard-dot" id="wizard-dot-4">4</div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 1: DADOS CADASTRAIS & PESSOAIS -->
+                    <div class="wizard-step active" id="wizard-step-1">
+                        <p
+                            style="font-weight:700; color:#10b981; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:15px; font-size:0.9rem;">
+                            PASSO 1: DADOS CADASTRAIS E PESSOAIS
+                        </p>
+
+                        <label>1. Nome Completo*</label>
+                        <input type="text" id="m-field-1" placeholder="Nome Completo">
+
+                        <label>2. Igreja*</label>
+                        <input type="text" id="m-field-2" value="CME Bulle">
+
+                        <label>3. Genero*</label>
+                        <select id="m-field-3">
+                            <option value="">Selecione...</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+
+                        <label>4. Nome Completo do Pai</label>
+                        <input type="text" id="m-field-4">
+
+                        <label>5. Nome Completo da Mae</label>
+                        <input type="text" id="m-field-5">
+
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label>6. Nascimento*</label>
+                                <input type="date" id="m-field-6">
+                            </div>
+                            <div style="flex:1;">
+                                <label>7. Estado Civil</label>
+                                <select id="m-field-7"
+                                    onchange="const d = document.getElementById('marriage-date-container'); d.style.display = this.value === 'Casado(a)' ? 'block' : 'none';">
+                                    <option value="Solteiro(a)">Solteiro(a)</option>
+                                    <option value="Casado(a)">Casado(a)</option>
+                                    <option value="Divorciado(a)">Divorciado(a)</option>
+                                    <option value="Viuvo(a)">Viuvo(a)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="marriage-date-container" style="display:none;">
+                            <label>8. Data de Casamento</label>
+                            <input type="date" id="m-field-8">
+                        </div>
+
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label>9. Naturalidade</label>
+                                <input type="text" id="m-field-9" placeholder="Cidade/Pais">
+                            </div>
+                            <div style="flex:1;">
+                                <label>10. Nacionalidade</label>
+                                <input type="text" id="m-field-10">
+                            </div>
+                        </div>
+
+                        <label>11. Grau Academico</label>
+                        <select id="m-field-11">
+                            <option value="Ensino Fundamental">Ensino Fundamental</option>
+                            <option value="Ensino Medio">Ensino Medio</option>
+                            <option value="Tecnico">Tecnico</option>
+                            <option value="Superior" selected>Superior</option>
+                            <option value="Pos-Graduacao">Pos-Graduacao</option>
+                            <option value="Mestrado">Mestrado</option>
+                            <option value="Doutorado">Doutorado</option>
+                        </select>
+
+                        <label>12. Profissao</label>
+                        <input type="text" id="m-field-12">
+
+                        <button onclick="changeWizardStep(2)" class="btn-large btn-gold"
+                            style="margin-top:15px;">Proximo</button>
+                    </div>
+
+                    <!-- STEP 2: DOCUMENTAÇÃO & CONTATOS -->
+                    <div class="wizard-step" id="wizard-step-2" style="display:none;">
+                        <p
+                            style="font-weight:700; color:#10b981; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:15px; font-size:0.9rem;">
+                            PASSO 2: DOCUMENTACAO E CONTATOS
+                        </p>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div>
+                                <label>13. Tipo Doc.</label>
+                                <input type="text" id="m-field-13" placeholder="RG, BI...">
+                            </div>
+                            <div>
+                                <label>14. N. Doc.</label>
+                                <input type="text" id="m-field-14">
+                            </div>
+                        </div>
+
+                        <label>15. Passaporte</label>
+                        <input type="text" id="m-field-15">
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div>
+                                <label>16. NIF / Contrib.</label>
+                                <input type="text" id="m-field-16">
+                            </div>
+                            <div>
+                                <label>17. Matriculas</label>
+                                <input type="text" id="m-field-17">
+                            </div>
+                        </div>
+
+                        <label>18. Morada (Endereco)*</label>
+                        <textarea id="m-field-18" rows="2"
+                            style="width:100%; border-radius:8px; border:1px solid #ddd;"></textarea>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div>
+                                <label>19. Cod. Postal</label>
+                                <input type="text" id="m-field-19">
+                            </div>
+                            <div>
+                                <label>20. Cidade*</label>
+                                <input type="text" id="m-field-20">
+                            </div>
+                        </div>
+
+                        <label>21. Telefone / WhatsApp*</label>
+                        <input type="tel" id="m-field-21" placeholder="(00) 00000-0000">
+
+                        <label>22. Email Pessoal*</label>
+                        <input type="email" id="m-field-22" placeholder="email@exemplo.com">
+
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button onclick="changeWizardStep(1)" class="btn-large"
+                                style="background:#eee; color:#333; flex:1;">Voltar</button>
+                            <button onclick="changeWizardStep(3)" class="btn-large btn-gold" style="flex:2;">Proximo</button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: DADOS CONGREGACIONAIS -->
+                    <div class="wizard-step" id="wizard-step-3" style="display:none;">
+                        <p
+                            style="font-weight:700; color:#10b981; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:15px; font-size:0.9rem;">
+                            PASSO 3: DADOS CONGREGACIONAIS
+                        </p>
+
+                        <label>23. Data Primeira Visita CME</label>
+                        <input type="date" id="m-field-23">
+
+                        <label>24. Igreja Anterior</label>
+                        <input type="text" id="m-field-24">
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div>
+                                <label>25. Apres. Bebe</label>
+                                <input type="date" id="m-field-25">
+                            </div>
+                            <div>
+                                <label>26. Local Apres.</label>
+                                <input type="text" id="m-field-26">
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div>
+                                <label>27. Batismo</label>
+                                <input type="date" id="m-field-27">
+                            </div>
+                            <div>
+                                <label>28. Local Batismo</label>
+                                <input type="text" id="m-field-28">
+                            </div>
+                        </div>
+
+                        <label>29. Funcao na Igreja</label>
+                        <input type="text" id="m-field-29" placeholder="Ex: Diacono, Membro...">
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div>
+                                <label>30. Ultima Ord.</label>
+                                <input type="date" id="m-field-30">
+                            </div>
+                            <div>
+                                <label>31. Local Ord.</label>
+                                <input type="text" id="m-field-31">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button onclick="changeWizardStep(2)" class="btn-large"
+                                style="background:#eee; color:#333; flex:1;">Voltar</button>
+                            <button onclick="changeWizardStep(4)" class="btn-large btn-gold" style="flex:2;">Proximo</button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: JORNADA CME, CURSOS & NOTAS -->
+                    <div class="wizard-step" id="wizard-step-4" style="display:none;">
+                        <p
+                            style="font-weight:700; color:#10b981; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:15px; font-size:0.9rem;">
+                            PASSO 4: JORNADA CME E OUTROS
+                        </p>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div>
+                                <label>32. Admissao</label>
+                                <input type="date" id="m-field-32">
+                            </div>
+                            <div>
+                                <label>33. Membro CME</label>
+                                <input type="date" id="m-field-33">
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div>
+                                <label>34. Apres. CME</label>
+                                <input type="date" id="m-field-34">
+                            </div>
+                            <div>
+                                <label>35. Batismo CME</label>
+                                <input type="date" id="m-field-35">
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                            <div>
+                                <label>36. Diacono</label>
+                                <input type="date" id="m-field-36" style="padding:8px;">
+                            </div>
+                            <div>
+                                <label>37. Presbitero</label>
+                                <input type="date" id="m-field-37" style="padding:8px;">
+                            </div>
+                            <div>
+                                <label>38. Evangelista</label>
+                                <input type="date" id="m-field-38" style="padding:8px;">
+                            </div>
+                            <div>
+                                <label>39. Pastor</label>
+                                <input type="date" id="m-field-39" style="padding:8px;">
+                            </div>
+                        </div>
+
+                        <label>40. Cursos Concluidos</label>
+                        <textarea id="m-field-40" rows="1"
+                            style="width:100%; border-radius:8px; border:1px solid #ddd;"></textarea>
+
+                        <label>41. Cursos Andamento</label>
+                        <textarea id="m-field-41" rows="1"
+                            style="width:100%; border-radius:8px; border:1px solid #ddd;"></textarea>
+
+                        <label>42. Notas Adicionais</label>
+                        <input type="text" id="m-field-42">
+
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button onclick="changeWizardStep(3)" class="btn-large"
+                                style="background:#eee; color:#333; flex:1;">Voltar</button>
+                            <button onclick="submitFullMembershipWizard()" class="btn-large btn-gold"
+                                style="flex:2;">ENVIAR FICHA</button>
+                        </div>
+                    </div>
+
+                    <style>
+                        .wizard-dot {
+                            width: 26px;
+                            height: 26px;
+                            border-radius: 50%;
+                            background: #eee;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 0.8rem;
+                            font-weight: 700;
+                            color: #aaa;
+                        }
+
+                        .wizard-dot.active {
+                            background: #10b981;
+                            color: white;
+                        }
+
+                        .wizard-step label {
+                            font-size: 0.75rem;
+                            margin-top: 8px;
+                            font-weight: 700;
+                            color: #666;
+                            display: block;
+                        }
+
+                        .wizard-step input,
+                        .wizard-step select,
+                        .wizard-step textarea {
+                            margin-bottom: 2px !important;
+                        }
+                    </style>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        window.db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+
+        // --- AUTH SYNC v48.14.4 ---
+        firebase.auth().onAuthStateChanged(user => {
+            const overlay = document.getElementById('login-overlay');
+            if (user) {
+                console.log("Reception Auth: OK", user.email);
+                if (overlay) overlay.style.display = 'none';
+                if (typeof initReceptionMonitor === 'function') initReceptionMonitor();
+            } else {
+                const isInsideIframe = window.self !== window.top;
+                console.log("Reception: Aguardando Auth do Shell...");
+                if (!isInsideIframe && overlay) {
+                    overlay.style.display = 'flex';
+                }
+            }
+        });
+
+        /* --- TABS LOGIC --- */
+        // Consolidated switchLiveMode is already above.
+        // Consolidated submitLiveAction is already above.
+
+        function switchScheduleMode(mode, btn) {
+            btn.parentNode.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('#tab-schedule .tab-content-area').forEach(c => c.classList.remove('active'));
+            document.getElementById('sched-mode-' + mode).classList.add('active');
+        }
+
+
+
+        /* --- SCHEDULE TAB SUBMITS --- */
+        function submitVisit() {
+            const name = document.getElementById('sched-name-visit').value;
+            const contact = document.getElementById('sched-contact-visit').value;
+            const date = document.getElementById('sched-visit-date').value;
+            if (!name || !date) return alert("Preecha os campos obrigatorios (Nome e Data)!");
+
+            db.collection('schedule_requests').add({
+                type: 'visita',
+                action: 'Solicitacao de Visita',
+                person_name: name,
+                contact: contact,
+                date: date,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Enviada com sucesso!");
+                document.getElementById('sched-name-visit').value = '';
+                document.getElementById('sched-contact-visit').value = '';
+                document.getElementById('sched-visit-date').value = '';
+            }).catch(err => {
+                console.error("Erro:", err);
+                alert("Erro ao enviar: " + err.message);
+            });
+        }
+
+        function submitGroupInterest() {
+            const name = document.getElementById('sched-name-group').value;
+            const contact = document.getElementById('sched-contact-group').value;
+            const groupSelect = document.getElementById('sched-group-opt');
+            const groupName = groupSelect.options[groupSelect.selectedIndex].text;
+
+            if (!name) return alert("Nome e obrigatorio!");
+
+            db.collection('schedule_requests').add({
+                type: 'grupo',
+                action: 'Interesse em Grupo/Celula',
+                person_name: name,
+                contact: contact,
+                group_interest: groupName,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Enviada com sucesso!");
+                document.getElementById('sched-name-group').value = '';
+                document.getElementById('sched-contact-group').value = '';
+            }).catch(err => {
+                console.error("Erro:", err);
+                alert("Erro ao enviar: " + err.message);
+            });
+        }
+
+        function submitScheduleAction(type) {
+            if (type === 'visit') {
+                submitVisit();
+            } else if (type === 'group') {
+                submitGroupInterest();
+            } else if (type === 'baby') {
+                const babyName = document.getElementById('sched-baby-name').value;
+                const contact = document.getElementById('sched-contact-baby').value;
+                const dob = document.getElementById('sched-baby-dob').value;
+                const city = document.getElementById('sched-baby-city').value;
+                const father = document.getElementById('sched-baby-father').value;
+                const mother = document.getElementById('sched-baby-mother').value;
+                const godparents = document.getElementById('sched-baby-godparents').value;
+
+                if (!babyName || !contact) return alert("Preecha o nome da crianca e o contato!");
+
+                db.collection('schedule_requests').add({
+                    type: 'baby',
+                    action: 'Apresentacao de Bebe',
+                    person_name: babyName,
+                    baby_name: babyName,
+                    contact: contact,
+                    baby_dob: dob,
+                    baby_city: city,
+                    father_name: father,
+                    mother_name: mother,
+                    godparents: godparents,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    alert("Agendamento enviado com sucesso!");
+                    // Reset fields
+                    document.getElementById('sched-baby-name').value = '';
+                    document.getElementById('sched-contact-baby').value = '';
+                    document.getElementById('sched-baby-dob').value = '';
+                    document.getElementById('sched-baby-city').value = '';
+                    document.getElementById('sched-baby-father').value = '';
+                    document.getElementById('sched-baby-mother').value = '';
+                    document.getElementById('sched-baby-godparents').value = '';
+                }).catch(err => {
+                    console.error("Erro ao solicitar agendamento bebe:", err);
+                    alert("Erro ao enviar: " + err.message);
+                });
+            } else if (type === 'baptism') {
+                const name = document.getElementById('sched-name-baptism').value;
+                const contact = document.getElementById('sched-contact-baptism').value;
+                if (!name) return alert("Nome obrigatorio!");
+
+                db.collection('schedule_requests').add({
+                    type: 'baptism',
+                    action: 'Inscricao Batismo',
+                    person_name: name,
+                    contact: contact,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    alert("Enviada com sucesso!");
+                    document.getElementById('sched-name-baptism').value = '';
+                    document.getElementById('sched-contact-baptism').value = '';
+                }).catch(err => {
+                    console.error("Erro ao inscrever batismo:", err);
+                    alert("Erro ao enviar: " + err.message);
+                });
+            }
+        }
+
+        /* --- MEMBERSHIP WIZARD LOGIC --- */
+        function changeWizardStep(step) {
+            // Hide all steps
+            document.querySelectorAll('.wizard-step').forEach(s => s.style.display = 'none');
+            // Show target step
+            document.getElementById('wizard-step-' + step).style.display = 'block';
+
+            // Update dots
+            document.querySelectorAll('.wizard-dot').forEach((dot, idx) => {
+                if (idx + 1 <= step) dot.classList.add('active');
+                else dot.classList.remove('active');
+            });
+
+            // Scroll to top of card for better UX on mobile
+            document.getElementById('sched-mode-member').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- DUPLICATE PREVENTION UTILITY ---
+        async function findExistingPerson(phone) {
+            const normPhone = (phone || '').replace(/[^\d]/g, '');
+            if (!normPhone || normPhone.length < 8) return null;
+            
+            try {
+                // Primary check by WhatsApp (formatted)
+                const snap = await db.collection('people').where('field_21', '==', phone).get();
+                if (!snap.empty) return { id: snap.docs[0].id, data: snap.docs[0].data() };
+                
+                // Fallback scan (only for numbers)
+                const snap2 = await db.collection('people').limit(500).get(); // Limit suggested for performance
+                let matched = null;
+                snap2.forEach(doc => {
+                    const d = doc.data();
+                    const p = (d.phone || d.field_21 || '').replace(/[^\d]/g, '');
+                    if (p === normPhone) matched = { id: doc.id, data: d };
+                });
+                return matched;
+            } catch(e) { 
+                console.error("Duplicate check error:", e);
+                return null; 
+            }
+        }
+
+        async function submitFullMembershipWizard() {
+            const name = document.getElementById('m-field-1').value;
+            const dob = document.getElementById('m-field-6').value;
+            const gender = document.getElementById('m-field-3').value;
+            const phone = document.getElementById('m-field-21').value;
+            const email = document.getElementById('m-field-22').value;
+            const city = document.getElementById('m-field-20').value;
+            const address = document.getElementById('m-field-18').value;
+
+            if (!name || !dob || !gender || !phone || !email || !city || !address) {
+                return alert("Por favor, preencha todos os campos obrigatorios (*) antes de enviar.");
+            }
+
+            // DUPLICATE CHECK
+            const existing = await findExistingPerson(phone);
+            if (existing) {
+                if (!confirm(`ALERTA: ${name} ja existe na Base de Dados como ${existing.data.type}.\n\nDeseja enviar esta nova FICHA COMPLETA para a Secretaria mesmo assim?`)) {
+                    return;
+                }
+            }
+
+            // Collect ALL 42 fields
+            let filledCount = 0;
+            const data = {
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            for (let i = 1; i <= 42; i++) {
+                const field = document.getElementById('m-field-' + i);
+                if (field) {
+                    const val = (field.value || '').trim();
+                    data['field_' + i] = val;
+                    if (val.length > 0) filledCount++;
+                }
+            }
+
+            // --- 30% AUTO-CLASSIFICATION (At least 13 fields of 42) ---
+            if (filledCount < 13) {
+                data.type = 'membro_congregado';
+                data.action = 'Cadastro de Congregado (Incompleto)';
+                alert("Ficha com menos de 30% preenchida.\n\nO cadastro sera enviado como CONGREGADO para a Secretaria.\n\nPreenchidos: " + filledCount + " de 42.");
+            } else {
+                data.type = 'membro_completo';
+                data.action = 'Cadastro Nacional de Membros';
+            }
+
+            // Specific shorthand for display in tables
+            data.name = name;
+            data.phone = phone;
+            data.person_name = name; // Legacy support
+            data.contact = phone; // Legacy support
+
+            db.collection('schedule_requests').add(data).then(docRef => {
+                alert("Enviada com sucesso!");
+                // AUTO-SEND TO INTEGRAÇÃO (Novos Amigos)
+                sendToIntegracao(name, phone, data.type, 'recepcao');
+                // Reset form
+                for (let i = 1; i <= 42; i++) {
+                    const field = document.getElementById('m-field-' + i);
+                    if (field) {
+                        if (i === 2) field.value = 'CME Bulle';
+                        else if (i === 11) field.value = 'Superior';
+                        else field.value = '';
+                    }
+                }
+                changeWizardStep(1);
+                // Reset tab view
+                switchScheduleMode('visit', document.querySelector('.segment-btn'));
+            }).catch(err => {
+                console.error("Erro ao enviar ficha:", err);
+                alert("Erro ao enviar: " + err.message);
+            });
+        }
+
+        // ========== AUTO-SEND TO INTEGRAÇÃO ==========
+        function sendToIntegracao(name, contact, type, source) {
+            if (!name || !name.trim()) return;
+
+            // REGRA: Sem contato telefónico → Secretaria (Triagem) em vez de Integração
+            const hasContact = contact && contact.trim().length >= 5;
+            if (!hasContact) {
+                db.collection('pending').add({
+                    type: 'visitante_sem_contato',
+                    action: 'Triagem — Sem Telefone',
+                    person_name: name.trim(),
+                    contact: '',
+                    origin: source || 'recepcao',
+                    notes: 'Visitante sem número de contacto. Não pode ser acompanhado pela Integração. Encaminhado para triagem.',
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    console.log('[Triagem] Sem contato — enviado para Secretaria (pending):', name);
+                }).catch(e => console.error('[Triagem] Erro:', e));
+                return; // NÃO vai para integração
+            }
+
+            // COM contato → Integração (Novos Amigos)
+            db.collection('integracao')
+              .where('name', '==', name.trim())
+              .where('status', '==', 'em_integracao')
+              .get().then(existing => {
+                if (!existing.empty) {
+                    console.log('[Integracao] Pessoa já existe na jornada:', name);
+                    return;
+                }
+                const entry = {
+                    date: new Date().toLocaleDateString('pt-PT'),
+                    action: 'Entrada na Integração',
+                    by: 'Receção Automática',
+                    notes: 'Ficha recebida pela Receção. Aguardando designação de monitor.',
+                    stage: 'Novos Amigos',
+                    timestamp: firebase.firestore.Timestamp.now()
+                };
+                db.collection('integracao').add({
+                    name: name.trim(),
+                    contact: contact.trim(),
+                    type: type || 'visitante',
+                    entry_source: source || 'recepcao',
+                    entry_date: firebase.firestore.FieldValue.serverTimestamp(),
+                    integ_stage: 'Novos Amigos',
+                    status: 'em_integracao',
+                    monitor: null,
+                    companion: null,
+                    parallel_activities: [],
+                    history: [entry],
+                    timeline: [entry]
+                }).then(() => {
+                    console.log('[Integracao] Ficha enviada para Novos Amigos:', name);
+                }).catch(e => console.error('[Integracao] Erro:', e));
+            });
+        }
+
+        async function submitVisit() {
+            const name = document.getElementById('sched-name-visit').value.trim();
+            const date = document.getElementById('sched-visit-date').value;
+            const address = document.getElementById('sched-contact-visit').value.trim(); // Using contact as address/phone
+            if (!name) return _alert("Nome obrigatorio");
+
+            // DUPLICATE CHECK (if address/phone provided)
+            if (address && address.length > 5) {
+                const existing = await findExistingPerson(address);
+                if (existing) {
+                    if (!confirm(`Atencao: ${name} ja existe na Base (${existing.data.type}). Deseja solicitar visita mesmo assim?`)) return;
+                }
+            }
+
+            db.collection('schedule_requests').add({
+                type: 'visita',
+                action: 'Solicitacao de Visita',
+                person_name: name,
+                preferred_date: date,
+                contact: address,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Enviada com sucesso!");
+                document.getElementById('sched-name-visit').value = '';
+                document.getElementById('sched-visit-date').value = '';
+                document.getElementById('sched-contact-visit').value = '';
+            });
+        }
+
+        function selectGroup(group, btn) {
+            document.querySelectorAll('#schedule-mode-group .btn-outline').forEach(b => {
+                b.style.background = 'transparent';
+                b.style.color = '#333';
+            });
+            btn.style.background = 'var(--gold-primary)';
+            btn.style.color = '#fff';
+            document.getElementById('selected-group-interest').value = group;
+        }
+
+        function submitGroupInterest() {
+            const name = document.getElementById('sched-name-group').value;
+            const phone = document.getElementById('sched-contact-group').value;
+            const group = document.getElementById('sched-group-opt').value;
+
+            if (!name || !phone || !group) return alert("Preencha todos os dados e selecione um grupo.");
+
+            db.collection('schedule_requests').add({
+                type: 'grupo',
+                action: 'Interesse em Grupo',
+                person_name: name,
+                contact: phone,
+                group_interest: group,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Enviada com sucesso!");
+                document.getElementById('sched-name-group').value = '';
+                document.getElementById('sched-contact-group').value = '';
+                document.getElementById('sched-group-opt').value = '';
+            });
+        }
+
+        // NAVIGATION LOGIC
+        function setTab(tabId) {
+            // Update Nav Items
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-' + tabId)?.classList.add('active');
+
+            // Update Sections
+            document.querySelectorAll('.tab-section').forEach(el => el.style.display = 'none');
+            const target = document.getElementById('tab-' + tabId);
+            if (target) target.style.display = 'block';
+
+            // Special logic for events iframe refresh
+            if (tabId === 'events') {
+                const iframe = target.querySelector('iframe');
+                if (iframe) iframe.src = 'checkin.html?v=' + Date.now();
+            }
+        }
+    </script>
+
+    <!-- === TAB 4: SERVIÇOS (Volunteering) === -->
+    <div id="tab-services" class="tab-section" style="display:none;">
+
+        <div style="text-align:center; margin-bottom:20px; margin-top:-120px;">
+            <h3 class="title-modern" style="margin:0; font-size:1.5rem; color:#ffffff;">Servir no Reino</h3>
+            <p style="color:#aaaaaa; font-size:1rem; margin-top:5px;">Onde voce gostaria de servir?</p>
+        </div>
+
+        <div class="card-floating" style="margin-bottom: 20px;">
+            <h4 style="margin-top:0; color:#444; margin-bottom:15px; font-weight:700;">Areas de Interesse</h4>
+
+            <style>
+                .ministry-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    /* 3 Columns for compactness */
+                    gap: 10px;
+                    /* Reduced gap */
+                    margin-bottom: 20px;
+                }
+
+                .ministry-card {
+                    background: #f8f9fa;
+                    border: 2px solid #e9ecef;
+                    border-radius: 10px;
+                    padding: 10px;
+                    /* Reduced padding */
+                    text-align: center;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .ministry-card:active {
+                    transform: scale(0.98);
+                }
+
+                .ministry-card.selected {
+                    background: #fff;
+                    border-color: #FFC72C;
+                    box-shadow: 0 4px 10px rgba(255, 199, 44, 0.2);
+                }
+
+                .ministry-card i {
+                    font-size: 1.2rem;
+                    /* Reduced icon */
+                    color: #adb5bd;
+                    margin-bottom: 5px;
+                    display: block;
+                }
+
+                .ministry-card.selected i {
+                    color: #DA291C;
+                }
+
+                .ministry-card span {
+                    font-weight: 700;
+                    color: #495057;
+                    font-size: 0.75rem;
+                    /* Reduced font */
+                    line-height: 1.1;
+                }
+
+                .ministry-card.selected span {
+                    color: #212529;
+                }
+            </style>
+
+            <div class="ministry-grid">
+                <div class="ministry-card" onclick="toggleMinistry(this, 'Cantina')"><i
+                        class="fas fa-utensils"></i><span>Cantina</span></div>
+                <div class="ministry-card" onclick="toggleMinistry(this, 'Danca')"><i
+                        class="fas fa-music"></i><span>Danca</span></div>
+                <div class="ministry-card" onclick="toggleMinistry(this, 'Diaconos')"><i
+                        class="fas fa-user-tie"></i><span>Diaconos</span></div>
+                <div class="ministry-card" onclick="toggleMinistry(this, 'Louvor')"><i
+                        class="fas fa-microphone-alt"></i><span>Louvor</span></div>
+                <div class="ministry-card" onclick="toggleMinistry(this, 'Manutencao')"><i
+                        class="fas fa-tools"></i><span>Manutencao</span></div>
+                <div class="ministry-card" onclick="toggleMinistry(this, 'Midia')"><i
+                        class="fas fa-camera"></i><span>Midia</span></div>
+                <div class="ministry-card" onclick="toggleMinistry(this, 'Social')"><i
+                        class="fas fa-hand-holding-heart"></i><span>Social</span></div>
+                <div class="ministry-card" onclick="toggleMinistry(this, 'Kids')"><i
+                        class="fas fa-child"></i><span>Kids</span></div>
+            </div>
+        </div>
+
+        <div class="card-floating" style="margin-bottom: 20px;">
+            <h4 style="margin-top:0; color:#444; margin-bottom:15px; font-weight:700;">Seus Dados</h4>
+            <label>Seu Nome</label>
+            <input type="text" id="serv-name" placeholder="Nome Completo...">
+
+            <label>Contato</label>
+            <input type="tel" id="serv-contact" placeholder="Seu Telefone/WhatsApp..." inputmode="numeric">
+        </div>
+
+        <button onclick="submitServicesFull()" class="btn-large btn-gold">
+            Confirmar Inscricao
+        </button>
+    </div>
+
+    <script>
+        // Keep track of selected ministries
+        let selectedMinistries = new Set();
+
+        function toggleMinistry(card, name) {
+            if (selectedMinistries.has(name)) {
+                selectedMinistries.delete(name);
+                card.classList.remove('selected');
+            } else {
+                selectedMinistries.add(name);
+                card.classList.add('selected');
+            }
+        }
+
+        function submitServicesFull() {
+            // Auth Guard: Ensure user is logged in
+            const user = firebase.auth().currentUser;
+            document.getElementById('diag-project-id').innerText = "Proj: " + (firebase.app().options.projectId || "???");
+            document.getElementById('diag-auth-status').innerText = user ? "SESSAO ATIVA" : "SEM SESSAO";
+            document.getElementById('diag-auth-status').style.color = user ? "#0f0" : "#f00";
+            document.getElementById('diag-user-email').innerText = "Email: " + (user ? user.email : "---");
+            
+            // Diagnostic Log v48.12.17
+            console.log("Auth State [v48.12.17]:", user ? user.email : "SIGNED OUT");
+            console.log("UID:", user ? user.uid : "NONE");
+
+            if (!user) {
+                loginOverlay.style.display = 'flex';
+                loginMsg.innerText = "Faca login para confirmar sua inscricao.";
+                loginMsg.style.color = "#FFD700";
+                return;
+            }
+
+            const name = document.getElementById('serv-name').value;
+            const contact = document.getElementById('serv-contact').value;
+
+            if (!name) return alert("Por favor, digite seu Nome.");
+            if (!contact) return alert("Por favor, digite seu Contato.");
+            if (selectedMinistries.size === 0) return alert("Selecione pelo menos uma area de interesse!");
+
+            const ministriesArray = Array.from(selectedMinistries);
+
+            console.log("Iniciando gravacao na colecao volunteers...");
+
+            db.collection('volunteers').add({
+                name: name,
+                contact: contact,
+                interests: ministriesArray,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                origin: 'reception_services',
+                uid: user.uid
+            }).then(() => {
+                alert("Enviada com sucesso!");
+                document.getElementById('serv-name').value = '';
+                document.getElementById('serv-contact').value = '';
+                selectedMinistries.clear();
+                document.querySelectorAll('.ministry-card').forEach(c => c.classList.remove('selected'));
+            }).catch(err => {
+                console.error(err);
+                const user = firebase.auth().currentUser;
+                const uid = user ? user.uid : "DESLOGADO";
+                const email = user ? user.email : "N/A";
+                alert(`Erro de Permissao [v48.12.17]\nCodigo: ${err.code}\nUID: ${uid}\nEmail: ${email}\nPor favor, envie um print desta tela ao suporte.`);
+            });
+        }
+    </script>
+
+    </div>
+
+
+
+    <!-- LOGIN MODAL (Added to fix Permission Error) -->
+    <!-- PIN LOGIN OVERLAY (STABILIZED) -->
+    <div id="login-overlay"
+        style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 99999; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(10px);">
+        <div style="background: #111; padding: 40px; border-radius: 20px; border: 1px solid #333; width: 320px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <div style="width: 60px; height: 60px; background: #FFD700; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                <i class="fas fa-concierge-bell" style="color: black; font-size: 1.5rem;"></i>
+            </div>
+            <h2 style="color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -0.5px;">ACESSO RECEPCAO</h2>
+            <p style="color:#666; font-size:0.85rem; margin-bottom:25px;">Digite a senha do departamento</p>
+
+            <input type="password" id="login-pin" placeholder="••••••" maxlength="15"
+                style="width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 12px; text-align: center; font-size: 1.5rem; letter-spacing: 5px; margin-bottom: 20px; font-family: monospace;">
+
+            <button onclick="doPinLogin()"
+                style="width: 100%; padding: 15px; background: #FFD700; color: black; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; transition: transform 0.2s;">
+                LIBERAR ACESSO
+            </button>
+            
+            <p id="login-msg" style="color: #ef4444; margin-top: 20px; font-size: 0.85rem; min-height: 1.2rem;"></p>
+        </div>
+    </div>
+
+    <script>
+        const loginOverlay = document.getElementById('login-overlay');
+        const loginMsg = document.getElementById('login-msg');
+
+        async function doPinLogin(providedPin) {
+            const pin = (providedPin || document.getElementById('login-pin').value).trim();
+            if (!pin) return;
+
+            if (!providedPin) {
+                loginMsg.innerText = "Validando...";
+                loginMsg.style.color = "#FFD700";
+            }
+
+            // Use Centralized AuthManager for consistency
+            // Detect department from pin or default to reception
+            let dept = "reception";
+            if (pin.toLowerCase().includes('master')) dept = "admin";
+            
+            try {
+                const res = await AuthManager.login(dept, pin);
+                if (res.success) {
+                    console.log("Login Success!");
+                    loginMsg.innerText = "Acesso Liberado!";
+                    loginMsg.style.color = "#10b981";
+                    setTimeout(() => {
+                        loginOverlay.style.opacity = '0';
+                        setTimeout(() => loginOverlay.style.display = 'none', 500);
+                    }, 800);
+                } else {
+                    loginMsg.innerText = "Senha incorreta ou erro de conexao.";
+                    loginMsg.style.color = "#ef4444";
+                }
+            } catch (error) {
+                console.error("Login Error:", error);
+                loginMsg.innerText = "Erro: " + error.message;
+            }
+        }
+
+        function doLogin() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            const msg = document.getElementById('login-msg');
+
+            console.log("Attempting login with:", email);
+
+            if (!email || !pass) {
+                msg.innerText = "Preencha todos os campos.";
+                return;
+            }
+            msg.innerText = "Verificando...";
+            msg.style.color = "#FFD700";
+
+            if (!firebase.auth) {
+                msg.innerText = "Erro Crítico: Auth não carregado.";
+                console.error("Firebase Auth not found!");
+                return;
+            }
+
+            firebase.auth().signInWithEmailAndPassword(email, pass)
+                .then((userCredential) => {
+                    // Signed in
+                    console.log("Login Success:", userCredential.user);
+                    msg.innerText = "Sucesso!";
+                    msg.style.color = "green";
+                    // Overlay hiding handled by onAuthStateChanged
+                })
+                .catch(error => {
+                    console.error("Login Error:", error);
+                    msg.style.color = "red";
+                    msg.innerText = "Erro: " + error.message + " (" + error.code + ")";
+                    _alert("Erro no Login: " + error.message);
+                });
+        }
+
+        function createRescueUser() {
+            const email = "admin_rescue@catedral.ch";
+            const pass = "123456";
+            const msg = document.getElementById('login-msg');
+
+            _confirm("Isso tentará criar o usuário 'admin_rescue@catedral.ch' com senha '123456'. Continuar?", () => {
+                msg.innerText = "Processando...";
+                msg.style.color = "#FFD700";
+
+                firebase.auth().createUserWithEmailAndPassword(email, pass)
+                    .then((userCredential) => {
+                        console.log("Rescue User Created");
+                        msg.innerText = "Usuário Criado e Logado!";
+                        msg.style.color = "green";
+                    })
+                    .catch((error) => {
+                        if (error.code === 'auth/email-already-in-use') {
+                            // Try logging in instead if user exists
+                            msg.innerText = "Usuário existe. Tentando logar...";
+                            firebase.auth().signInWithEmailAndPassword(email, pass)
+                                .then(() => msg.innerText = "Logado (Rescue)!")
+                                .catch(e => {
+                                    msg.innerText = "Erro Rescue Login: " + e.message;
+                                    _alert("Falha ao entrar com usuário de emergência. A senha pode ter sido alterada.");
+                                });
+                        } else {
+                            msg.innerText = "Erro Criação: " + error.message;
+                            _alert("Erro: " + error.message);
+                        }
+                    });
+            });
+        }
+    </script>
+
+    <!-- jQuery & Inputmask (Required for Acolhimento) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.7/jquery.inputmask.min.js"></script>
+
+    <script>
+        // Máscaras (Requer jQuery Inputmask)
+        $(document).ready(function () {
+            // Check if elements exist before applying mask
+            // Removed strict mask to allow european formats and optional inputs
+            if ($("#child-phone").length) $("#child-phone").inputmask("(99) 99999-9999");
+        });
+
+        // Busca se já existe na Secretaria para reaproveitar
+        async function checarCadastroExistente(nomeParcial) {
+            if (nomeParcial.length < 4) return;
+            // Using 'membros' collection as per user request
+            try {
+                const snap = await db.collection('membros').where('nome_completo', '>=', nomeParcial).limit(1).get();
+                if (!snap.empty) {
+                    const d = snap.docs[0].data();
+                    _confirm(`Já encontramos ${d.nome_completo} na Secretaria. Deseja carregar os dados?`, () => {
+                        if (document.getElementById('vis-phone')) document.getElementById('vis-phone').value = d.contato || '';
+                    });
+                }
+            } catch (e) { console.log("Erro ao checar cadastro:", e); }
+        }
+
+        // Attach listener to visitor name input
+        document.getElementById('vis-name')?.addEventListener('blur', function () {
+            checarCadastroExistente(this.value);
+        });
+    </script>
+    <script>
+        // Antigravity 2.1 - Hybrid Date Inputs (Type or Pick)
+        function enhanceDateInputs() {
+            document.querySelectorAll('input[type="date"]').forEach(el => {
+                const wrapper = document.createElement('div');
+                wrapper.style.cssText = "position:relative; display:flex; align-items:center; width:100%; margin-bottom:15px;";
+
+                const textInput = document.createElement('input');
+                textInput.type = 'text';
+                textInput.id = el.id; // Steal original ID so form submission reads this value
+                textInput.className = el.className;
+                textInput.placeholder = 'DD/MM/AAAA';
+                textInput.maxLength = 10;
+
+                // Copy styles but remove margin since wrapper handles it
+                if (el.style.cssText) textInput.style.cssText = el.style.cssText;
+                textInput.style.width = '100%';
+                textInput.style.marginBottom = '0';
+
+                // Handle manual typing mask (DD/MM/YYYY)
+                textInput.addEventListener('input', function (e) {
+                    let v = this.value.replace(/\D/g, '');
+                    if (v.length > 8) v = v.substring(0, 8);
+
+                    if (v.length > 4) {
+                        this.value = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+                    } else if (v.length > 2) {
+                        this.value = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+                    } else {
+                        this.value = v;
+                    }
+                });
+
+                // Hidden Native Date Picker
+                const datePicker = document.createElement('input');
+                datePicker.type = 'date';
+                datePicker.style.cssText = "position:absolute; right:0; top:0; width:40px; height:100%; opacity:0; cursor:pointer; z-index:2;";
+                datePicker.title = "Abrir Calendário";
+
+                // When native picker is used, format and set to text field
+                datePicker.addEventListener('change', function () {
+                    if (this.value) { // YYYY-MM-DD
+                        const parts = this.value.split('-');
+                        textInput.value = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                    }
+                });
+
+                // Icon for visual cue
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-calendar-alt';
+                icon.style.cssText = "position:absolute; right:15px; color:var(--gold-primary); font-size:1.2rem; pointer-events:none; z-index:1;";
+
+                // Wrap and replace
+                el.parentNode.insertBefore(wrapper, el);
+                wrapper.appendChild(textInput);
+                wrapper.appendChild(datePicker);
+                wrapper.appendChild(icon);
+                el.remove();
+            });
+        }
+
+        // Execute after DOM is ready
+        window.addEventListener('DOMContentLoaded', enhanceDateInputs);
+    </script>
+
+    <!-- External Logic - Loaded LAST -->
+    <style>
+        /* GOLDEN SHADOW EFFECT & LIGHT CARD FIX */
+        .card-floating,
+        .section-card,
+        .ministry-card.selected {
+            background: #ffffff !important;
+            /* White Background */
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2) !important;
+            /* Stronger Gold Shadow */
+            border: 1px solid rgba(212, 175, 55, 0.2) !important;
+            color: #333 !important;
+            /* Dark Text */
+        }
+
+        /* FIX INPUTS ON WHITE BACKGROUND */
+        .card-floating input,
+        .card-floating select,
+        .tab-section input,
+        .tab-section select {
+            background: #f5f5f5 !important;
+            color: #222 !important;
+            /* Dark Text for Inputs */
+            border: 1px solid #e0e0e0 !important;
+        }
+
+        .card-floating input:focus,
+        .card-floating select:focus {
+            background: #fff !important;
+            border-color: #d4af37 !important;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1) !important;
+        }
+
+        /* COMPACT MODE FOR 'SOLICITAR' (Agendamentos) */
+        #tab-schedule .card-floating {
+            padding: 15px !important;
+            margin-bottom: 12px !important;
+        }
+
+        #tab-schedule input,
+        #tab-schedule select {
+            padding: 10px !important;
+            font-size: 0.95rem !important;
+            margin-bottom: 10px !important;
+            height: auto !important;
+        }
+
+        #tab-schedule label {
+            font-size: 0.85rem !important;
+            margin-bottom: 4px !important;
+            display: block;
+            color: #666 !important;
+            font-weight: 700;
+        }
+
+        #tab-schedule h3 {
+            font-size: 1.2rem !important;
+            margin-bottom: 10px !important;
+            color: #d4af37 !important;
+            /* Gold Title */
+        }
+
+        #tab-schedule p {
+            font-size: 0.9rem !important;
+        }
+
+        #tab-schedule .btn-large {
+            padding: 14px !important;
+            font-size: 1rem !important;
+            margin-top: 10px !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        /* Also compact the Services tab */
+        #tab-services .card-floating {
+            padding: 12px !important;
+        }
+
+        #tab-services input {
+            padding: 10px !important;
+        }
+
+        /* --- KIDS ROOM NOTIFICATION TOAST --- */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .kids-toast {
+            background: #10b981;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            animation: slideInToast 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, fadeOutToast 0.5s ease forwards 4.5s;
+        }
+
+        @keyframes slideInToast {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOutToast {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+    </style>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container"></div>
+</body>
+
+</html>

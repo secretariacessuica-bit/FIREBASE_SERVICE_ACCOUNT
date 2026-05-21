@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        // EMERGENCY CACHE BUSTER v70.3.76
+        (function() {
+            // Unregister all Service Workers immediately
+            if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                }).catch(err => console.warn(err));
+            }
+            // Clear all caches
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+
+            const CURRENT_VER = "70.3.76";
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('v') !== CURRENT_VER && window.location.protocol !== 'file:') {
+                urlParams.set('v', CURRENT_VER);
+                window.location.search = urlParams.toString();
+            }
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Catedral Lausanne | Connect</title>
+    
+    <!-- NOTE: style-v2.css and mobile-v2.css intentionally removed - they conflict with the new portal login design. All styles are self-contained below. -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@100;200;400;600;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.76"></script>
+    <script src="js/auth-manager.js?v=70.3.76"></script>
+
+    <style>
+        :root {
+            --gold: #C9A050;
+            --gold-dim: rgba(201, 160, 80, 0.08);
+            --border: rgba(201, 160, 80, 0.15);
+            --font: 'Outfit', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html, body { 
+            width: 100%; height: 100%; overflow: hidden;
+            background: #080809; color: #ffffff; font-family: var(--font);
+        }
+
+        #view-login {
+            position: absolute; inset: 0; z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            background: #080809;
+            background-image: 
+                radial-gradient(circle at 50% 20%, rgba(201, 160, 80, 0.08) 0%, transparent 60%),
+                linear-gradient(135deg, rgba(201, 160, 80, 0.02) 0%, transparent 50%);
+            padding: 20px 20px 40px 20px;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+        #view-login::-webkit-scrollbar { display: none; }
+
+        /* Portal Header (Bell & Avatar) */
+        .portal-header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 15px;
+            padding: 20px 30px;
+            position: absolute;
+            top: 0; right: 0; width: 100%;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        .notification-bell {
+            width: 40px; height: 40px; border-radius: 50%;
+            border: 1px solid rgba(201, 160, 80, 0.2);
+            background: rgba(22, 21, 22, 0.45);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--gold); font-size: 1rem; position: relative;
+            cursor: pointer; transition: 0.3s;
+        }
+        .notification-bell:hover {
+            border-color: var(--gold);
+            box-shadow: 0 0 10px rgba(201, 160, 80, 0.2);
+        }
+        .bell-badge {
+            position: absolute; top: 12px; right: 13px;
+            width: 7px; height: 7px; background: var(--gold);
+            border-radius: 50%;
+        }
+        .avatar-circle {
+            width: 40px; height: 40px; border-radius: 50%;
+            border: 1.5px solid var(--gold); overflow: hidden;
+            box-shadow: 0 0 10px rgba(201, 160, 80, 0.2);
+            background: #111;
+        }
+        .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+        .logo-box { width: 180px; height: 180px; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(201, 160, 80, 0.25)); }
+        .logo-box img { width: 100%; height: 100%; object-fit: contain; }
+
+        /* Portal Grid & Cards */
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 40px auto;
+        }
+        @media(min-width: 600px) {
+            .portal-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+            .portal-card.prominent {
+                grid-column: span 2;
+            }
+        }
+
+        .portal-card {
+            background: rgba(22, 21, 22, 0.45);
+            border: 1px solid rgba(201, 160, 80, 0.15);
+            border-radius: 20px;
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+        .portal-card:hover {
+            border-color: var(--gold);
+            background: rgba(201, 160, 80, 0.05);
+            box-shadow: 0 0 25px rgba(201, 160, 80, 0.12);
+            transform: translateY(-2px);
+        }
+        .portal-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(201, 160, 80, 0.05), transparent);
+            transition: 0.5s;
+        }
+        .portal-card:hover::before { left: 100%; }
+
+        .portal-card.prominent {
+            padding: 24px 30px;
+            border-color: rgba(201, 160, 80, 0.28);
+            background: rgba(201, 160, 80, 0.03);
+        }
+
+        .portal-icon-container {
+            background: rgba(201, 160, 80, 0.1);
+            border: 1px solid rgba(201, 160, 80, 0.2);
+            width: 48px; height: 48px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin-right: 18px; flex-shrink: 0;
+            color: var(--gold); font-size: 1.25rem;
+            transition: all 0.3s ease;
+        }
+        .portal-card:hover .portal-icon-container {
+            background: var(--gold);
+            color: #080809;
+            box-shadow: 0 0 15px rgba(201, 160, 80, 0.35);
+            border-color: var(--gold);
+        }
+        .portal-card.prominent .portal-icon-container { width: 56px; height: 56px; font-size: 1.45rem; }
+
+        .portal-text { flex-grow: 1; text-align: left; }
+        .portal-card-title {
+            font-size: 1.05rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin: 0 0 4px 0; color: #ffffff;
+            font-family: var(--font);
+        }
+        .portal-card.prominent .portal-card-title { font-size: 1.2rem; }
+        .portal-card-desc { font-size: 0.8rem; color: #a8a29e; margin: 0; font-weight: 400; line-height: 1.4; }
+        .portal-card.prominent .portal-card-desc { font-size: 0.88rem; }
+
+        .portal-arrow { color: rgba(201, 160, 80, 0.3); font-size: 1rem; transition: all 0.3s ease; margin-left: 15px; }
+        .portal-card:hover .portal-arrow { color: var(--gold); transform: translateX(3px); }
+
+        /* Bottom widgets */
+        .portal-bottom-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 22px;
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto 0 auto;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 30px;
+        }
+        @media(min-width: 768px) {
+            .portal-bottom-bar {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                gap: 15px;
+            }
+        }
+        .portal-status-box {
+            background: rgba(22, 21, 22, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 12px 20px;
+            display: flex; align-items: center; gap: 12px;
+            font-size: 0.8rem; color: #a8a29e;
+        }
+        .status-dot {
+            width: 8px; height: 8px; background: #22c55e; border-radius: 50%;
+            box-shadow: 0 0 10px #22c55e; animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .portal-quote {
+            text-align: center; font-size: 0.92rem; color: var(--gold);
+            font-family: 'Playfair Display', serif; font-style: italic;
+        }
+        .portal-help-box {
+            background: rgba(22, 21, 22, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 12px 20px;
+            display: flex; align-items: center; gap: 12px;
+            font-size: 0.8rem; color: #a8a29e; cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .portal-help-box:hover { border-color: var(--gold); color: #ffffff; }
+
+        /* PIN SCREEN */
+        #pin-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin: 40px 0; }
+        .pin-container {
+            background: rgba(22, 21, 22, 0.45);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 50px 35px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+        }
+        .pin-input {
+            width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+            border-radius: 16px; padding: 18px; font-size: 2.2rem; text-align: center;
+            letter-spacing: 12px; margin-bottom: 25px; outline: none; color: #fff;
+            transition: 0.3s;
+        }
+        .pin-input:focus { border-color: var(--gold); box-shadow: 0 0 15px rgba(201,160,80,0.15); }
+        .btn-confirm {
+            width: 100%; background: var(--gold); color: #000; border: none;
+            padding: 20px; border-radius: 16px; font-weight: 800; font-size: 1.1rem;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
+            transition: 0.3s;
+        }
+        .btn-confirm:hover { background: #e0b45c; transform: translateY(-1px); }
+
+        /* APP HEADER */
+        .app-header {
+            position: fixed; top: 0; left: 0; width: 100%; height: 70px;
+            background: #000; border-bottom: 1.5px solid var(--gold);
+            display: none; align-items: center; justify-content: space-between;
+            padding: 0 25px; z-index: 1000;
+        }
+        .app-container { position: absolute; top: 70px; left: 0; width: 100%; height: calc(100% - 70px); display: none; }
+        .app-view { display: none; width: 100%; height: 100%; }
+        .app-view.active { display: block; }
+        iframe { width: 100%; height: 100%; border: none; }
+    </style>
+</head>
+<body>
+    <div id="view-login">
+        
+        <!-- Portal Header Icons -->
+        <div class="portal-header">
+            <!-- Notificacao Removida conforme pedido -->
+            <div class="avatar-circle">
+                <img src="assets/logo_3.png?v=70.3.76" alt="Logo avatar">
+            </div>
+        </div>
+
+        <!-- ROLE SELECTION VIEW -->
+        <div id="role-selection" style="width: 100%; max-width: 800px; margin: 0 auto; text-align: center;">
+            <div class="logo-box" style="margin: 0 auto 5px auto;">
+                <img src="assets/logo_3.png?v=70.3.76" alt="CES Logo">
+            </div>
+            
+            <h1 style="font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 700; color: #ffffff; margin-bottom: 8px; letter-spacing: -0.5px;">
+                Bem-vindo ao sistema <span style="color: var(--gold);">Lausanne</span>
+            </h1>
+            <p style="font-size: 0.95rem; color: #a8a29e; max-width: 500px; margin: 0 auto 40px auto; line-height: 1.5; font-weight: 400; font-family:'Inter';">
+                Acesse as equipes, acompanhe atividades e gerencie cada detalhe com excelência.
+            </p>
+
+            <div class="portal-grid">
+                <!-- LIVE (ALTAR) -->
+                <div class="portal-card prominent" onclick="selectRole('altar')">
+                    <div style="display: flex; align-items: center; flex-grow: 1;">
+                        <div class="portal-text" style="width: 100%; text-align: center;">
+                            <h3 class="portal-card-title">LIVE (ALTAR)</h3>
+                            <p class="portal-card-desc">Gerencie transmissões e conteúdos ao vivo.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right portal-arrow"></i>
+                </div>
+                
+                <!-- GABINETE PASTORAL -->
+                <div class="portal-card prominent" onclick="selectRole('gabinete')" style="background: linear-gradient(135deg, rgba(201, 160, 80, 0.08) 0%, rgba(22, 21, 22, 0.45) 100%);">
+                    <div style="display: flex; align-items: center; flex-grow: 1;">
+                        <div class="portal-text" style="width: 100%; text-align: center;">
+                            <h3 class="portal-card-title">GABINETE PASTORAL</h3>
+                            <p class="portal-card-desc">Acesso exclusivo da liderança pastoral.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right portal-arrow"></i>
+                </div>
+
+                <!-- RECEPÇÃO -->
+                <div class="portal-card" onclick="selectRole('reception')">
+                    <div style="display: flex; align-items: center; flex-grow: 1;">
+                        <div class="portal-text" style="width: 100%; text-align: center;">
+                            <h3 class="portal-card-title">Recepção</h3>
+                            <p class="portal-card-desc">Atendimento e cadastro de visitantes.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right portal-arrow"></i>
+                </div>
+
+                <!-- INTEGRAÇÃO -->
+                <div class="portal-card" onclick="selectRole('integracao')">
+                    <div style="display: flex; align-items: center; flex-grow: 1;">
+                        <div class="portal-text" style="width: 100%; text-align: center;">
+                            <h3 class="portal-card-title">Integração</h3>
+                            <p class="portal-card-desc">Conectando pessoas à família Lausanne.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right portal-arrow"></i>
+                </div>
+
+                <!-- CRIANÇAS -->
+                <div class="portal-card" onclick="selectRole('kids')">
+                    <div style="display: flex; align-items: center; flex-grow: 1;">
+                        <div class="portal-text" style="width: 100%; text-align: center;">
+                            <h3 class="portal-card-title">Crianças</h3>
+                            <p class="portal-card-desc">Ministério infantil com amor e excelência.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right portal-arrow"></i>
+                </div>
+
+                <!-- SECRETARIA -->
+                <div class="portal-card" onclick="selectRole('admin')">
+                    <div style="display: flex; align-items: center; flex-grow: 1;">
+                        <div class="portal-text" style="width: 100%; text-align: center;">
+                            <h3 class="portal-card-title">Secretaria</h3>
+                            <p class="portal-card-desc">Documentos, solicitações e comunicações oficiais.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right portal-arrow"></i>
+                </div>
+            </div>
+
+            <!-- Bottom Row widgets -->
+            <div class="portal-bottom-bar">
+                <div class="portal-status-box">
+                    <div class="status-dot"></div>
+                    <span>Sistema online. Todos os serviços funcionando.</span>
+                </div>
+                
+                <div class="portal-quote">
+                    "Tudo seja feito com amor." <span style="font-weight: 700; display: block; font-size: 0.8rem; margin-top: 4px; font-family:'Inter'; font-style:normal;">1 Coríntios 16:14</span>
+                </div>
+                
+                <div class="portal-help-box" onclick="alert('Entre em contato com a secretaria no telefone da Catedral para obter suporte ou alterar suas permissões.')">
+                    <i class="fas fa-circle-question" style="color: var(--gold); font-size: 1.1rem;"></i>
+                    <span>Precisa de ajuda? Fale com a secretaria.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PIN ENTER VIEW -->
+        <div id="pin-screen">
+            <div class="pin-container">
+                <h2 style="font-weight: 800; margin-bottom: 30px; letter-spacing: 3px; color: #fff;">ACESSO</h2>
+                <input type="password" id="pin-input" class="pin-input" placeholder="••••">
+                <div style="display:flex; align-items:center; gap:15px; margin-bottom:30px; justify-content:center; cursor:pointer;" onclick="toggleRemember()">
+                    <input type="checkbox" id="remember-me" style="width:24px; height:24px; cursor:pointer; accent-color: var(--gold);">
+                    <span style="font-size:1rem; font-weight:600; color:#e8dcc8; letter-spacing:1px;">Manter Conectado</span>
+                </div>
+                <button class="btn-confirm" onclick="validatePin()">ENTRAR</button>
+                <p onclick="showRoles()" style="margin-top:30px; color:var(--gold); font-size:0.85rem; cursor:pointer; font-weight:800; text-transform: uppercase; letter-spacing: 2px;">Voltar</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- APP NAVIGATION SHELL -->
+    <header class="app-header" id="app-header">
+        <div style="display:flex; align-items:center; gap:15px;">
+            <img src="assets/logo_3.png?v=70.3.76" style="height:40px; width:auto;">
+        </div>
+        <i class="fas fa-power-off" style="color:#FF4444; font-size: 1.4rem; cursor:pointer;" onclick="logout()"></i>
+    </header>
+
+    <div class="app-container" id="app-container">
+        <div id="view-reception" class="app-view"><iframe id="iframe-reception" data-src="recepcao_v2.html"></iframe></div>
+        <div id="view-kids" class="app-view"><iframe id="iframe-kids" data-src="kids.html"></iframe></div>
+        <div id="view-admin" class="app-view"><iframe id="iframe-admin" data-src="admin.html"></iframe></div>
+        <div id="view-gabinete" class="app-view"><iframe id="iframe-gabinete" data-src="gabinete.html"></iframe></div>
+        <div id="view-integracao" class="app-view"><iframe id="iframe-integracao" data-src="integracao.html"></iframe></div>
+        <div id="view-altar" class="app-view"><iframe id="iframe-altar" data-src="altar_final.html"></iframe></div>
+    </div>
+
+    <script>
+        let currentRole = null;
+        const urlParams = new URLSearchParams(window.location.search);
+        const roleParam = urlParams.get('role');
+
+        // Clean, reactive auth synchronization
+        window.onAuthSuccess = (user, role) => {
+            console.log("💎 Shell Auth Success:", role);
+            const targetRole = roleParam || currentRole || role;
+            if (targetRole && targetRole !== 'guest') {
+                enterApp(targetRole);
+            } else {
+                showLoginView();
+            }
+        };
+
+        window.onAuthLogout = () => {
+            console.log("💎 Shell Auth Logout");
+            showLoginView();
+        };
+
+        function showLoginView() {
+            document.getElementById('view-login').style.display = 'block';
+            document.getElementById('app-header').style.display = 'none';
+            document.getElementById('app-container').style.display = 'none';
+            if (roleParam) {
+                selectRole(roleParam);
+            } else {
+                showRoles();
+            }
+        }
+
+        // Keep default layout hidden while detecting auth state to prevent flash of content
+        document.getElementById('view-login').style.display = 'none';
+        document.getElementById('app-header').style.display = 'none';
+        document.getElementById('app-container').style.display = 'none';
+
+        if (roleParam) {
+            currentRole = roleParam;
+        }
+        
+        // Safety timeout: If Firebase auth fails to respond in 2.5 seconds, show login view
+        setTimeout(() => {
+            const loginVisible = document.getElementById('view-login').style.display === 'block';
+            const appVisible = document.getElementById('app-container').style.display === 'block';
+            if (!loginVisible && !appVisible) {
+                console.log("⏳ Auth Detection Timeout. Falling back to login screen.");
+                showLoginView();
+            }
+        }, 2500);
+
+        function selectRole(role) {
+            if(role === 'altar') {
+                AuthManager.login('altar', 'midia25').then(res => {
+                    if(res.success){
+                        localStorage.setItem('current_session_pin', 'midia25');
+                        enterApp('altar');
+                    } else {
+                        alert("Falha ao autenticar Altar!");
+                    }
+                });
+                return;
+            }
+            currentRole = role;
+            document.getElementById('role-selection').style.display='none';
+            document.getElementById('pin-screen').style.display='flex';
+            document.getElementById('pin-input').value='';
+            document.getElementById('pin-input').focus();
+        }
+
+        function showRoles() {
+            document.getElementById('pin-screen').style.display='none';
+            document.getElementById('role-selection').style.display='block';
+        }
+
+        async function validatePin() {
+            const pin = document.getElementById('pin-input').value.trim();
+            if(!pin) return;
+            
+            const remember = document.getElementById('remember-me').checked;
+            localStorage.setItem('remember_me', remember ? 'true' : 'false');
+            const persistence = remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+            await firebase.auth().setPersistence(persistence);
+
+            const res = await AuthManager.login(currentRole, pin);
+            if(res.success){
+                localStorage.setItem('current_session_pin', pin);
+                enterApp(currentRole);
+            } else {
+                alert("PIN Inválido!");
+            }
+        }
+        function toggleRemember() { document.getElementById('remember-me').checked = !document.getElementById('remember-me').checked; }
+
+        function enterApp(role) {
+            if (role === 'lideres' || role === 'lider' || role === 'ministerio' || role === 'ministério') {
+                role = 'admin';
+            }
+            localStorage.setItem('session_role', role);
+            const pin = localStorage.getItem('current_session_pin');
+
+            document.getElementById('view-login').style.display='none';
+            document.getElementById('app-header').style.display='flex';
+            document.getElementById('app-container').style.display='block';
+            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+            
+            const viewId = 'view-' + role;
+            const frameId = 'iframe-' + role;
+            if(document.getElementById(viewId)){
+                document.getElementById(viewId).classList.add('active');
+                const f = document.getElementById(frameId);
+                if (f) {
+                    if (!f.src) f.src = f.dataset.src + "?v=70.3.76&role=" + role;
+                    
+                    if(pin === 'Lausanne25') {
+                        setTimeout(() => {
+                            if(f.contentWindow) {
+                                f.contentWindow.postMessage({ type: 'MASTER_BYPASS_SIGNAL', pin: pin }, '*');
+                                console.log("💎 Master Signal Sent (Mobile) to:", role);
+                            }
+                        }, 1500);
+                    }
+                }
+            }
+            if(role === 'altar') document.getElementById('app-header').style.display='none';
+        }
+
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'MASTER_LOGOUT') {
+                console.log("💎 MASTER_LOGOUT signal received. Cleaning up...");
+                logout();
+            }
+        });
+
+        function logout() { AuthManager.logout(); location.reload(); }
+    </script>
+</body>
+</html>

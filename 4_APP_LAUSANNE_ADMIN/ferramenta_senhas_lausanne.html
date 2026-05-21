@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Senhas | Lausanne</title>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --gold: #C9A050;
+            --gold-dim: rgba(201,160,80,0.08);
+            --gold-border: rgba(201,160,80,0.2);
+            --bg: #080809;
+            --bg-card: rgba(22,21,22,0.6);
+            --border: rgba(255,255,255,0.06);
+            --text: #ffffff;
+            --text-dim: #a8a29e;
+            --emerald: #10b981;
+            --red: #ef4444;
+            --font: 'Outfit', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            background: var(--bg);
+            background-image: radial-gradient(circle at 50% 0%, rgba(201,160,80,0.06) 0%, transparent 55%);
+            color: var(--text);
+            font-family: var(--font);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::before {
+            content: "LAUSANNE";
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%,-50%) rotate(-15deg);
+            font-size: 18vw; font-weight: 900;
+            color: rgba(201,160,80,0.012);
+            z-index: 0; pointer-events: none; white-space: nowrap;
+        }
+
+        .page { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; padding: 40px 20px 60px; }
+
+        /* HEADER */
+        .topbar { display: flex; align-items: center; gap: 16px; margin-bottom: 36px; }
+        .logo-icon {
+            width: 52px; height: 52px; border-radius: 16px;
+            background: var(--gold-dim); border: 1px solid var(--gold-border);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--gold); font-size: 1.4rem;
+        }
+        .topbar h1 { font-size: 1.6rem; font-weight: 800; color: var(--text); }
+        .topbar p  { font-size: 0.72rem; color: var(--gold); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-top: 3px; opacity: 0.85; }
+
+        /* ALERT BOX */
+        .alert-box {
+            background: rgba(201,160,80,0.05); border: 1px solid var(--gold-border);
+            border-radius: 16px; padding: 16px 20px; margin-bottom: 28px;
+            display: flex; gap: 14px; align-items: flex-start;
+        }
+        .alert-box i { color: var(--gold); font-size: 1.1rem; margin-top: 2px; flex-shrink: 0; }
+        .alert-box p { font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; }
+        .alert-box strong { color: var(--text); }
+
+        /* TABLE */
+        .table-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px; overflow: hidden; margin-bottom: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .table-header {
+            padding: 20px 26px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .table-header span { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--gold); }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            padding: 12px 26px; text-align: left;
+            font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 1.5px; color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+        }
+        tbody tr { border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.2s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        tbody td { padding: 16px 26px; font-size: 0.9rem; }
+
+        .sector-icon {
+            width: 34px; height: 34px; border-radius: 10px;
+            background: var(--gold-dim); border: 1px solid var(--gold-border);
+            display: inline-flex; align-items: center; justify-content: center;
+            color: var(--gold); font-size: 0.9rem; margin-right: 10px;
+            vertical-align: middle;
+        }
+        .sector-name { font-weight: 700; color: var(--text); vertical-align: middle; }
+        .email-chip {
+            font-size: 0.78rem; color: var(--text-dim);
+            font-family: 'Inter', monospace; font-weight: 500;
+        }
+        .pass-chip {
+            background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);
+            color: var(--emerald); font-weight: 900; font-size: 0.85rem;
+            padding: 4px 12px; border-radius: 8px; font-family: 'Inter', monospace;
+            letter-spacing: 1px;
+        }
+        .status-badge {
+            font-size: 0.65rem; font-weight: 900; text-transform: uppercase;
+            padding: 3px 9px; border-radius: 6px; letter-spacing: 1px;
+        }
+        .badge-wait { background: rgba(255,255,255,0.05); color: var(--text-dim); }
+        .badge-ok   { background: rgba(16,185,129,0.12); color: var(--emerald); }
+        .badge-err  { background: rgba(239,68,68,0.12); color: var(--red); }
+        .badge-spin { background: rgba(201,160,80,0.1); color: var(--gold); animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.4; } }
+
+        /* BUTTONS */
+        .btn-run {
+            width: 100%; background: var(--gold); color: #000;
+            border: none; border-radius: 16px; padding: 18px 24px;
+            font-family: var(--font); font-weight: 900; font-size: 0.95rem;
+            cursor: pointer; transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            box-shadow: 0 8px 25px rgba(201,160,80,0.2);
+        }
+        .btn-run:hover { transform: translateY(-2px); box-shadow: 0 14px 35px rgba(201,160,80,0.3); }
+        .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* LOG */
+        .log-card {
+            background: #0a0a0b; border: 1px solid var(--border);
+            border-radius: 20px; padding: 22px 26px; margin-top: 22px;
+            font-family: 'Inter', monospace; font-size: 0.82rem;
+            min-height: 100px; display: none;
+        }
+        .log-card.visible { display: block; }
+        .log-line { margin-bottom: 6px; line-height: 1.6; color: var(--text-dim); }
+        .log-ok   { color: var(--emerald); }
+        .log-err  { color: var(--red); }
+        .log-warn { color: var(--gold); }
+        .log-info { color: #60a5fa; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(201,160,80,0.2); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="page">
+
+    <!-- HEADER -->
+    <div class="topbar">
+        <div class="logo-icon"><i class="fas fa-key"></i></div>
+        <div>
+            <h1>Gestor de Senhas</h1>
+            <p>Catedral Lausanne — Contas de Acesso</p>
+        </div>
+    </div>
+
+    <!-- ALERT -->
+    <div class="alert-box">
+        <i class="fas fa-circle-info"></i>
+        <p>Esta ferramenta <strong>define ou redefine automaticamente</strong> as senhas de cada setor no Firebase. Execute apenas como administrador. O processo é irreversível — as senhas abaixo substituirão as anteriores.</p>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-card">
+        <div class="table-header">
+            <i class="fas fa-shield-halved" style="color:var(--gold);"></i>
+            <span>Contas e Novas Senhas</span>
+        </div>
+        <table id="contas-table">
+            <thead>
+                <tr>
+                    <th>Setor</th>
+                    <th>E-mail</th>
+                    <th>Nova Senha</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="sector-icon"><i class="fas fa-chess-king"></i></span><span class="sector-name">Master / Pastor</span></td>
+                    <td><span class="email-chip">pastor@catedral.ch</span></td>
+                    <td><span class="pass-chip">Lausanne25</span></td>
+                    <td><span class="status-badge badge-wait" id="status-0">Aguardando</span></td>
+                </tr>
+                <tr>
+                    <td><span class="sector-icon"><i class="fas fa-user-check"></i></span><span class="sector-name">Recepção</span></td>
+                    <td><span class="email-chip">recepcao@catedral.ch</span></td>
+                    <td><span class="pass-chip">recepcao25</span></td>
+                    <td><span class="status-badge badge-wait" id="status-1">Aguardando</span></td>
+                </tr>
+                <tr>
+                    <td><span class="sector-icon"><i class="fas fa-heart"></i></span><span class="sector-name">Integração</span></td>
+                    <td><span class="email-chip">missao@catedral.ch</span></td>
+                    <td><span class="pass-chip">missao25</span></td>
+                    <td><span class="status-badge badge-wait" id="status-2">Aguardando</span></td>
+                </tr>
+                <tr>
+                    <td><span class="sector-icon"><i class="fas fa-child"></i></span><span class="sector-name">Kids / Infantil</span></td>
+                    <td><span class="email-chip">infantil@catedral.ch</span></td>
+                    <td><span class="pass-chip">infantil25</span></td>
+                    <td><span class="status-badge badge-wait" id="status-3">Aguardando</span></td>
+                </tr>
+                <tr>
+                    <td><span class="sector-icon"><i class="fas fa-tower-broadcast"></i></span><span class="sector-name">Altar / Mídia</span></td>
+                    <td><span class="email-chip">midia@catedral.ch</span></td>
+                    <td><span class="pass-chip">midia25</span></td>
+                    <td><span class="status-badge badge-wait" id="status-4">Aguardando</span></td>
+                </tr>
+                <tr>
+                    <td><span class="sector-icon"><i class="fas fa-calendar-check"></i></span><span class="sector-name">Eventos / Check-in</span></td>
+                    <td><span class="email-chip">checkin@catedral.ch</span></td>
+                    <td><span class="pass-chip">checkin25</span></td>
+                    <td><span class="status-badge badge-wait" id="status-5">Aguardando</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- RUN BUTTON -->
+    <button class="btn-run" id="btn-run" onclick="executar()">
+        <i class="fas fa-bolt"></i> Aplicar Todas as Senhas Agora
+    </button>
+
+    <!-- LOG -->
+    <div class="log-card" id="log-card">
+        <div class="log-line log-info">> Iniciando operação...</div>
+    </div>
+
+</div>
+
+<script>
+    // Contas Lausanne
+    const contas = [
+        { email: 'pastor@catedral.ch',   newPass: 'Lausanne25', idx: 0,
+          oldPasswords: ['Catedral@2025!', 'Pastor@1234', '123456', 'pastor25'] },
+        { email: 'recepcao@catedral.ch', newPass: 'recepcao25', idx: 1,
+          oldPasswords: ['Catedral@2025!', 'Recepcao@1234', '123456', 'recepcao2025'] },
+        { email: 'missao@catedral.ch',   newPass: 'missao25',   idx: 2,
+          oldPasswords: ['Catedral@2025!', 'Missao@1234', '123456', 'missao2025'] },
+        { email: 'infantil@catedral.ch', newPass: 'infantil25', idx: 3,
+          oldPasswords: ['Catedral@2025!', 'Infantil@1234', '123456', 'infantil2025'] },
+        { email: 'midia@catedral.ch',    newPass: 'midia25',    idx: 4,
+          oldPasswords: ['Catedral@2025!', 'Midia@1234', '123456', 'midia2025'] },
+        { email: 'checkin@catedral.ch',  newPass: 'checkin25',  idx: 5,
+          oldPasswords: ['Catedral@2025!', 'Checkin@1234', '123456', 'checkin2025'] }
+    ];
+
+    function setStatus(idx, type, text) {
+        const el = document.getElementById('status-' + idx);
+        el.className = 'status-badge badge-' + type;
+        el.textContent = text;
+    }
+
+    function log(text, type = '') {
+        const card = document.getElementById('log-card');
+        card.classList.add('visible');
+        const line = document.createElement('div');
+        line.className = 'log-line' + (type ? ' log-' + type : '');
+        line.innerHTML = '> ' + text;
+        card.appendChild(line);
+        card.scrollTop = card.scrollHeight;
+    }
+
+    async function processarConta(c) {
+        setStatus(c.idx, 'spin', 'Processando...');
+        log(`<b>${c.email}</b> — verificando...`, 'info');
+
+        // 1. Tenta login com a nova senha (já pode estar correta)
+        try {
+            await firebase.auth().signInWithEmailAndPassword(c.email, c.newPass);
+            log(`${c.email} — já usa a nova senha. ✓`, 'ok');
+            setStatus(c.idx, 'ok', '✓ Já OK');
+            return;
+        } catch(e) { /* não está com a nova senha */ }
+
+        // 2. Tenta criar a conta (se não existir)
+        try {
+            await firebase.auth().createUserWithEmailAndPassword(c.email, c.newPass);
+            log(`${c.email} — conta criada com nova senha!`, 'ok');
+            setStatus(c.idx, 'ok', '✓ Criada');
+            return;
+        } catch(e) { /* conta já existe */ }
+
+        // 3. Tenta senhas antigas para fazer login e trocar
+        for (let oldPass of c.oldPasswords) {
+            try {
+                await firebase.auth().signInWithEmailAndPassword(c.email, oldPass);
+                log(`${c.email} — logado com senha antiga. Atualizando...`, 'warn');
+                await firebase.auth().currentUser.updatePassword(c.newPass);
+                log(`${c.email} — senha atualizada com sucesso! ✓`, 'ok');
+                setStatus(c.idx, 'ok', '✓ Atualizada');
+                return;
+            } catch(e) { /* tenta próxima */ }
+        }
+
+        // 4. Falhou tudo
+        log(`${c.email} — não foi possível atualizar. Verifique no Firebase Console.`, 'err');
+        setStatus(c.idx, 'err', '✗ Erro');
+    }
+
+    async function executar() {
+        const btn = document.getElementById('btn-run');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+
+        const card = document.getElementById('log-card');
+        card.innerHTML = '';
+        card.classList.add('visible');
+        log('Iniciando atualização de senhas — Lausanne', 'info');
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        for (let conta of contas) {
+            await processarConta(conta);
+            await firebase.auth().signOut();
+            await new Promise(r => setTimeout(r, 600));
+        }
+
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        log('Operação concluída! Todas as contas foram processadas.', 'ok');
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> Concluído!';
+        btn.style.background = '#10b981';
+    }
+</script>
+</body>
+</html>

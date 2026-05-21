@@ -1,432 +1,500 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acolhimento | Lausanne v51.2.4 Diamond Phoenix</title>
-    
+    <title>Recepção | Catedral Lausanne</title>
+
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js?v=70.3.0"></script>
-    <script src="js/auth-manager.js?v=70.3.0"></script>
-    
+    <script src="js/firebase-config.js?v=70.3.76"></script>
+    <script src="js/auth-manager.js?v=70.3.76"></script>
+
     <script>
-        // SECURITY GUARD v47.2 - iframe-safe
+        // SECURITY GUARD - iframe-safe
         (function() {
             if (window.self === window.top && window.location.protocol !== 'file:') {
-                window.location.href = 'mobile.html';
+                window.location.href = 'mobile_v2.html';
             }
         })();
     </script>
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@100;200;400;600;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --bg: #060608;
-            --bg-card: rgba(12, 12, 16, 0.95);
             --gold: #C9A050;
-            --gold-dim: rgba(201, 160, 80, 0.1);
-            --gold-glow: rgba(201, 160, 80, 0.3);
-            --border: rgba(201, 160, 80, 0.15);
-            --border-soft: rgba(255, 255, 255, 0.05);
-            --text: #e8dcc8;
-            --text-dim: rgba(232, 220, 200, 0.5);
-            --accent-emerald: #5aaa7a;
-            --accent-warm: #d4922a;
+            --gold-dim: rgba(201, 160, 80, 0.08);
+            --gold-glow: rgba(201, 160, 80, 0.15);
+            --gold-border: rgba(201, 160, 80, 0.2);
+            --bg: #080809;
+            --bg-card: rgba(22, 21, 22, 0.55);
+            --border: rgba(201, 160, 80, 0.12);
+            --border-soft: rgba(255, 255, 255, 0.06);
+            --text: #ffffff;
+            --text-dim: #a8a29e;
+            --emerald: #10b981;
             --font: 'Outfit', sans-serif;
-            --shadow: 0 20px 50px rgba(0,0,0,0.5);
+            --font-serif: 'Playfair Display', serif;
         }
 
-        body {
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
             background: var(--bg);
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(201, 160, 80, 0.03) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(91, 143, 212, 0.02) 0px, transparent 50%);
+            background-image:
+                radial-gradient(circle at 50% 0%, rgba(201, 160, 80, 0.06) 0%, transparent 55%),
+                linear-gradient(135deg, rgba(201, 160, 80, 0.01) 0%, transparent 50%);
             background-attachment: fixed;
             color: var(--text);
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 15px;
+            font-family: var(--font);
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
 
-        h1, h2, h3, .heading-prime {
-            font-family: var(--font);
-            letter-spacing: -0.5px;
-        }
-
-        /* PREMIUM GLASS PANEL */
-        .glass-panel {
-            background: var(--bg-card);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid var(--border-soft);
-            border-radius: 24px;
-            padding: 25px;
-            box-shadow: var(--shadow);
-            margin-bottom: 25px;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .glass-panel:hover {
-            transform: translateY(-4px);
-            border-color: var(--border);
-            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
-        }
-
-        /* NAVIGATION */
-        .nav-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 25px;
-            overflow-x: auto;
-            padding: 6px;
-            scrollbar-width: none;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 20px;
-            width: fit-content;
-            border: 1px solid var(--border-soft);
-        }
-        .nav-tabs::-webkit-scrollbar { display: none; }
-
-        .tab-btn {
-            background: transparent;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 14px;
-            color: var(--text-dim);
-            font-family: var(--font);
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .tab-btn:hover {
-            color: var(--text);
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .tab-btn.active {
-            background: var(--gold-dim);
-            color: var(--gold);
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 15px rgba(201, 160, 80, 0.1);
-        }
-
-        .tab-content { display: none; animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-        .tab-content.active { display: block; }
-
-        @keyframes slideUpFade {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* CARDS */
-        .list-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-soft);
-            border-radius: 20px;
-            padding: 22px;
-            margin-bottom: 15px;
-            position: relative;
-            transition: all 0.3s;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-
-        .list-card:hover {
-            border-color: var(--border);
-            transform: translateX(4px);
-        }
-
-        .card-accent-bar {
-            position: absolute;
-            left: 0; top: 15px; bottom: 15px;
-            width: 4px;
-            border-radius: 0 4px 4px 0;
-            opacity: 0.7;
-        }
-
-        /* INPUTS */
-        .input-prime {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border-soft);
-            border-radius: 14px;
-            padding: 16px;
-            color: #fff;
-            width: 100%;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-            margin-bottom: 16px;
-            transition: all 0.3s;
-            font-size: 1rem;
-        }
-
-        .input-prime:focus {
-            outline: none;
-            border-color: var(--gold);
-            background: rgba(255, 255, 255, 0.07);
-            box-shadow: 0 0 0 4px rgba(201, 160, 80, 0.1);
-        }
-
-        .input-prime::placeholder {
-            color: var(--text-dim);
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 0.7rem;
-            color: var(--gold);
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            padding-left: 4px;
-            opacity: 0.8;
-        }
-
-        /* BUTTONS */
-        .btn-prime {
-            background: var(--gold);
-            color: #000;
-            border: none;
-            padding: 18px 24px;
-            border-radius: 16px;
-            font-weight: 900;
-            font-family: var(--font);
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-size: 0.9rem;
-        }
-
-        .btn-prime:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(201, 160, 80, 0.25);
-        }
-
-        .btn-emerald {
-            background: var(--accent-emerald);
-            color: #fff;
-        }
-        .btn-emerald:hover { background: #4d9467; }
-
-        .btn-warm {
-            background: var(--accent-warm);
-        }
-
-        .btn-action-sm {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-soft);
-            color: var(--text-dim);
-            padding: 10px 14px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: 0.2s;
-            font-family: var(--font);
-            font-weight: 800;
-            text-transform: uppercase;
-            font-size: 0.65rem;
-            letter-spacing: 1px;
-        }
-
-        .btn-action-sm:hover { 
-            background: rgba(255, 255, 255, 0.1);
-            border-color: var(--border);
-            color: var(--gold);
-        }
-
-        /* MODAL */
-        .modal-overlay {
-            display: none;
+        /* WATERMARK */
+        body::before {
+            content: "LAUSANNE";
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(12px);
-            align-items: center; justify-content: center;
-            z-index: 10000; padding: 20px;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            font-size: 18vw; font-weight: 900;
+            color: rgba(201, 160, 80, 0.012);
+            z-index: 0; pointer-events: none;
+            font-family: var(--font-serif);
+            white-space: nowrap;
         }
 
-        .status-empty {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-dim);
-        }
-
-        .status-empty i { font-size: 3.5rem; margin-bottom: 20px; color: var(--gold); opacity: 0.15; }
-
-        select.input-prime {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23C9A050'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 16px center;
-            background-size: 18px;
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            padding: 30px 20px 120px;
+            max-width: 680px;
+            margin: 0 auto;
         }
 
         /* SCROLLBAR */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(201,160,80,0.2); border-radius: 10px; }
+
+        /* ── HEADER ── */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+        .logo-icon {
+            width: 50px; height: 50px; border-radius: 16px;
+            background: var(--gold-dim);
+            border: 1px solid var(--gold-border);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--gold); font-size: 1.3rem;
+            box-shadow: 0 0 20px rgba(201,160,80,0.1);
+        }
+        .topbar-title { font-size: 1.55rem; font-weight: 800; color: var(--text); letter-spacing: 0.5px; }
+        .topbar-sub { font-size: 0.7rem; color: var(--gold); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; opacity: 0.85; }
+
+        .live-badge {
+            display: flex; align-items: center; gap: 7px;
+            background: var(--gold-dim); border: 1px solid var(--gold-border);
+            border-radius: 20px; padding: 6px 14px;
+            font-size: 0.7rem; font-weight: 800; color: var(--gold);
+            letter-spacing: 1.5px; text-transform: uppercase;
+        }
+        .live-dot {
+            width: 7px; height: 7px; background: var(--gold); border-radius: 50%;
+            box-shadow: 0 0 8px var(--gold); animation: pulse 2.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.4; }
+        }
+
+        /* ── TABS ── */
+        .nav-tabs {
+            display: flex; gap: 6px;
+            background: rgba(255,255,255,0.025);
+            border: 1px solid var(--border-soft);
+            border-radius: 18px;
+            padding: 5px;
+            margin-bottom: 28px;
+            overflow-x: auto; scrollbar-width: none;
+        }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+
+        .tab-btn {
+            background: transparent; border: none;
+            padding: 11px 18px; border-radius: 13px;
+            color: var(--text-dim); font-family: var(--font);
+            font-weight: 700; font-size: 0.78rem;
+            cursor: pointer; transition: all 0.3s;
+            display: flex; align-items: center; gap: 7px;
+            white-space: nowrap; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+        .tab-btn.active {
+            background: var(--gold-dim);
+            color: var(--gold);
+            border: 1px solid var(--gold-border);
+            box-shadow: 0 4px 15px rgba(201,160,80,0.08);
+        }
+
+        .tab-content { display: none; animation: slideUp 0.45s cubic-bezier(0.16,1,0.3,1); }
+        .tab-content.active { display: block; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── GLASS CARD ── */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-soft);
+            border-radius: 24px; padding: 26px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
+        }
+        .glass-card:hover {
+            border-color: var(--border);
+            transform: translateY(-3px);
+            box-shadow: 0 28px 70px rgba(0,0,0,0.5);
+        }
+        .glass-card.accent-gold  { border-top: 3px solid var(--gold); }
+        .glass-card.accent-green { border-top: 3px solid var(--emerald); }
+
+        /* ── SECTION TITLE ── */
+        .section-title {
+            font-size: 1.25rem; font-weight: 800; color: var(--text);
+            margin: 0 0 6px 0; letter-spacing: 0.3px;
+        }
+        .section-sub {
+            font-size: 0.82rem; color: var(--text-dim);
+            margin-bottom: 22px; line-height: 1.5;
+        }
+
+        /* ── VISITOR CARD ── */
+        .visitor-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(201,160,80,0.1);
+            border-radius: 20px; padding: 22px;
+            margin-bottom: 14px;
+            position: relative; overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .visitor-card:hover {
+            border-color: rgba(201,160,80,0.25);
+            background: rgba(255,255,255,0.04);
+            transform: translateY(-1px);
+        }
+        .visitor-card .accent-line {
+            position: absolute; left: 0; top: 18px; bottom: 18px;
+            width: 3px; border-radius: 0 3px 3px 0; opacity: 0.75;
+        }
+        .visitor-name { font-size: 1.2rem; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+        .visitor-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+        .tag {
+            font-size: 0.65rem; font-weight: 900; letter-spacing: 1px;
+            padding: 4px 10px; border-radius: 8px; text-transform: uppercase;
+        }
+        .tag-time { background: rgba(255,255,255,0.05); color: var(--text-dim); }
+        .tag-decision { background: var(--emerald); color: #fff; }
+
+        .visitor-phone {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(0,0,0,0.25); border: 1px solid var(--border-soft);
+            border-radius: 14px; padding: 14px 16px; margin-bottom: 14px;
+            font-size: 1rem; font-weight: 700; color: var(--text);
+        }
+        .visitor-phone i { color: #22c55e; font-size: 1.1rem; }
+        .visitor-interests { font-size: 0.78rem; color: var(--gold); font-weight: 700; letter-spacing: 0.5px; }
+
+        .obs-box {
+            background: rgba(201,160,80,0.04); border: 1px solid var(--border);
+            border-radius: 14px; padding: 14px; margin-bottom: 14px;
+        }
+        .obs-label { font-size: 0.62rem; color: var(--gold); font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .obs-text { font-size: 0.85rem; color: var(--text-dim); line-height: 1.5; }
+
+        /* ── INPUTS ── */
+        label {
+            display: block; margin-bottom: 7px;
+            font-size: 0.68rem; color: var(--gold);
+            font-weight: 800; text-transform: uppercase;
+            letter-spacing: 1.5px; padding-left: 2px; opacity: 0.85;
+        }
+        .input-field {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border-soft);
+            border-radius: 14px; padding: 16px;
+            color: var(--text); width: 100%;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem; margin-bottom: 16px;
+            transition: all 0.3s; outline: none;
+        }
+        .input-field:focus {
+            border-color: var(--gold);
+            background: rgba(255,255,255,0.07);
+            box-shadow: 0 0 0 4px rgba(201,160,80,0.1);
+        }
+        .input-field::placeholder { color: rgba(168,162,158,0.6); }
+        select.input-field {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23C9A050'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 16px center; background-size: 18px;
+        }
+        textarea.input-field { resize: none; }
+
+        /* ── BUTTONS ── */
+        .btn {
+            width: 100%; border: none; border-radius: 16px;
+            font-family: var(--font); font-weight: 900;
+            font-size: 0.88rem; cursor: pointer;
+            transition: all 0.3s; display: flex;
+            align-items: center; justify-content: center; gap: 10px;
+            padding: 17px 24px; text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        .btn-gold  { background: var(--gold); color: #000; }
+        .btn-gold:hover  { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(201,160,80,0.3); }
+        .btn-green { background: var(--emerald); color: #fff; }
+        .btn-green:hover { background: #0ea271; transform: translateY(-2px); box-shadow: 0 12px 25px rgba(16,185,129,0.3); }
+        .btn-ghost {
+            background: rgba(255,255,255,0.04); color: var(--text-dim);
+            border: 1px solid var(--border-soft);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.08); border-color: var(--border); color: var(--gold); }
+
+        .btn-sm {
+            width: auto; padding: 9px 16px; border-radius: 12px;
+            font-size: 0.65rem; gap: 6px;
+        }
+
+        /* ── STATUS EMPTY ── */
+        .status-empty {
+            text-align: center; padding: 60px 20px; color: var(--text-dim);
+        }
+        .status-empty i { font-size: 3rem; margin-bottom: 18px; color: var(--gold); opacity: 0.12; display: block; }
+        .status-empty p { font-weight: 600; font-size: 0.85rem; letter-spacing: 0.5px; }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            align-items: center; justify-content: center;
+            z-index: 10000; padding: 20px;
+        }
+        .modal-box {
+            background: #0f0e10;
+            border: 1px solid var(--border);
+            border-radius: 28px; padding: 30px;
+            width: 100%; max-width: 440px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.7);
+            animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1);
+        }
+        .modal-title { font-size: 1.35rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+        .modal-sub   { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 26px; }
+
+        /* ── QR BOX ── */
+        .qr-wrap {
+            background: #fff; padding: 16px; border-radius: 22px;
+            display: inline-block; border: 4px solid rgba(201,160,80,0.12);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .url-chip {
+            margin-top: 22px; padding: 12px 18px; border-radius: 14px;
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border-soft);
+            font-weight: 800; color: var(--gold); font-size: 0.78rem; letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        /* ── ROWS/GRID ── */
+        .row-2 { display: flex; gap: 12px; margin-bottom: 0; }
+        .row-2 > * { flex: 1; margin-bottom: 0; }
+
+        /* ── LOGIN OVERLAY ── */
+        #login-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); z-index: 99999;
+            flex-direction: column; justify-content: center;
+            align-items: center; padding: 20px;
+            background-image: radial-gradient(circle at 50% 20%, rgba(201,160,80,0.07) 0%, transparent 55%);
+        }
+        .login-box {
+            background: rgba(22,21,22,0.6);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 30px; padding: 40px;
+            width: 100%; max-width: 360px;
+            text-align: center;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+        }
+        .login-icon {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: var(--gold-dim); border: 1px solid var(--gold-border);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px;
+        }
+        .login-icon i { font-size: 1.9rem; color: var(--gold); }
     </style>
 </head>
-
 <body>
 
-<body>
-
-    <header style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; padding: 10px 0;">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <div style="background: var(--gold-dim); width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);">
-                <i class="fas fa-heart" style="font-size: 1.4rem; color: var(--gold);"></i>
-            </div>
-            <div>
-                <h1 style="margin: 0; font-size: 1.6rem; font-weight: 800; color: #fff; letter-spacing: 1px;">TRIAGEM</h1>
-                <p style="margin: 0; font-size: 0.65rem; color: var(--gold); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; opacity: 0.8;">Visitantes</p>
-            </div>
-        </div>
-        <button onclick="generateReport()" class="btn-action-sm" style="padding: 10px 18px; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-file-alt"></i> RELATÓRIO
-        </button>
-    </header>
-
-    <div class="nav-tabs">
-        <button class="tab-btn active" id="btn-tab-triagem" onclick="switchTab('triagem', this)">
-            <i class="fas fa-users-heart"></i> TRIAGEM
-        </button>
-        <button class="tab-btn" id="btn-tab-cadastro" onclick="switchTab('cadastro', this)">
-            <i class="fas fa-user-plus"></i> CADASTRO
-        </button>
-        <button class="tab-btn" id="btn-tab-full" onclick="switchTab('full', this)">
-            <i class="fas fa-id-card"></i> FICHA
-        </button>
-    </div>
-
-    <!-- 1. TRIAGEM -->
-    <div id="tab-triagem" class="tab-content active">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding: 0 5px;">
-            <h3 style="margin:0; font-size: 1.2rem; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Visitantes no Radar</h3>
-            <span style="background: var(--gold-dim); padding: 5px 12px; border-radius: 10px; font-size: 0.65rem; font-weight: 900; color: var(--gold); border: 1px solid var(--border); letter-spacing: 1px;">LIVE</span>
-        </div>
-        
-        <div id="triagem-list">
-            <div class="status-empty">
-                <i class="fas fa-circle-notch fa-spin"></i>
-                <p style="font-weight: 600; letter-spacing: 1px; font-size: 0.8rem;">SINCRONIZANDO...</p>
-            </div>
+    <!-- LOGIN OVERLAY -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <div class="login-icon"><i class="fas fa-user-check"></i></div>
+            <h2 style="font-family:var(--font-serif); font-size:1.8rem; font-weight:700; color:#fff; margin-bottom:8px;">Recepção</h2>
+            <p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:30px;">Entre para servir aos visitantes.</p>
+            <input type="email" id="login-email" placeholder="E-mail" class="input-field">
+            <input type="password" id="login-pass" placeholder="Senha" class="input-field">
+            <button onclick="doLogin()" class="btn btn-gold">Entrar no Serviço</button>
+            <p id="login-msg" style="color:#ef4444; margin-top:14px; font-size:0.8rem; font-weight:800; min-height:20px;"></p>
         </div>
     </div>
 
+    <div class="page-wrapper">
 
-    <!-- 2. AUTO-CADASTRO (NOVO CONGREGADO) -->
-    <div id="tab-cadastro" class="tab-content">
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-            <div class="glass-panel" style="border-top: 4px solid var(--accent-emerald);">
-                <h3 style="color: #fff; margin-top:0; font-size: 1.3rem; font-weight: 800;">Registrar Decisão</h3>
-                <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:25px;">Dia de festa! Registre aqui o novo passo de fé.</p>
+        <!-- HEADER -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <div class="logo-icon"><i class="fas fa-user-check"></i></div>
+                <div>
+                    <div class="topbar-title">Recepção</div>
+                    <div class="topbar-sub">Catedral Lausanne</div>
+                </div>
+            </div>
+            <div class="live-badge">
+                <div class="live-dot"></div>
+                LIVE
+            </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('triagem', this)">
+                <i class="fas fa-users-viewfinder"></i> Triagem
+            </button>
+            <button class="tab-btn" onclick="switchTab('cadastro', this)">
+                <i class="fas fa-user-plus"></i> Decisão
+            </button>
+            <button class="tab-btn" onclick="switchTab('ficha', this)">
+                <i class="fas fa-id-card"></i> Ficha
+            </button>
+        </div>
+
+        <!-- ═══ TAB 1: TRIAGEM ═══ -->
+        <div id="tab-triagem" class="tab-content active">
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px;">
+                <div>
+                    <div class="section-title">Visitantes no Radar</div>
+                    <div style="font-size:0.8rem; color:var(--text-dim);">Aguardando acolhimento</div>
+                </div>
+                <button onclick="generateReport()" class="btn btn-ghost btn-sm">
+                    <i class="fas fa-file-alt"></i> Relatório
+                </button>
+            </div>
+
+            <div id="triagem-list">
+                <div class="status-empty">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    <p>Sincronizando...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ TAB 2: DECISÃO / CADASTRO ═══ -->
+        <div id="tab-cadastro" class="tab-content">
+
+            <div class="glass-card accent-green">
+                <div class="section-title">Registrar Decisão</div>
+                <div class="section-sub">Dia de festa! Registre aqui o novo passo de fé.</div>
 
                 <label>Nome do Amigo</label>
-                <input type="text" id="convert-name" class="input-prime" placeholder="Nome completo">
+                <input type="text" id="convert-name" class="input-field" placeholder="Nome completo">
 
                 <label>WhatsApp</label>
-                <input type="tel" id="convert-phone" class="input-prime" placeholder="+41 ...">
+                <input type="tel" id="convert-phone" class="input-field" placeholder="+41 ...">
 
                 <label>Motivo</label>
-                <select id="convert-type" class="input-prime">
+                <select id="convert-type" class="input-field">
                     <option value="aceitou">Aceitou Jesus hoje</option>
                     <option value="reconciliou">Reconciliação</option>
                     <option value="membro_novo">Novo Membro (Transferência)</option>
                     <option value="visitante_assiduo">Visitante Assíduo</option>
                 </select>
 
-                <button onclick="submitConvert()" class="btn-prime btn-emerald">
-                    <i class="fas fa-save"></i> SALVAR DECISÃO
+                <button onclick="submitConvert()" class="btn btn-green">
+                    <i class="fas fa-heart"></i> Salvar Decisão
                 </button>
             </div>
 
-            <div class="glass-panel" style="text-align: center;">
-                <h3 style="margin-top:0; font-size: 1.1rem; color: #fff; font-weight: 800;">QR Code Hub</h3>
-                <p style="font-size:0.8rem; color:var(--text-dim); margin-bottom:25px;">O visitante pode preencher a própria ficha.</p>
-                
-                <div style="background: #fff; padding: 15px; border-radius: 20px; display: inline-block; border: 4px solid var(--gold-dim);">
-                    <div id="qr-code-online"></div>
-                </div>
-                
-                <div style="margin-top: 25px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-soft);">
-                    <p style="margin:0; font-weight: 800; color: var(--gold); font-size: 0.8rem; letter-spacing: 1px;">catedral-connect-bf717.web.app</p>
-                </div>
+            <div class="glass-card" style="text-align:center;">
+                <div class="section-title">QR Code Hub</div>
+                <div class="section-sub">O visitante pode preencher a própria ficha.</div>
+                <div class="qr-wrap"><div id="qr-code-online"></div></div>
+                <div class="url-chip">catedral-connect-6c55e.web.app</div>
             </div>
         </div>
-    </div>
 
-    <!-- 3. FICHA COMPLETA (FULL REGISTRATION) -->
-    <div id="tab-full" class="tab-content">
-        <div class="glass-panel" style="border-top: 4px solid var(--gold); max-width: 600px; margin: 0 auto; text-align: center; padding: 15px;">
-            <div style="margin-bottom: 20px;">
-                <h3 style="margin:0; font-size: 1.3rem; color: #fff; font-weight: 800;">Ficha Nacional</h3>
-                <p style="font-size: 0.8rem; color: var(--text-dim);">Preenchimento completo para novos membros.</p>
+        <!-- ═══ TAB 3: FICHA COMPLETA ═══ -->
+        <div id="tab-ficha" class="tab-content">
+            <div class="glass-card accent-gold" style="text-align:center; padding:18px;">
+                <div class="section-title" style="margin-bottom:4px;">Ficha Nacional</div>
+                <div class="section-sub">Preenchimento completo para novos membros.</div>
+                <iframe src="connect.html?mode=full" style="width:100%; height:75vh; border:none; border-radius:16px; background:transparent;"></iframe>
             </div>
-            
-            <iframe src="connect.html?mode=full" style="width: 100%; height: 75vh; border: none; border-radius: 16px; background: transparent;"></iframe>
         </div>
-    </div>
 
-    <!-- EDIT MODAL -->
+    </div><!-- /page-wrapper -->
+
+    <!-- ═══ EDIT MODAL ═══ -->
     <div id="edit-modal" class="modal-overlay">
-        <div class="glass-panel" style="width: 100%; max-width: 450px;">
-            <h3 style="margin-top:0; color: #fff; font-size: 1.3rem; font-weight: 800;">Perfil do Amigo</h3>
-            <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 25px;">Ajuste os dados com carinho.</p>
-            
+        <div class="modal-box">
+            <div class="modal-title">Perfil do Amigo</div>
+            <div class="modal-sub">Ajuste os dados com carinho.</div>
             <input type="hidden" id="edit-id">
-
             <label>Nome</label>
-            <input type="text" id="edit-name" class="input-prime">
-
+            <input type="text" id="edit-name" class="input-field">
             <label>WhatsApp</label>
-            <input type="tel" id="edit-phone" class="input-prime">
-
+            <input type="tel" id="edit-phone" class="input-field">
             <label>Observações</label>
-            <textarea id="edit-extra" rows="4" class="input-prime" style="resize: none;" placeholder="Ex: Precisa de apoio no transporte..."></textarea>
-
-            <div style="display:flex; gap:12px; margin-top:10px;">
-                <button onclick="closeModal()" class="btn-prime" style="background: rgba(255,255,255,0.05); color: var(--text); flex: 1;">VOLTAR</button>
-                <button onclick="saveEdit()" class="btn-prime" style="flex: 2;">SALVAR</button>
+            <textarea id="edit-extra" rows="4" class="input-field" placeholder="Ex: Precisa de apoio no transporte..."></textarea>
+            <div class="row-2" style="margin-top:10px;">
+                <button onclick="closeModal()" class="btn btn-ghost">Voltar</button>
+                <button onclick="saveEdit()" class="btn btn-gold" style="flex:2;">Salvar</button>
             </div>
         </div>
     </div>
 
-    <!-- JOURNEY SELECTION MODAL -->
+    <!-- ═══ JOURNEY MODAL ═══ -->
     <div id="journey-modal" class="modal-overlay">
-        <div class="glass-panel" style="width: 100%; max-width: 450px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 25px;">
-                <h3 style="margin:0; color: #fff; font-size: 1.4rem; font-weight: 800;">Definir Jornada</h3>
-                <button onclick="closeJourneyModal()" class="btn-action-sm"><i class="fas fa-times"></i></button>
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px;">
+                <div>
+                    <div class="modal-title">Definir Jornada</div>
+                    <div class="modal-sub" style="margin-bottom:0;">Configure o acompanhamento.</div>
+                </div>
+                <button onclick="closeJourneyModal()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
             </div>
-            
             <input type="hidden" id="journey-id">
-
-            <label>NOME DO MONITOR</label>
-            <input type="text" id="journey-monitor" class="input-prime" placeholder="Quem vai acompanhar?">
-
-            <label>JORNADA INICIAL</label>
-            <select id="journey-stage" class="input-prime">
+            <label>Nome do Monitor</label>
+            <input type="text" id="journey-monitor" class="input-field" placeholder="Quem vai acompanhar?">
+            <label>Jornada Inicial</label>
+            <select id="journey-stage" class="input-field">
                 <option value="Novos Amigos">1. Novos Amigos (3m)</option>
                 <option value="Evento">2. Evento</option>
                 <option value="PCE">3. PCE (Classe)</option>
@@ -434,150 +502,135 @@
                 <option value="Monitoramento">5. Monitoramento (3m)</option>
                 <option value="Concluido">6. Concluído</option>
             </select>
-
-            <button onclick="confirmIntegracao()" class="btn-prime">
-                <i class="fas fa-rocket"></i> INICIAR ACOMPANHAMENTO
+            <button onclick="confirmIntegracao()" class="btn btn-gold">
+                <i class="fas fa-rocket"></i> Iniciar Acompanhamento
             </button>
         </div>
     </div>
 
-    <!-- REPORT MODAL -->
+    <!-- ═══ REPORT MODAL ═══ -->
     <div id="report-modal" class="modal-overlay">
-        <div class="glass-panel" style="width: 100%; max-width: 480px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-                <h3 style="margin:0; color:#fff; font-size: 1.3rem; font-weight: 800;">Relatório do Dia</h3>
-                <button onclick="closeReportModal()" class="btn-action-sm"><i class="fas fa-times"></i></button>
+        <div class="modal-box" style="max-width:480px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <div class="modal-title">Relatório do Dia</div>
+                <button onclick="closeReportModal()" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
             </div>
-
-            <textarea id="report-content" rows="10" class="input-prime" style="background: rgba(0,0,0,0.2); font-size: 0.85rem; resize: none; color: var(--text);" readonly></textarea>
-
-            <div style="display:flex; gap:12px;">
-                <button onclick="shareReportWhatsApp()" class="btn-prime" style="background: #22c55e; color: #fff; flex: 1; font-size: 0.75rem;">
-                    <i class="fab fa-whatsapp"></i> WHATSAPP
+            <textarea id="report-content" rows="10" class="input-field" style="background:rgba(0,0,0,0.3); font-size:0.85rem; color:var(--text);" readonly></textarea>
+            <div class="row-2" style="margin-top:4px;">
+                <button onclick="shareReportWhatsApp()" class="btn btn-green" style="font-size:0.75rem;">
+                    <i class="fab fa-whatsapp"></i> WhatsApp
                 </button>
-                <button onclick="shareReportEmail()" class="btn-prime" style="background: #3b82f6; color: #fff; flex: 1; font-size: 0.75rem;">
-                    <i class="fas fa-envelope"></i> EMAIL
+                <button onclick="shareReportEmail()" class="btn" style="background:#3b82f6; color:#fff; font-size:0.75rem;">
+                    <i class="fas fa-envelope"></i> E-mail
                 </button>
             </div>
-        </div>
-    </div>
-
-    <!-- LOGIN MODAL -->
-    <div id="login-overlay" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 99999; flex-direction: column; justify-content: center; align-items: center; padding: 20px;">
-        <div class="glass-panel" style="width: 100%; max-width: 340px; text-align: center;">
-            <div style="background: var(--gold-dim); width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 25px; border: 1px solid var(--border);">
-                <i class="fas fa-heart" style="font-size: 1.8rem; color: var(--gold);"></i>
-            </div>
-            <h2 style="color: #fff; margin: 0 0 10px 0; font-family: 'Outfit'; font-weight: 800; letter-spacing: 1px;">PORTAL ACOLHER</h2>
-            <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:30px; font-weight: 600;">Entre para servir aos amigos.</p>
-
-            <input type="email" id="login-email" placeholder="E-mail" class="input-prime">
-            <input type="password" id="login-pass" placeholder="Senha" class="input-prime">
-
-            <button onclick="doLogin()" class="btn-prime">ENTRAR NO SERVIÇO</button>
-            <p id="login-msg" style="color: #ef4444; margin-top: 15px; font-size: 0.8rem; font-weight: 800;"></p>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
-        // 1. TABS
-        function switchTab(tabId, btn) {
+        // ── TABS
+        function switchTab(id, btn) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
-            document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById('tab-' + id).classList.add('active');
         }
 
-        // 2. AUTH LOGIC
-        document.addEventListener("DOMContentLoaded", () => {
-            const isInsideIframe = window.self !== window.top;
+        // ── AUTH
+        document.addEventListener('DOMContentLoaded', () => {
+            const isIframe = window.self !== window.top;
             firebase.auth().onAuthStateChanged(user => {
                 const overlay = document.getElementById('login-overlay');
                 if (user) {
-                    if (overlay) overlay.style.display = 'none';
+                    overlay.style.display = 'none';
                     loadTriagem();
                     renderQR();
                 } else {
-                    if (!isInsideIframe && overlay) { overlay.style.display = 'flex'; }
+                    if (!isIframe) overlay.style.display = 'flex';
                 }
             });
         });
 
         function doLogin() {
             const email = document.getElementById('login-email').value;
-            const pass = document.getElementById('login-pass').value;
-            const msg = document.getElementById('login-msg');
-            if (!email || !pass) { msg.innerText = "Campos obrigatórios!"; return; }
-            msg.innerText = "Acessando...";
-            firebase.auth().signInWithEmailAndPassword(email.trim(), pass).catch(error => { msg.innerText = "Erro: " + error.message; });
+            const pass  = document.getElementById('login-pass').value;
+            const msg   = document.getElementById('login-msg');
+            if (!email || !pass) { msg.innerText = 'Campos obrigatórios!'; return; }
+            msg.innerText = 'Acessando...';
+            firebase.auth().signInWithEmailAndPassword(email.trim(), pass)
+                .catch(e => { msg.innerText = 'Erro: ' + e.message; });
         }
 
         var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
 
+        // ── QR
         function renderQR() {
-            var el = document.getElementById('qr-code-online');
+            const el = document.getElementById('qr-code-online');
             if (el && typeof QRCode !== 'undefined') {
                 el.innerHTML = '';
                 new QRCode(el, {
-                    text: 'https://catedral-connect-bf717.web.app/connect.html',
-                    width: 150, height: 150,
+                    text: 'https://catedral-connect-6c55e.web.app/connect.html',
+                    width: 148, height: 148,
                     colorDark: '#4e342e', colorLight: '#ffffff',
                     correctLevel: QRCode.CorrectLevel.H
                 });
             }
         }
 
-        // 3. TRIAGEM LOGIC
+        // ── TRIAGEM
         function loadTriagem() {
             db.collection('integracao').where('status', '==', 'pending_integracao').onSnapshot(snap => {
                 const list = document.getElementById('triagem-list');
                 if (snap.empty) {
-                    list.innerHTML = `<div class="status-empty"><i class="fas fa-heart-circle-check"></i><p style="font-weight:900; color: #fff; font-size: 1.1rem; letter-spacing:1px;">TUDO EM PAZ!</p><p style="font-size:0.85rem; color: var(--text-dim);">Nenhum novo amigo aguardando na fila.</p></div>`;
+                    list.innerHTML = `
+                    <div class="status-empty">
+                        <i class="fas fa-heart-circle-check"></i>
+                        <p style="color:#fff; font-size:1.1rem; font-weight:900; letter-spacing:1px; margin-bottom:6px;">TUDO EM PAZ!</p>
+                        <p>Nenhum novo amigo aguardando na fila.</p>
+                    </div>`;
                     return;
                 }
 
                 let html = '';
                 snap.forEach(doc => {
                     const d = doc.data();
-                    const timeStr = d.timestamp && typeof d.timestamp.toDate === 'function' ? d.timestamp.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
-                    let isConvert = (d.type || '').toLowerCase() === 'conversao';
-                    const accentColor = isConvert ? 'var(--accent-emerald)' : 'var(--accent-warm)';
+                    const timeStr = d.timestamp && typeof d.timestamp.toDate === 'function'
+                        ? d.timestamp.toDate().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : '';
+                    const isConvert = (d.type || '').toLowerCase() === 'conversao';
+                    const accentColor = isConvert ? 'var(--emerald)' : 'var(--gold)';
 
                     html += `
-                    <div class="list-card">
-                        <div class="card-accent-bar" style="background: ${accentColor};"></div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                    <div class="visitor-card">
+                        <div class="accent-line" style="background:${accentColor};"></div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; padding-left:12px;">
                             <div>
-                                <h3 style="margin: 0; font-size: 1.3rem; color: #fff; font-weight: 800; letter-spacing:0.5px;">${d.name || 'Sem Nome'}</h3>
-                                <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center;">
-                                    <span style="font-size: 0.65rem; color: var(--text-dim); background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 8px; font-weight: 800; letter-spacing: 0.5px;">${timeStr}</span>
-                                    ${isConvert ? `<span style="font-size: 0.65rem; color: #fff; background: var(--accent-emerald); padding: 4px 10px; border-radius: 8px; font-weight: 900; letter-spacing: 1px;">DECISÃO</span>` : ''}
+                                <div class="visitor-name">${d.name || 'Sem Nome'}</div>
+                                <div class="visitor-meta">
+                                    <span class="tag tag-time">${timeStr}</span>
+                                    ${isConvert ? `<span class="tag tag-decision">Decisão</span>` : ''}
                                 </div>
                             </div>
-                            <button onclick="openEdit('${doc.id}', '${d.name || ''}', '${d.contact || ''}', '${d.extra || ''}')" class="btn-action-sm">
-                                <i class="fas fa-edit"></i>
+                            <button onclick="openEdit('${doc.id}','${d.name||''}','${d.contact||''}','${d.extra||''}')" class="btn btn-ghost btn-sm">
+                                <i class="fas fa-pen"></i>
                             </button>
                         </div>
-                        
-                        <div style="background: rgba(0,0,0,0.2); padding: 16px; border-radius: 16px; margin-bottom: 15px; border: 1px solid var(--border-soft);">
-                            <div style="font-size: 1.05rem; color: #fff; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
-                                <i class="fab fa-whatsapp" style="color: #22c55e;"></i> ${d.contact || 'S/ Telefone'}
-                            </div>
-                            ${d.interests && d.interests.length > 0 ? `<div style="font-size: 0.75rem; color: var(--gold); font-weight: 700; letter-spacing:0.5px;"><i class="fas fa-tag" style="margin-right: 6px; opacity:0.6;"></i> ${d.interests.join(' • ')}</div>` : ''}
+                        <div class="visitor-phone" style="margin-left:12px;">
+                            <i class="fab fa-whatsapp"></i>
+                            ${d.contact || 'Sem telefone'}
                         </div>
-
+                        ${d.interests && d.interests.length > 0 ? `<div class="visitor-interests" style="padding-left:12px; margin-bottom:14px;"><i class="fas fa-tag" style="margin-right:5px; opacity:0.6;"></i>${d.interests.join(' • ')}</div>` : ''}
                         ${d.extra ? `
-                        <div style="background: rgba(201, 160, 80, 0.05); padding: 14px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 20px;">
-                             <div style="font-size: 0.65rem; color: var(--gold); font-weight: 900; text-transform: uppercase; margin-bottom: 4px; letter-spacing:1px;">Observação</div>
-                             <div style="color: var(--text); font-size: 0.85rem; line-height: 1.5;">${d.extra}</div>
+                        <div class="obs-box" style="margin-left:12px;">
+                            <div class="obs-label">Observação</div>
+                            <div class="obs-text">${d.extra}</div>
                         </div>` : ''}
-                        
-                        <button onclick="enviarSecretaria('${doc.id}')" class="btn-prime ${isConvert ? 'btn-emerald' : ''}">
-                            <i class="fas fa-check-circle"></i> CONCLUIR E ACOLHER
-                        </button>
-                    </div>
-                `;
+                        <div style="padding-left:12px;">
+                            <button onclick="enviarSecretaria('${doc.id}')" class="btn ${isConvert ? 'btn-green' : 'btn-gold'}">
+                                <i class="fas fa-check-circle"></i> Concluir e Acolher
+                            </button>
+                        </div>
+                    </div>`;
                 });
                 list.innerHTML = html;
             });
@@ -587,23 +640,21 @@
             document.getElementById('edit-id').value = id;
             document.getElementById('edit-name').value = name;
             document.getElementById('edit-phone').value = contact;
-            const extraContent = (extra === "undefined" || !extra) ? "" : extra;
-            document.getElementById('edit-extra').value = extraContent;
+            document.getElementById('edit-extra').value = (extra === 'undefined' || !extra) ? '' : extra;
             document.getElementById('edit-modal').style.display = 'flex';
         }
-
-        function closeModal() { document.getElementById('edit-modal').style.display = 'none'; }
+        function closeModal()        { document.getElementById('edit-modal').style.display = 'none'; }
+        function closeJourneyModal() { document.getElementById('journey-modal').style.display = 'none'; }
+        function closeReportModal()  { document.getElementById('report-modal').style.display = 'none'; }
 
         function saveEdit() {
             const id = document.getElementById('edit-id').value;
             db.collection('integracao').doc(id).update({
-                name: document.getElementById('edit-name').value,
+                name:    document.getElementById('edit-name').value,
                 contact: document.getElementById('edit-phone').value,
-                extra: document.getElementById('edit-extra').value
-            }).then(() => { closeModal(); }).catch(e => alert("Erro: " + e.message));
+                extra:   document.getElementById('edit-extra').value
+            }).then(() => closeModal()).catch(e => alert('Erro: ' + e.message));
         }
-
-        function closeJourneyModal() { document.getElementById('journey-modal').style.display = 'none'; }
 
         async function enviarSecretaria(id) {
             document.getElementById('journey-id').value = id;
@@ -612,98 +663,129 @@
         }
 
         async function confirmIntegracao() {
-            const id = document.getElementById('journey-id').value;
+            const id      = document.getElementById('journey-id').value;
             const monitor = document.getElementById('journey-monitor').value;
-            const stage = document.getElementById('journey-stage').value;
-
-            if (!monitor) return alert("Por favor, informe quem será o monitor.");
+            const stage   = document.getElementById('journey-stage').value;
+            if (!monitor) return alert('Por favor, informe quem será o monitor.');
             localStorage.setItem('last_monitor', monitor);
 
             try {
-                const docRef = db.collection('integracao').doc(id);
+                const docRef  = db.collection('integracao').doc(id);
                 const docSnap = await docRef.get();
-                if (!docSnap.exists) return alert("Houve um erro de sincronização.");
+                if (!docSnap.exists) return alert('Houve um erro de sincronização.');
                 const data = docSnap.data();
-
                 const isConvert = (data.type || '').toLowerCase() === 'conversao';
-                
+
                 await db.collection('pending').add({
-                    type: isConvert ? 'conversao' : 'visitante',
-                    name: data.name || '',
-                    contact: data.contact || '',
-                    extra: data.extra || '',
-                    status: 'pending',
+                    type:      isConvert ? 'conversao' : 'visitante',
+                    name:      data.name    || '',
+                    contact:   data.contact || '',
+                    extra:     data.extra   || '',
+                    status:    'pending',
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    origin: 'triagem_integracao'
+                    origin:    'triagem_integracao'
                 });
 
                 await docRef.update({
-                    status: 'em_integracao',
-                    integ_stage: stage,
+                    status:       'em_integracao',
+                    integ_stage:  stage,
                     monitor_name: monitor,
                     dispatched_at: firebase.firestore.FieldValue.serverTimestamp(),
                     history: firebase.firestore.FieldValue.arrayUnion({
                         action: 'Entrada na Integração',
-                        notes: `Iniciou jornada em: ${stage}. Monitor: ${monitor}`,
+                        notes:  `Iniciou jornada em: ${stage}. Monitor: ${monitor}`,
                         timestamp: firebase.firestore.Timestamp.now()
                     })
                 });
 
                 if (data.contact) {
                     const firstName = data.name ? data.name.split(' ')[0] : 'visitante';
-                    const connectUrl = `https://catedral-connect-bf717.web.app/connect.html?vid=${id}&n=${encodeURIComponent(firstName)}&i=${encodeURIComponent(monitor)}`;
+                    const connectUrl = `https://catedral-connect-6c55e.web.app/connect.html?vid=${id}&n=${encodeURIComponent(firstName)}&i=${encodeURIComponent(monitor)}`;
                     const msg = `Olá ${firstName}! O ${monitor} aqui da Catedral Lausanne. Foi uma alegria imensa ter você com a gente hoje!\nVou deixar aqui o nosso portal oficial. Lá você pode pedir oração, conhecer mais nossa família ou agendar uma conversa comigo ou com um de nossos pastores. Seja muito bem-vindo!\n\n${connectUrl}`;
-
                     let fPhone = data.contact.replace(/\D/g, '');
                     if (fPhone.length <= 10) fPhone = '41' + fPhone;
                     window.open(`https://wa.me/${fPhone}?text=${encodeURIComponent(msg)}`, '_blank');
                 }
-                
+
                 closeJourneyModal();
-            } catch (e) { alert("Erro: " + e.message); }
+            } catch (e) { alert('Erro: ' + e.message); }
         }
 
         async function submitConvert() {
-            const name = document.getElementById('convert-name').value;
+            const name  = document.getElementById('convert-name').value;
             const phone = document.getElementById('convert-phone').value;
-            const type = document.getElementById('convert-type').value;
-            if (!name || name.length < 3) return alert("Por favor, precisamos do nome do Amigo.");
+            const type  = document.getElementById('convert-type').value;
+            if (!name || name.length < 3) return alert('Por favor, precisamos do nome do Amigo.');
 
-            const helper = prompt("Seu nome (Quem está acolhendo):", localStorage.getItem('integratorName') || "");
+            const helper = prompt('Seu nome (Quem está acolhendo):', localStorage.getItem('integratorName') || '');
             if (!helper) return;
             localStorage.setItem('integratorName', helper);
 
-            const batch = db.batch();
-            const refInt = db.collection('integracao').doc();
-            batch.set(refInt, {
-                type: 'conversao', name, contact: phone, action: type, status: 'pending_integracao', timestamp: firebase.firestore.FieldValue.serverTimestamp(), helper
-            });
+            const batch  = db.batch();
+            const hasContact = phone && phone.trim().replace(/[^\d]/g, '').length >= 5;
+
+            if (hasContact) {
+                const refInt = db.collection('integracao').doc();
+                const nowString = new Date().toLocaleDateString('pt-PT');
+                const historyEntry = {
+                    date: nowString,
+                    action: 'Entrada na Integração',
+                    by: helper || 'Acolhimento',
+                    notes: `Conversão registrada (${type === 'aceitou' ? 'Aceitou a Jesus' : 'Reconciliou-se'}). Acolhedor: ${helper}. Direcionado automaticamente para Novos Amigos.`,
+                    stage: 'Novos Amigos',
+                    timestamp: firebase.firestore.Timestamp.now()
+                };
+                batch.set(refInt, {
+                    type: 'conversao',
+                    name: name.trim(),
+                    contact: phone.trim(),
+                    action: type,
+                    status: 'em_integracao',
+                    integ_stage: 'Novos Amigos',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    helper: helper,
+                    monitor: null,
+                    companion: null,
+                    parallel_activities: [],
+                    history: [historyEntry],
+                    timeline: [historyEntry]
+                });
+            } else {
+                // Go to Secretariat triage (pending collection)
+                const refPending = db.collection('pending').doc();
+                batch.set(refPending, {
+                    type: 'conversao_sem_contato',
+                    action: type === 'aceitou' ? 'Aceitou a Jesus' : 'Reconciliou-se',
+                    person_name: name.trim(),
+                    contact: '',
+                    origin: 'acolhimento_convert',
+                    notes: `Conversão registrada (${type}) em acolhimento sem número de contato. Encaminhado para triagem.`,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
 
             batch.commit().then(() => {
-                alert("Dia de festa! Decisão salva com sucesso.");
-                document.getElementById('convert-name').value = '';
+                alert('Dia de festa! Decisão salva com sucesso.');
+                document.getElementById('convert-name').value  = '';
                 document.getElementById('convert-phone').value = '';
-            });
+            }).catch(e => alert('Erro ao salvar decisão: ' + e.message));
         }
 
-        function closeReportModal() { document.getElementById('report-modal').style.display = 'none'; }
         function shareReportWhatsApp() { window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(document.getElementById('report-content').value), '_blank'); }
-        function shareReportEmail() { window.open('mailto:?subject=Acolhimento&body=' + encodeURIComponent(document.getElementById('report-content').value), '_blank'); }
+        function shareReportEmail()    { window.open('mailto:?subject=Acolhimento&body=' + encodeURIComponent(document.getElementById('report-content').value), '_blank'); }
 
         async function generateReport() {
             const snap = await db.collection('pending').get();
-            let today = new Date().toLocaleDateString('pt-BR');
-            let lines = [`❤️ RELATÓRIO DE ACOLHIMENTO - ${today}`, `------------------------------------`, ``];
+            const today = new Date().toLocaleDateString('pt-BR');
+            const lines = [`❤️ RELATÓRIO DE ACOLHIMENTO - ${today}`, `------------------------------------`, ``];
             let count = 0;
             snap.forEach(doc => {
-                let d = doc.data();
-                let dt = d.timestamp ? d.timestamp.toDate().toLocaleDateString('pt-BR') : today;
-                if (dt === today) {
-                    count++;
-                    lines.push(`${count}. ${d.name} (${(d.type || 'vis').toUpperCase()})`);
-                }
+                const d  = doc.data();
+                const dt = d.timestamp ? d.timestamp.toDate().toLocaleDateString('pt-BR') : today;
+                if (dt === today) { count++; lines.push(`${count}. ${d.name} (${(d.type || 'vis').toUpperCase()})`); }
             });
-            if (count === 0) return alert("Ainda não processamos acolhimentos hoje.");
+            if (count === 0) return alert('Ainda não processamos acolhimentos hoje.');
             document.getElementById('report-content').value = lines.join('\n');
             document.getElementById('report-modal').style.display = 'flex';
         }

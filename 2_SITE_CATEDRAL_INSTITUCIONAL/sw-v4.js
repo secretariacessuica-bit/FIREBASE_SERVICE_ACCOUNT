@@ -1,4 +1,4 @@
-const VERSION = 'v80.0.2-site';
+const VERSION = 'v80.0.3-site';
 const CACHE_NAME = 'catedral-site-' + VERSION;
 const ASSETS_TO_CACHE = [
     './',
@@ -33,7 +33,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
+            return response || fetch(event.request).catch((err) => {
+                console.warn("⚠️ SW Fetch failed for " + event.request.url + ":", err);
+                if (event.request.mode === 'navigate') {
+                    return caches.match('index.html') || caches.match('./');
+                }
+                return new Response('Network error occurred', {
+                    status: 480,
+                    statusText: 'SW Fetch Failed'
+                });
+            });
         })
     );
 });

@@ -5,7 +5,7 @@
 
 const AuthManager = {
     // Current user's role (cached for session) - UPGRADED to localStorage for v60.0 Supernova
-    role: localStorage.getItem('session_role') || null,
+    role: (localStorage.getItem('session_role') === 'media' ? 'altar' : localStorage.getItem('session_role')) || null,
 
     /**
      * Initialize Auth Listener
@@ -33,7 +33,7 @@ const AuthManager = {
                 // BUT: Only if not already set by Master PIN login
                 const fallbackRole = this.getRoleFromEmail(user.email);
                 const ssoPin = localStorage.getItem('current_session_pin');
-                const isMasterAuth = ssoPin === 'Catedral@2025!';
+                const isMasterAuth = ssoPin === 'Lausanne25';
 
                 if (fallbackRole && (!this.role || this.role === 'guest' || !isMasterAuth)) {
                     this.role = fallbackRole;
@@ -53,6 +53,10 @@ const AuthManager = {
                     } else {
                         console.log("🛡️ Master Session Protected: Keeping role", this.role);
                     }
+                    // Call global callback if defined
+                    if (typeof window.onAuthSuccess === 'function') {
+                        window.onAuthSuccess(user, this.role);
+                    }
                     return; 
                 }
                 try {
@@ -70,10 +74,20 @@ const AuthManager = {
                 } catch (e) {
                     console.error("🔑 Error fetching role from Firestore:", e);
                 }
+                // Call global callback if defined
+                if (typeof window.onAuthSuccess === 'function') {
+                    window.onAuthSuccess(user, this.role);
+                }
             } else {
                 console.log("User Logged Out");
                 this.role = null;
-                localStorage.removeItem('session_role');
+                if (window.self === window.top) {
+                    localStorage.removeItem('session_role');
+                }
+                // Call global callback if defined
+                if (typeof window.onAuthLogout === 'function') {
+                    window.onAuthLogout();
+                }
             }
         });
     },
@@ -87,8 +101,13 @@ const AuthManager = {
     EMAIL_MAP: {
         'reception':   'recepcao@catedral.ch',
         'recepcao':    'recepcao@catedral.ch',
+        'gabinete':    'pastor@catedral.ch',
         'admin':       'pastor@catedral.ch',
         'secretaria':  'pastor@catedral.ch',
+        'lider':       'pastor@catedral.ch',
+        'lideres':     'pastor@catedral.ch',
+        'ministerio':  'pastor@catedral.ch',
+        'ministério':  'pastor@catedral.ch',
         'kids':        'infantil@catedral.ch',
         'infantil':    'infantil@catedral.ch',
         'integracao':  'missao@catedral.ch',
@@ -110,11 +129,11 @@ const AuthManager = {
         if (!email) return 'guest';
         const e = email.toLowerCase();
         // ADMIN GROUP: Higher level access
-        if (e.includes('admin') || e.includes('master') || e.includes('secretaria') || e.includes('pastor') || e.includes('lider')) return 'admin';
+        if (e.includes('admin') || e.includes('master') || e.includes('secretaria') || e.includes('pastor') || e.includes('lider') || e.includes('ministerio') || e.includes('ministério')) return 'admin';
         // DEPARTMENTAL GROUP
         if (e.includes('recepcao')) return 'reception';
         if (e.includes('kids') || e.includes('infantil')) return 'kids';
-        if (e.includes('midia')) return 'media';
+        if (e.includes('midia') || e.includes('media')) return 'altar';
         if (e.includes('altar')) return 'altar';
         if (e.includes('missao') || e.includes('integracao')) return 'integracao';
         if (e.includes('acolhimento')) return 'acolhimento';
@@ -132,13 +151,13 @@ const AuthManager = {
         let finalPin = pin;
 
         try {
-            if (pin === "Catedral@2025!") {
+            if (pin === "Lausanne25") {
                 console.log("Master Auth Proceeding for:", department);
                 localStorage.setItem('current_session_pin', pin);
                 localStorage.setItem('session_role', department); // Preserve the intended role!
                 this.role = department;
                 email = "pastor@catedral.ch";
-                finalPin = "Catedral@2025!";
+                finalPin = "Lausanne25";
             }
 
             const result = await firebase.auth().signInWithEmailAndPassword(email, finalPin);
@@ -146,7 +165,7 @@ const AuthManager = {
             
             // If it was Master Auth, we've already set the role. 
             // Otherwise, AuthManager.init will handle role from email.
-            if (pin !== "Catedral@2025!") {
+            if (pin !== "Lausanne25") {
                 this.role = this.getRoleFromEmail(result.user.email);
                 localStorage.setItem('session_role', this.role);
             }
@@ -184,6 +203,7 @@ const AuthManager = {
         localStorage.removeItem('session_role_persistent');
         localStorage.removeItem('session_pin_persistent');
         localStorage.removeItem('current_session_pin'); // Clear Master PIN
+        localStorage.removeItem('remember_me'); // Clear remember me flag
         sessionStorage.clear();
         // Redirect to main index for fresh start
         window.top.location.href = 'index.html';

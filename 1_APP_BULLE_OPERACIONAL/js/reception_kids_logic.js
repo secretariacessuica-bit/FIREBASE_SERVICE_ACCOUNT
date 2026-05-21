@@ -1,5 +1,5 @@
 // Ensure db uses the instance injected by parent HTML if missing in scope
-// CORE LOGIC v71.0.0 Diamond (Cache Force)
+// CORE LOGIC v71.0.1 Diamond (Cache Force)
 window.db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
 
 // [DIAMOND v51.1] IDENTITY RECEIVER

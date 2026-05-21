@@ -1,4 +1,4 @@
-const VERSION = 'v71.0.0';
+const VERSION = 'v71.0.1';
 const CACHE_NAME = 'catedral-connect-' + VERSION;
 const ASSETS_TO_CACHE = [
     './',
@@ -8,7 +8,7 @@ const ASSETS_TO_CACHE = [
     'mobile.html',
     'admin.html',
     'altar.html',
-    'integracao_v2.html',
+    'integracao_v3.html',
     'recepcao.html',
     'connect.html',
     'kids.html',

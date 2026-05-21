@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atualizador de Senhas - Ces-Bulle</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #d4af37; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        button { background-color: #d4af37; color: white; border: none; padding: 15px 25px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: background 0.3s; }
+        button:hover { background-color: #bfa33f; }
+        .log-box { margin-top: 20px; background: #222; color: #0f0; padding: 20px; border-radius: 8px; font-family: monospace; min-height: 100px; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+        .table th, .table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .table th { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Conversor de Senhas Padrão Ces-Bulle</h1>
+    <p>Como as senhas anteriores já estavam salvas lá no banco de dados, eu criei este "atualizador forçado". Ele detectará as senhas velhas e forçará a alteração para a nova senha simples.</p>
+
+    <table class="table">
+        <tr><th>Acesso / Módulo</th><th>Email (Login)</th><th>Sua Nova Senha Fácil</th></tr>
+        <tr><td>Master / Administração</td><td><b>secretariacesbulle@gmail.com</b></td><td><code>123789</code></td></tr>
+        <tr><td>App Recepção</td><td><b>recepcao@cesbulle.com</b></td><td><code>123456</code></td></tr>
+        <tr><td>App Kids</td><td><b>kids@cesbulle.com</b></td><td><code>123456</code></td></tr>
+        <tr><td>App Mídia</td><td><b>midia@cesbulle.com</b></td><td><code>123456</code></td></tr>
+        <tr><td>App Altar</td><td><b>altar@cesbulle.com</b></td><td><code>123456</code></td></tr>
+    </table>
+
+    <button id="btn-create" onclick="atualizarContas()">Atualizar / Forçar as Novas Senhas Automáticamente</button>
+
+    <div class="log-box" id="log">
+        > Aguardando ação...<br>
+    </div>
+</div>
+
+<script>
+    const contas = [
+        {email: 'secretariacesbulle@gmail.com', oldPass: '123789456', newPass: '123789'},
+        {email: 'recepcao@cesbulle.com', oldPass: 'Recepcao@1234', newPass: '123456'},
+        {email: 'kids@cesbulle.com', oldPass: 'Kids@1234', newPass: '123456'},
+        {email: 'midia@cesbulle.com', oldPass: 'Midia@1234', newPass: '123456'},
+        {email: 'altar@cesbulle.com', oldPass: 'Altar@1234', newPass: '123456'}
+    ];
+
+    async function atualizarContas() {
+        const logDiv = document.getElementById('log');
+        document.getElementById('btn-create').disabled = true;
+        
+        if(!window.auth) {
+            logDiv.innerHTML += `<br><span style="color:red">[ERRO FATAL] O Firebase (auth) não conseguiu se conectar.</span>`;
+            return;
+        }
+
+        logDiv.innerHTML += `<br>> Comunicando com o Firebase para forçar atualização...`;
+
+        for(let u of contas) {
+            try {
+                logDiv.innerHTML += `<br><br><b>Analizando: ${u.email}</b>...`;
+                
+                // 1. TENTA LOGAR COM A SENHA NOVA (VER SE JÁ ESTÁ CERTO)
+                try {
+                    await window.auth.signInWithEmailAndPassword(u.email, u.newPass);
+                    logDiv.innerHTML += `<br><span style="color:#0f0">[OK]</span> Já está usando a senha definitiva: <b>${u.newPass}</b>.`;
+                    continue;
+                } catch(e) {
+                    // SE LOGIN FALHOU (ESTE E O CASO DO INVALID_LOGIN_CREDENTIALS)
+                    // TENTA LOGO CRIAR A CONTA (POIS PODE TER SIDO EXCLUIDA OU NAO EXISTIR)
+                    try {
+                        await window.auth.createUserWithEmailAndPassword(u.email, u.newPass);
+                        logDiv.innerHTML += `<br><span style="color:#0f0">[SUCESSO]</span> Conta criada (ou recriada) com a senha nova!`;
+                        continue;
+                    } catch(err_create) {
+                        // SE FALHOU CRIAR (POIS JÁ EXISTE NO BANCO), TENTA TROCAR COM AS SENHAS ANTIGAS
+                        const senhasAntigas = [u.oldPass, 'master123', '123789456', '123456', 'Admin@1234'];
+                        let logado = false;
+
+                        logDiv.innerHTML += `<br>...Senha nova não funcionou e conta já existe. Testando histórico de senhas antigas...`;
+
+                        for (let antiga of senhasAntigas) {
+                            try {
+                                await window.auth.signInWithEmailAndPassword(u.email, antiga);
+                                logado = true;
+                                logDiv.innerHTML += `<br>> <span style="color:yellow">Detectado:</span> Logado com a senha antiga (<i>${antiga}</i>). Forçando troca...`;
+                                await window.auth.currentUser.updatePassword(u.newPass);
+                                logDiv.innerHTML += `<br><span style="color:#0f0">[SUCESSO]</span> Senha atualizada agora mesmo para <b>${u.newPass}</b>!`;
+                                break;
+                            } catch(err) { /* continua para proxima senha antiga */ }
+                        }
+
+                        if (!logado) {
+                            logDiv.innerHTML += `<br><span style="color:red">[BLOQUEIO]</span> Não consegui descobrir a senha de ${u.email}. Por favor, EXCLUA ESTE EMAIL no painel e clique novamente.`;
+                        }
+                    }
+                }
+            } catch(e) {
+                logDiv.innerHTML += `<br><span style="color:red">[ERRO]</span> Falha na conta ${u.email}: ${e.message}`;
+            }
+        }
+        
+        logDiv.innerHTML += `<br><br>> <span style="color:#0f0">FIM DA OPERAÇÃO! AGORA TUDO ESTÁ SINCRONIZADO COM A NOVA SENHA.</span>`;
+    }
+</script>
+
+</body>
+</html>

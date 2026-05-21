@@ -7,7 +7,7 @@ window.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'MASTER_BYPASS_SIGNAL') {
         const pin = event.data.pin;
         console.log("💎 Diamond Logic: Sinal de Identidade Recebido. Validando sessão...");
-        if (pin === 'Catedral@2025!') {
+        if (pin === 'Lausanne25') {
             localStorage.setItem('current_pin', pin);
             sessionStorage.setItem('master_bypass', 'true');
             // Refresh logic if needed, or just allow future calls
@@ -517,13 +517,35 @@ async function triggerIntegrationWorkflow(personId, name, phone, extraStr, isNew
         
         const [snapPending, snapActive] = await Promise.all([q1, q2]);
         
+        const nowString = new Date().toLocaleDateString('pt-PT');
+        const historyEntry = {
+            date: nowString,
+            action: isNew ? 'Entrada na Integração' : 'Retorno na Recepcao',
+            by: 'Receção Automática',
+            notes: isNew 
+                ? 'Ficha recebida pela Receção. Direcionado automaticamente para Novos Amigos.' 
+                : 'Visitante retornou e foi registrado na recepção hoje. Direcionado automaticamente para Novos Amigos.',
+            stage: 'Novos Amigos',
+            timestamp: firebase.firestore.Timestamp.now()
+        };
+
         if (!snapPending.empty) {
-            // Already in Triage/Acolhimento - Just bump the timestamp to top
-            console.log("💎 Diamond: Person already in Triage. Bumping timestamp.");
+            // Already in Triage/Acolhimento - Promote to active integration
+            console.log("💎 Diamond: Person in Triage. Promoting to active integration.");
+            const promoEntry = {
+                date: nowString,
+                action: 'Promoção Automática',
+                by: 'Receção Automática',
+                notes: 'Visitante retornou. Promovido automaticamente para Novos Amigos.',
+                stage: 'Novos Amigos',
+                timestamp: firebase.firestore.Timestamp.now()
+            };
             batch.update(db.collection('integracao').doc(snapPending.docs[0].id), {
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'em_integracao',
+                integ_stage: 'Novos Amigos',
                 last_seen: firebase.firestore.FieldValue.serverTimestamp(),
-                reception_bump: true
+                history: firebase.firestore.FieldValue.arrayUnion(promoEntry),
+                timeline: firebase.firestore.FieldValue.arrayUnion(promoEntry)
             });
         } 
         else if (!snapActive.empty) {
@@ -531,27 +553,30 @@ async function triggerIntegrationWorkflow(personId, name, phone, extraStr, isNew
             console.log("💎 Diamond: Person already in Active Followup. Logging visit.");
             batch.update(db.collection('integracao').doc(snapActive.docs[0].id), {
                 last_visit: firebase.firestore.FieldValue.serverTimestamp(),
-                history: firebase.firestore.FieldValue.arrayUnion({
-                    action: 'Retorno na Recepcao',
-                    notes: 'Visitante retornou e foi registrado na recepção hoje.',
-                    timestamp: firebase.firestore.Timestamp.now()
-                })
+                history: firebase.firestore.FieldValue.arrayUnion(historyEntry),
+                timeline: firebase.firestore.FieldValue.arrayUnion(historyEntry)
             });
         }
         else {
-            // Not in integration flow - Create new record
-            console.log("💎 Diamond: Creating new integration record.");
+            // Not in integration flow - Create new record directly in active integration
+            console.log("💎 Diamond: Creating new active integration record.");
             const refIntegracao = db.collection('integracao').doc();
             batch.set(refIntegracao, {
                 person_id: personId,
                 name: name,
                 contact: phone,
                 type: 'visitante',
-                status: 'pending_integracao',
+                status: 'em_integracao',
+                integ_stage: 'Novos Amigos',
                 extra: extraStr,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 origin: isNew ? 'reception_new' : 'reception_return',
-                is_reappearance: !isNew
+                is_reappearance: !isNew,
+                monitor: null,
+                companion: null,
+                parallel_activities: [],
+                history: [historyEntry],
+                timeline: [historyEntry]
             });
         }
     } catch (e) {
@@ -674,7 +699,35 @@ window.submitVisitor = async function () {
 
         // 4. Send to Integration Team (Unified v51.2.5)
         if (visitReason === 'culto') {
-            await triggerIntegrationWorkflow(personId, name, phone, extraStr, isNewPerson, batch);
+            const hasContact = phone && phone.trim().replace(/[^\d]/g, '').length >= 5;
+            const isFromAnotherChurch = church && church.trim().length > 0;
+            const goToTriage = !hasContact || isFromAnotherChurch;
+
+            if (goToTriage) {
+                let triageType = '';
+                let triageNotes = '';
+                if (!hasContact) {
+                    triageType = 'visitante_sem_contato';
+                    triageNotes = 'Visitante sem número de contato. Encaminhado para triagem.';
+                } else {
+                    triageType = 'visitante_outra_igreja';
+                    triageNotes = `Visitante de outra igreja (${church}). Encaminhado para triagem.`;
+                }
+
+                const refSecretariat = db.collection('pending').doc();
+                batch.set(refSecretariat, {
+                    type: triageType,
+                    action: 'Triagem — Recepção',
+                    person_name: name.trim(),
+                    contact: phone || '',
+                    origin: isNewPerson ? 'reception_new' : 'reception_return',
+                    notes: triageNotes,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } else {
+                await triggerIntegrationWorkflow(personId, name, phone, extraStr, isNewPerson, batch);
+            }
         } else {
             // [RULE v63.2] - Event visitors don't enter integration, but log for Secretariat
             const refSecretariat = db.collection('pending').doc();
@@ -827,8 +880,35 @@ window.submitReturningVisitor = async function (personId, pData) {
         });
 
         // 4. Trigger Integration Workflow for Returning Visitor (Fix v51.2.5)
-        if (personType === 'visitante' || personType === 'congregado') {
-            await triggerIntegrationWorkflow(personId, pData.name, pData.contact || pData.phone || '', extraStr, false, batch);
+        const contact = pData.contact || pData.phone || pData.whatsapp || '';
+        const hasContact = contact && contact.trim().replace(/[^\d]/g, '').length >= 5;
+        const isFromAnotherChurch = pData.origin_church && pData.origin_church.trim().length > 0;
+        const goToTriage = !hasContact || isFromAnotherChurch;
+
+        if (goToTriage) {
+            let triageType = '';
+            let triageNotes = '';
+            if (!hasContact) {
+                triageType = 'visitante_sem_contato';
+                triageNotes = `Visitante de retorno sem número de contato. Encaminhado para triagem.`;
+            } else {
+                triageType = 'visitante_outra_igreja';
+                triageNotes = `Visitante de retorno de outra igreja (${pData.origin_church}). Encaminhado para triagem.`;
+            }
+            batch.set(db.collection('pending').doc(), {
+                type: triageType,
+                action: 'Triagem — Recepção Retorno',
+                person_name: pData.name.trim(),
+                contact: contact || '',
+                origin: 'reception_return',
+                notes: triageNotes,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            if (personType === 'visitante' || personType === 'congregado') {
+                await triggerIntegrationWorkflow(personId, pData.name, contact, extraStr, false, batch);
+            }
         }
 
         await batch.commit();
@@ -897,34 +977,109 @@ window.confirmMemberPresence = function (id, name) {
     });
 }
 
-window.submitConvert = function () {
+window.submitConvert = async function () {
     const name = document.getElementById('convert-name').value;
     const phone = document.getElementById('convert-phone').value;
     const type = document.getElementById('convert-type').value;
 
     if (!name) return alert("Nome obrigatório");
 
-    db.collection('decisions').add({
-        name: name,
-        contact: phone,
-        type: type, // aceitou / reconciliou
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        origin: 'reception_convert'
-    }).then(async () => {
-        // Also send to Altar
-        try {
-            await db.collection('attendance').add({
-                name: name,
-                type: 'decision',
-                detail: type === 'aceitou' ? 'Aceitou a Jesus!' : 'Reconciliou-se!',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                origin: 'reception_decision'
+    const btn = event ? event.target : document.activeElement;
+    const originalText = btn ? btn.innerText : 'Salvar';
+    if (btn && btn.tagName === 'BUTTON') {
+        btn.disabled = true;
+        btn.innerText = 'Carregando...';
+        btn.style.opacity = '0.7';
+    }
+
+    try {
+        const batch = db.batch();
+
+        // 1. Add to decisions
+        const refDec = db.collection('decisions').doc();
+        batch.set(refDec, {
+            name: name.trim(),
+            contact: phone || '',
+            type: type, // aceitou / reconciliou
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            origin: 'reception_convert'
+        });
+
+        // 2. Add to attendance (Altar)
+        const refAtt = db.collection('attendance').doc();
+        batch.set(refAtt, {
+            name: name.trim(),
+            type: 'decision',
+            detail: type === 'aceitou' ? 'Aceitou a Jesus!' : 'Reconciliou-se!',
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            origin: 'reception_decision'
+        });
+
+        // 3. Routing
+        const hasContact = phone && phone.trim().replace(/[^\d]/g, '').length >= 5;
+        if (hasContact) {
+            // Go directly to active integration
+            const refInt = db.collection('integracao').doc();
+            const nowString = new Date().toLocaleDateString('pt-PT');
+            const historyEntry = {
+                date: nowString,
+                action: 'Entrada na Integração',
+                by: 'Receção Automática',
+                notes: `Conversão registrada (${type === 'aceitou' ? 'Aceitou a Jesus' : 'Reconciliou-se'}). Direcionado automaticamente para Novos Amigos.`,
+                stage: 'Novos Amigos',
+                timestamp: firebase.firestore.Timestamp.now()
+            };
+            batch.set(refInt, {
+                name: name.trim(),
+                contact: phone.trim(),
+                type: 'conversao',
+                entry_source: 'reception_convert',
+                entry_date: firebase.firestore.FieldValue.serverTimestamp(),
+                integ_stage: 'Novos Amigos',
+                status: 'em_integracao',
+                monitor: null,
+                companion: null,
+                parallel_activities: [],
+                history: [historyEntry],
+                timeline: [historyEntry]
             });
-        } catch(e) { console.error("Altar sync error:", e); }
-        
+        } else {
+            // Go to Secretariat triage (pending collection)
+            const refPending = db.collection('pending').doc();
+            batch.set(refPending, {
+                type: 'conversao_sem_contato',
+                action: type === 'aceitou' ? 'Aceitou a Jesus' : 'Reconciliou-se',
+                person_name: name.trim(),
+                contact: '',
+                origin: 'reception_convert',
+                notes: `Conversão registrada (${type}). Decisão sem número de contato. Encaminhado para triagem.`,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        await batch.commit();
+
+        if (window.registrarAtaDigital) {
+            window.registrarAtaDigital(
+                'Decisão',
+                `${name} tomou uma decisão (${type}) na recepção.`,
+                'Recepção',
+                'Recepção'
+            );
+        }
+
         alert("Gloria a Deus! Decisao registrada.");
         location.reload();
-    });
+    } catch (err) {
+        console.error("Error in submitConvert:", err);
+        alert("Erro ao registrar decisão: " + err.message);
+        if (btn && btn.tagName === 'BUTTON') {
+            btn.disabled = false;
+            btn.innerText = originalText;
+            btn.style.opacity = '1';
+        }
+    }
 }
 
 // --- KIDS ARRIVAL NOTIFICATION (REALTIME) ---
@@ -1107,7 +1262,8 @@ window.submitScheduleFull = async function() {
     }
 }
 
-// --- LAUSANNE UNIFIED NAVIGATION (v70.3.6) ---
+// --- LAUSANNE UNIFIED NAVIGATION (v70.3.6) - DISABLED TO ALLOW NATIVE RECEPCAO.HTML TABS TO OPERATE ---
+/*
 window.navToTab = function(tabId, el) {
     if(el) {
         document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -1169,6 +1325,7 @@ window.navToSched = function(mode, btn) {
     const target = document.getElementById('sched-' + mode);
     if(target) target.classList.add('active');
 };
+*/
 
 window.submitLivePrayer = async function() {
     const name = document.getElementById('live-prayer-name').value;

@@ -5,21 +5,23 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js?v=70.3.0"></script>
-    <script src="js/auth-manager.js?v=70.3.0"></script>
-    <link rel="icon" type="image/png" href="assets/logo 3.png?v=70.3.0">
+    <script src="js/firebase-config.js?v=70.3.76"></script>
+    <script src="js/auth-manager.js?v=70.3.76"></script>
+    <link rel="icon" type="image/png" href="assets/logo_3.png?v=70.3.76">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Altar | Catedral Lausanne</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;800&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@200;300;400;500;600;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
         :root {
-            --gold: #D4AF37;
-            --gold-soft: #F9F6E8;
-            --bg: #FFFFFF;
-            --text: #1A1A1A;
-            --border: #E4E4E7;
+            --gold: #C9A050;
+            --gold-dim: rgba(201, 160, 80, 0.08);
+            --gold-glowing: rgba(201, 160, 80, 0.15);
+            --bg: #050505;
+            --text: #ffffff;
+            --border: rgba(201, 160, 80, 0.12);
             --font: 'Outfit', sans-serif;
         }
 
@@ -32,96 +34,192 @@
             color: var(--text); 
             font-family: var(--font);
             overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 20%, rgba(201, 160, 80, 0.05) 0%, transparent 60%),
+                linear-gradient(135deg, rgba(201, 160, 80, 0.01) 0%, transparent 50%);
         }
 
         .watermark {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg);
-            font-size: 15vw; font-weight: 900; color: rgba(0,0,0,0.02); z-index: 0; pointer-events: none;
+            font-size: 15vw; font-weight: 900; color: rgba(201, 160, 80, 0.01); z-index: 0; pointer-events: none;
+            font-family: 'Playfair Display', serif;
         }
 
         .container { 
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; 
-            padding: 40px; gap: 30px; 
+            padding: 35px 40px; gap: 25px; 
             z-index: 10;
         }
 
         /* HEADER */
         .topbar { display: flex; align-items: center; justify-content: space-between; }
-        .header-left { display: flex; align-items: center; gap: 20px; }
+        .header-left { display: flex; align-items: center; gap: 25px; }
         
-        .logo-box { width: 100px; height: 100px; }
+        .logo-box { width: 55px; height: 55px; filter: drop-shadow(0 0 10px rgba(201, 160, 80, 0.2)); }
         .logo-box img { width: 100%; height: 100%; object-fit: contain; }
 
         .clock-box { display: flex; flex-direction: column; }
-        #clock { font-size: 3.5rem; font-weight: 200; line-height: 1; color: var(--text); }
-        #timer-label { font-size: 0.8rem; font-weight: 800; color: var(--gold); letter-spacing: 2px; }
+        #clock { font-size: 3.5rem; font-weight: 200; line-height: 1; color: var(--text); letter-spacing: -1px; }
+        
+        #timer-label { 
+            font-size: 0.72rem; font-weight: 700; color: var(--gold); letter-spacing: 1.5px; 
+            display: flex; align-items: center; gap: 6px; text-transform: uppercase;
+            margin-top: 4px;
+        }
+        .live-dot {
+            width: 7px; height: 7px; background: var(--gold); border-radius: 50%;
+            box-shadow: 0 0 8px var(--gold); animation: pulse 2.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 1; }
+        }
 
+        /* STATS CARDS */
         .stats-row { display: flex; gap: 15px; }
         .stat-btn {
-            background: #FFF; border: 1.5px solid var(--border); border-radius: 20px;
-            padding: 15px 25px; min-width: 150px; display: flex; flex-direction: column;
-            align-items: center; cursor: pointer; transition: 0.2s;
+            background: rgba(22, 21, 22, 0.45); border: 1px solid var(--border); border-radius: 20px;
+            padding: 16px 24px; min-width: 160px; display: flex; flex-direction: column;
+            align-items: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         }
-        .stat-btn.active { border-color: var(--gold); background: var(--gold-soft); }
-        .stat-btn span { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #71717A; }
-        .stat-btn .val { font-size: 2.5rem; font-weight: 300; color: var(--text); line-height: 1.2; }
-        .stat-btn.active .val { color: var(--gold); font-weight: 600; }
+        .stat-btn:hover {
+            border-color: rgba(201, 160, 80, 0.3);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .stat-btn.active { 
+            border-color: var(--gold); background: rgba(201, 160, 80, 0.05); 
+            box-shadow: 0 0 25px rgba(201, 160, 80, 0.15); 
+        }
+        .stat-btn span { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #a8a29e; letter-spacing: 1.5px; margin-bottom: 6px; }
+        .stat-btn .val { font-size: 2.8rem; font-weight: 300; color: var(--text); line-height: 1.1; }
+        .stat-btn.active .val { color: var(--gold); font-weight: 500; }
+        .stat-btn.active span { color: #ffffff; }
 
-        /* LIST */
+        /* LIST PANELS */
         .main-view { flex: 1; display: flex; overflow: hidden; justify-content: center; }
+        
         .feed-col { 
             width: 100%; max-width: 1100px; 
-            background: #FFF; border: 1.5px solid var(--border); 
-            border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.03); 
+            background: rgba(22, 21, 22, 0.35); border: 1px solid var(--border); 
+            border-radius: 28px; box-shadow: 0 30px 80px rgba(0,0,0,0.5); 
             display: none; flex-direction: column; overflow: hidden;
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
         .feed-col.active { display: flex; }
 
-        .col-header { padding: 25px 40px; background: #FAFAFA; border-bottom: 1.5px solid var(--border); }
-        .col-header h2 { font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; color: #52525B; }
-
-        .col-list { flex: 1; overflow-y: auto; padding: 30px; }
-        .card { 
-            background: #FFF; border: 1.5px solid var(--border); border-radius: 20px; 
-            padding: 25px; margin-bottom: 15px;
+        .col-header { padding: 25px 40px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+        .col-header h2 { 
+            font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #ffffff; 
+            position: relative; display: inline-block; padding-bottom: 8px;
         }
-        .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .card-name { font-size: 1.6rem; font-weight: 700; color: #111; }
-        .card-time { font-size: 0.8rem; font-weight: 800; color: var(--gold); background: var(--gold-soft); padding: 5px 12px; border-radius: 10px; }
-        .card-detail { font-size: 1.1rem; color: #52525B; line-height: 1.6; }
+        .col-header h2::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 45px; height: 2px;
+            background: var(--gold); border-radius: 1px;
+        }
 
+        .col-list { 
+            flex: 1; overflow-y: auto; padding: 30px 40px; 
+            scrollbar-width: thin; scrollbar-color: rgba(201, 160, 80, 0.2) transparent;
+        }
+        .col-list::-webkit-scrollbar { width: 6px; }
+        .col-list::-webkit-scrollbar-thumb { background-color: rgba(201, 160, 80, 0.2); border-radius: 3px; }
+
+        .card { 
+            background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(201, 160, 80, 0.1); border-radius: 20px; 
+            padding: 25px; margin-bottom: 20px; transition: all 0.3s ease;
+        }
+        .card:hover {
+            border-color: rgba(201, 160, 80, 0.25);
+            background: rgba(255, 255, 255, 0.04);
+            transform: translateY(-1px);
+        }
+        .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .card-name { font-family: 'Playfair Display', serif; font-size: 1.7rem; font-weight: 700; color: #ffffff; }
+        .card-time { 
+            font-size: 0.75rem; font-weight: 700; color: var(--gold); background: var(--gold-dim); 
+            padding: 5px 12px; border-radius: 12px; border: 1px solid rgba(201, 160, 80, 0.15);
+            letter-spacing: 0.5px;
+        }
+        .card-detail { font-size: 1.05rem; color: #a8a29e; line-height: 1.6; font-weight: 400; }
+
+        /* CIRCULAR BACK BUTTON (Bottom Right matching mockup) */
         .exit-btn {
-            position: fixed; bottom: 30px; left: 30px; background: #111; color: #FFF;
-            padding: 15px 25px; border-radius: 15px; text-decoration: none; font-weight: 800;
-            font-size: 0.8rem; z-index: 100;
+            position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; 
+            background: rgba(22, 21, 22, 0.6); border: 1px solid var(--border); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: #ffffff;
+            font-size: 1.15rem; cursor: pointer; z-index: 100; transition: all 0.3s ease;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-decoration: none;
+        }
+        .exit-btn:hover {
+            border-color: var(--gold); background: rgba(201, 160, 80, 0.15);
+            box-shadow: 0 0 15px rgba(201, 160, 80, 0.25); transform: scale(1.05);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
     <div class="watermark">LAUSANNE</div>
     
-    <a href="#" onclick="logout()" class="exit-btn">SAIR</a>
+    <a href="#" onclick="logout()" class="exit-btn" title="Voltar ao Portal">
+        <i class="fas fa-arrow-left"></i>
+    </a>
 
     <div class="container">
         <div class="topbar">
             <div class="header-left">
-                <div class="logo-box"><img src="assets/logo 3.png?v=70.3.0"></div>
+                <div class="logo-box"><img src="assets/logo_3.png?v=70.3.76" alt="Logo"></div>
                 <div class="clock-box">
                     <div id="clock">00:00</div>
-                    <div id="timer-label">CULTO</div>
+                    <div id="timer-label">
+                        <div class="live-dot"></div>
+                        <span>Culto ao vivo</span>
+                    </div>
                 </div>
             </div>
+            
             <div class="stats-row">
-                <div class="stat-btn active" id="btn-v" onclick="setTab('v')"><span>Visitantes</span><div class="val" id="val-v">0</div></div>
-                <div class="stat-btn" id="btn-p" onclick="setTab('p')"><span>Orações</span><div class="val" id="val-p">0</div></div>
-                <div class="stat-btn" id="btn-c" onclick="setTab('c')"><span>Celebrações</span><div class="val" id="val-c">0</div></div>
+                <div class="stat-btn active" id="btn-e" onclick="setTab('e')">
+                    <span>Escala</span>
+                    <div class="val" id="val-e" style="font-size: 1.5rem; font-weight: 500; text-transform: uppercase; margin-top: 5px;">Culto</div>
+                </div>
+                <div class="stat-btn" id="btn-v" onclick="setTab('v')">
+                    <span>Visitantes</span>
+                    <div class="val" id="val-v">0</div>
+                </div>
+                <div class="stat-btn" id="btn-p" onclick="setTab('p')">
+                    <span>Orações</span>
+                    <div class="val" id="val-p">0</div>
+                </div>
+                <div class="stat-btn" id="btn-c" onclick="setTab('c')">
+                    <span>Celebrações</span>
+                    <div class="val" id="val-c">0</div>
+                </div>
             </div>
         </div>
 
         <div class="main-view">
-            <div class="feed-col active" id="col-v">
+            <div class="feed-col active" id="col-e">
+                <div class="col-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2>Escala de Culto</h2>
+                    <button id="btn-print-escala" onclick="printActiveEscala()" style="background:var(--gold-dim); border:1px solid var(--border); color:var(--gold); border-radius:8px; padding:6px 15px; cursor:pointer; font-size:0.8rem; font-weight:800; display:none; transition: all 0.3s ease;">
+                        <i class="fas fa-file-pdf"></i> Compartilhar PDF
+                    </button>
+                </div>
+                <div class="col-list" id="list-e">
+                    <div style="text-align:center; padding:50px; color:var(--text-dim);">Carregando escala do altar...</div>
+                </div>
+            </div>
+            <div class="feed-col" id="col-v">
                 <div class="col-header"><h2>Visitantes de Hoje</h2></div>
                 <div class="col-list" id="list-v"></div>
             </div>
@@ -138,6 +236,7 @@
 
     <script>
         const db = firebase.firestore();
+        let activeEscalaData = null;
         
         function updateClock() {
             const now = new Date();
@@ -154,11 +253,65 @@
 
         firebase.auth().onAuthStateChanged(user => {
             if(user) startMonitor();
-            else location.href = 'app.html';
+            else {
+                if (window.self !== window.top) {
+                    console.log("Altar: Aguardando autenticação do painel pai...");
+                } else {
+                    location.href = 'mobile_v2.html';
+                }
+            }
         });
 
+        // Reuseable empty state generator
+        function getEmptyStateHtml(title, subtitle, svgPathContent) {
+            return `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 120px 20px; text-align:center; animation: fadeIn 0.5s;">
+                <div style="position:relative; margin-bottom:25px;">
+                    <div style="position:absolute; top:8px; right:15px; width:6px; height:6px; background:#fff; border-radius:50%; box-shadow:0 0 10px 3px rgba(201,160,80,0.85); z-index:2;"></div>
+                    <div style="border: 1px solid rgba(201,160,80,0.25); border-radius:50%; width:130px; height:130px; display:flex; align-items:center; justify-content:center; background: radial-gradient(circle, rgba(201,160,80,0.03) 0%, transparent 70%);">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="url(#goldGradient)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <defs>
+                                <linearGradient id="goldGradient" x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0%" stop-color="#C9A050" />
+                                    <stop offset="100%" stop-color="#E0B45C" />
+                                </linearGradient>
+                            </defs>
+                            ${svgPathContent}
+                        </svg>
+                    </div>
+                </div>
+                <h3 style="font-family:'Playfair Display', serif; font-size:1.45rem; color:#ffffff; font-weight:700; margin:0 0 8px 0; letter-spacing:-0.5px;">${title}</h3>
+                <p style="font-size:0.92rem; color:#a8a29e; max-width:290px; margin:0; line-height:1.5; font-family:'Inter';">${subtitle}</p>
+            </div>
+            `;
+        }
+
+        const svgs = {
+            v: `
+                <path d="M12 11c2.209 0 4-1.791 4-4s-1.791-4-4-4-4 1.791-4 4 1.791 4 4 4z"/>
+                <path d="M12 13c-3.866 0-7 2.686-7 6v2h14v-2c0-3.314-3.134-6-7-6z"/>
+                <path d="M6.5 11c1.38 0 2.5-1.12 2.5-2.5S7.88 6 6.5 6 4 7.12 4 8.5 5.12 11 6.5 11z" opacity="0.4"/>
+                <path d="M5.5 13.5c-2.485 0-4.5 1.79-4.5 4v2.5h3.5v-1.5c0-2.21 1.79-4 4-4" opacity="0.4"/>
+                <path d="M17.5 11c1.38 0 2.5-1.12 2.5-2.5S18.88 6 17.5 6s-2.5 1.12-2.5 2.5 1.12 2.5 2.5 2.5z" opacity="0.4"/>
+                <path d="M18.5 13.5c2.485 0 4.5 1.79 4.5 4v2.5h-3.5v-1.5c0-2.21-1.79-4-4-4" opacity="0.4"/>
+            `,
+            p: `
+                <path d="M12 5v14M8 9h8" />
+                <path d="M12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9-9 4.03-9 9 4.03 9 9 9z" opacity="0.4" />
+            `,
+            c: `
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            `
+        };
+
         function startMonitor() {
-            db.collection('attendance').limit(50).onSnapshot(snap => {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            // Load Escala in real-time
+            loadActiveEscala();
+
+            function processSnap(snap) {
                 let s = { v:0, p:0, c:0 }, h = { v:'', p:'', c:'' };
                 snap.forEach(doc => {
                     const d = doc.data();
@@ -177,15 +330,449 @@
                         h.c += `<div class="card"><div class="card-top"><span class="card-name">${d.name}</span><span class="card-time">${time}</span></div><span class="card-detail" style="color:var(--gold); font-weight:800;">NOVA DECISÃO!</span></div>`;
                     }
                 });
+                
                 document.getElementById('val-v').innerText = s.v;
                 document.getElementById('val-p').innerText = s.p;
                 document.getElementById('val-c').innerText = s.c;
-                document.getElementById('list-v').innerHTML = h.v || '<p style="text-align:center; opacity:0.3; margin-top:30px;">Nenhum visitante</p>';
-                document.getElementById('list-p').innerHTML = h.p || '<p style="text-align:center; opacity:0.3; margin-top:30px;">Nenhuma oração</p>';
-                document.getElementById('list-c').innerHTML = h.c || '<p style="text-align:center; opacity:0.3; margin-top:30px;">Nenhuma celebração</p>';
-            });
+                
+                document.getElementById('list-v').innerHTML = h.v || getEmptyStateHtml('Nenhum visitante', 'Quando um novo visitante for registrado, ele aparecerá aqui.', svgs.v);
+                document.getElementById('list-p').innerHTML = h.p || getEmptyStateHtml('Nenhuma oração', 'Quando um novo pedido de oração for enviado, ele aparecerá aqui.', svgs.p);
+                document.getElementById('list-c').innerHTML = h.c || getEmptyStateHtml('Nenhuma celebração', 'Quando uma nova decisão por Jesus for feita, ela aparecerá aqui.', svgs.c);
+            }
+
+            db.collection('attendance')
+              .where('timestamp', '>=', today)
+              .orderBy('timestamp', 'desc')
+              .onSnapshot(processSnap, err => {
+                  console.warn("⚠️ Query com filtro falhou (pode ser índice pendente):", err.message);
+                  db.collection('attendance').limit(100).onSnapshot(processSnap);
+              });
         }
-        function logout() { firebase.auth().signOut(); }
+
+        // Real-time Escala Loader for Altar Panel
+        function loadActiveEscala() {
+            const listE = document.getElementById('list-e');
+            const valE = document.getElementById('val-e');
+            const printBtn = document.getElementById('btn-print-escala');
+            
+            db.collection('service_schedules')
+              .where('status', '==', 'Publicada')
+              .onSnapshot(snap => {
+                  if(snap.empty) {
+                      valE.innerText = "Culto";
+                      printBtn.style.display = 'none';
+                      listE.innerHTML = getEmptyStateHtml(
+                          'Sem Escala',
+                          'Não há nenhuma escala de culto publicada no momento.',
+                          '<path d="M19 4H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM19 20H5V10h14v10z"/>'
+                      );
+                      return;
+                  }
+                  
+                  const todayStr = new Date().toISOString().split('T')[0];
+                  let selected = null;
+                  const scales = [];
+                  
+                  snap.forEach(doc => {
+                      const data = doc.data();
+                      scales.push({ id: doc.id, ...data });
+                  });
+                  
+                  // Sort scales by date ascending
+                  scales.sort((a, b) => a.data.localeCompare(b.data));
+                  
+                  // 1. Try to find today's scale
+                  selected = scales.find(s => s.data === todayStr);
+                  
+                  // 2. If not found, try to find the next upcoming scale
+                  if(!selected) {
+                      selected = scales.find(s => s.data > todayStr);
+                  }
+                  
+                  // 3. If still not found, get the most recent past scale
+                  if(!selected && scales.length > 0) {
+                      selected = scales[scales.length - 1];
+                  }
+                  
+                  if(selected) {
+                      activeEscalaData = selected;
+                      printBtn.style.display = 'block';
+                      
+                      if(selected.data === todayStr) {
+                          valE.innerText = "Hoje";
+                          valE.style.color = '#10b981';
+                      } else {
+                          const parts = selected.data.split('-');
+                          valE.innerText = `${parts[2]}/${parts[1]}`;
+                          valE.style.color = 'var(--gold)';
+                      }
+                      
+                      renderEscalaContent(selected, listE);
+                  } else {
+                      valE.innerText = "Culto";
+                      printBtn.style.display = 'none';
+                      listE.innerHTML = getEmptyStateHtml(
+                          'Sem Escala',
+                          'Não há nenhuma escala de culto publicada no momento.',
+                          '<path d="M19 4H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM19 20H5V10h14v10z"/>'
+                      );
+                  }
+              }, err => {
+                  console.error("Erro ao carregar escala:", err);
+                  listE.innerHTML = '<div style="text-align:center; padding:50px; color:#ef4444;">Erro ao carregar escala.</div>';
+              });
+        }
+
+        // Render Scale details inside Altar view
+        function renderEscalaContent(escala, container) {
+            const dateObj = new Date(escala.data + 'T00:00:00');
+            const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            const formattedDate = dateObj.toLocaleDateString('pt-BR', options);
+            
+            let programHtml = '';
+            if(escala.programacao && escala.programacao.length > 0) {
+                escala.programacao.forEach((item, index) => {
+                    programHtml += `
+                        <div style="display: flex; gap: 20px; position: relative; margin-bottom: 20px;">
+                            ${index < escala.programacao.length - 1 ? `
+                            <div style="position: absolute; left: 14px; top: 30px; bottom: -20px; width: 2px; background: rgba(201, 160, 80, 0.15);"></div>
+                            ` : ''}
+                            <div style="width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--gold); background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1; box-shadow: 0 0 10px rgba(201,160,80,0.2);">
+                                <span style="font-size: 0.75rem; color: var(--gold); font-weight: 700;">${index + 1}</span>
+                            </div>
+                            <div style="flex: 1; background: rgba(255,255,255,0.01); border: 1px solid rgba(201, 160, 80, 0.05); border-radius: 12px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 1.1rem; font-weight: 600; color: #ffffff;">${item.atividade}</div>
+                                    ${item.responsavel ? `<div style="font-size: 0.85rem; color: var(--gold); margin-top: 3px; font-weight: 500;"><i class="fas fa-user-circle" style="margin-right: 4px;"></i> ${item.responsavel}</div>` : ''}
+                                </div>
+                                <div style="font-size: 1.1rem; font-weight: 700; color: var(--gold); background: var(--gold-dim); padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(201,160,80,0.1); font-family: monospace;">
+                                    ${item.horario}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                programHtml = `<div style="text-align: center; color: var(--text-dim); padding: 20px;">Nenhuma atividade listada.</div>`;
+            }
+            
+            const part = escala.participantes || {};
+            let participantsHtml = '';
+            if(part.louvor || part.midia || part.recepcao || part.kids || part.intercessao) {
+                participantsHtml = `
+                    <div style="margin-top: 35px; border-top: 1px solid rgba(201, 160, 80, 0.15); padding-top: 25px;">
+                        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; font-family: 'Playfair Display', serif;"><i class="fas fa-users-cog" style="color:var(--gold); margin-right: 8px;"></i> Equipes de Apoio</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            ${part.louvor ? `
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid rgba(201, 160, 80, 0.05); border-radius: 16px; padding: 15px; display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(201, 160, 80, 0.08); display: flex; align-items: center; justify-content: center; color: var(--gold);"><i class="fas fa-music"></i></div>
+                                <div>
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 800; letter-spacing: 0.5px;">Louvor</div>
+                                    <div style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-top: 2px;">${part.louvor}</div>
+                                </div>
+                            </div>` : ''}
+                            ${part.midia ? `
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid rgba(201, 160, 80, 0.05); border-radius: 16px; padding: 15px; display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(201, 160, 80, 0.08); display: flex; align-items: center; justify-content: center; color: var(--gold);"><i class="fas fa-desktop"></i></div>
+                                <div>
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 800; letter-spacing: 0.5px;">Mídia</div>
+                                    <div style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-top: 2px;">${part.midia}</div>
+                                </div>
+                            </div>` : ''}
+                            ${part.recepcao ? `
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid rgba(201, 160, 80, 0.05); border-radius: 16px; padding: 15px; display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(201, 160, 80, 0.08); display: flex; align-items: center; justify-content: center; color: var(--gold);"><i class="fas fa-handshake"></i></div>
+                                <div>
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 800; letter-spacing: 0.5px;">Recepção</div>
+                                    <div style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-top: 2px;">${part.recepcao}</div>
+                                </div>
+                            </div>` : ''}
+                            ${part.kids ? `
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid rgba(201, 160, 80, 0.05); border-radius: 16px; padding: 15px; display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(201, 160, 80, 0.08); display: flex; align-items: center; justify-content: center; color: var(--gold);"><i class="fas fa-child"></i></div>
+                                <div>
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 800; letter-spacing: 0.5px;">Kids</div>
+                                    <div style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-top: 2px;">${part.kids}</div>
+                                </div>
+                            </div>` : ''}
+                            ${part.intercessao ? `
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid rgba(201, 160, 80, 0.05); border-radius: 16px; padding: 15px; display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(201, 160, 80, 0.08); display: flex; align-items: center; justify-content: center; color: var(--gold);"><i class="fas fa-hands-praying"></i></div>
+                                <div>
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 800; letter-spacing: 0.5px;">Intercessão</div>
+                                    <div style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-top: 2px;">${part.intercessao}</div>
+                                </div>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <!-- Header Details Card -->
+                <div class="card" style="background: linear-gradient(135deg, rgba(201, 160, 80, 0.04) 0%, transparent 100%); border: 1px solid rgba(201, 160, 80, 0.15); margin-bottom: 25px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <span style="font-size: 0.72rem; font-weight: 800; color: var(--gold); text-transform: uppercase; letter-spacing: 2px;">Escala Lausanne</span>
+                            <h1 style="font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 700; color: #ffffff; margin: 5px 0 10px 0; line-height: 1.2;">${escala.nome_culto}</h1>
+                            ${escala.descricao ? `<p style="font-style: italic; color: #cbd5e1; font-size: 1.05rem; margin-bottom: 15px; line-height: 1.5;">"${escala.descricao}"</p>` : ''}
+                        </div>
+                        <div style="text-align: right; min-width: 150px;">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--gold); font-family: monospace;">${escala.horario_inicio}H</div>
+                            <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: capitalize; margin-top: 3px; font-weight: 600;">${formattedDate}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size: 0.95rem; font-weight: 600;">
+                            <span style="color: var(--text-dim); text-transform: uppercase; font-size: 0.72rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 3px;">Dirigente</span>
+                            <span style="color: #ffffff; text-decoration: underline;"><i class="fas fa-crown" style="color:var(--gold); margin-right: 5px;"></i>${escala.dirigente ? escala.dirigente.toUpperCase() : 'NÃO DEFINIDO'}</span>
+                        </div>
+                        ${escala.local ? `
+                        <div style="font-size: 0.95rem; font-weight: 600; margin-left: 20px;">
+                            <span style="color: var(--text-dim); text-transform: uppercase; font-size: 0.72rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 3px;">Local</span>
+                            <span style="color: #ffffff;"><i class="fas fa-map-marker-alt" style="color:var(--gold); margin-right: 5px;"></i>${escala.local}</span>
+                        </div>` : ''}
+                    </div>
+                </div>
+
+                <!-- Timeline of activities -->
+                <div style="margin-top: 25px;">
+                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; font-family: 'Playfair Display', serif;"><i class="fas fa-stream" style="color:var(--gold); margin-right: 8px;"></i> Cronograma do Culto</h3>
+                    ${programHtml}
+                </div>
+
+                <!-- Participants/Supporting teams -->
+                ${participantsHtml}
+            `;
+        }
+
+        // Print active scale
+        function printActiveEscala() {
+            if(activeEscalaData) {
+                exportToPDF(activeEscalaData.id, activeEscalaData);
+            }
+        }
+
+        // PDF Generation tools (Sage Green style)
+        function exportToPDF(id, escala) {
+            const printWindow = window.open('', '_blank', 'width=800,height=1000');
+            
+            const dateObj = new Date(escala.data + 'T00:00:00');
+            const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            const dateStrFormatted = dateObj.toLocaleDateString('pt-BR', options).toUpperCase();
+            
+            let displayDate = dateStrFormatted.replace(' DE ', ' ').replace(' DE ', ' ');
+            if (escala.tipo_culto === 'Domingo Manhã') displayDate = displayDate.replace('DOMINGO', 'DOMINGO MANHÃ');
+            else if (escala.tipo_culto === 'Terça-feira') displayDate = displayDate.replace('TERÇA-FEIRA', 'TERÇA');
+
+            let programacaoHtml = '';
+            (escala.programacao || []).forEach(item => {
+                programacaoHtml += `
+                    <li class="escala-item">
+                        <span class="escala-time">${item.horario} - ${item.atividade.toUpperCase()}:</span>
+                        <span class="escala-resp">${item.responsavel ? item.responsavel.toUpperCase() : ''}</span>
+                    </li>
+                `;
+            });
+
+            const part = escala.participantes || {};
+            let participantsHtml = '';
+            if(part.louvor || part.midia || part.recepcao || part.kids || part.intercessao) {
+                participantsHtml = `
+                    <div class="pdf-participants">
+                        <h4 class="pdf-part-title">Equipes de Apoio</h4>
+                        <div class="pdf-part-grid">
+                            ${part.louvor ? `<div><strong>LOUVOR:</strong> ${part.louvor.toUpperCase()}</div>` : ''}
+                            ${part.midia ? `<div><strong>MÍDIA:</strong> ${part.midia.toUpperCase()}</div>` : ''}
+                            ${part.recepcao ? `<div><strong>RECEPÇÃO/DIACONATO:</strong> ${part.recepcao.toUpperCase()}</div>` : ''}
+                            ${part.kids ? `<div><strong>KIDS:</strong> ${part.kids.toUpperCase()}</div>` : ''}
+                            ${part.intercessao ? `<div><strong>INTERCESSÃO:</strong> ${part.intercessao.toUpperCase()}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Escala do Culto - ${escala.nome_culto}</title>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap');
+                        body {
+                            background-color: #b3d2be;
+                            color: #000000;
+                            font-family: 'Outfit', sans-serif;
+                            margin: 0;
+                            padding: 40px;
+                            box-sizing: border-box;
+                            min-height: 100vh;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+                        .escala-container {
+                            max-width: 800px;
+                            margin: 0 auto;
+                            position: relative;
+                        }
+                        .logo-img {
+                            position: absolute;
+                            top: 0;
+                            right: 0;
+                            width: 80px;
+                            height: auto;
+                        }
+                        .header-title {
+                            font-size: 3.5rem;
+                            font-weight: 900;
+                            color: #e11d48;
+                            margin: 0;
+                            line-height: 1;
+                            letter-spacing: 1px;
+                        }
+                        .header-date {
+                            font-size: 2.2rem;
+                            font-weight: 700;
+                            color: #e11d48;
+                            margin: 5px 0 15px 0;
+                            letter-spacing: 0.5px;
+                        }
+                        .header-subtitle {
+                            font-size: 1.8rem;
+                            font-weight: 700;
+                            color: #e11d48;
+                            margin: 10px 0 25px 0;
+                            text-transform: uppercase;
+                        }
+                        .dirigente-box {
+                            font-size: 1.35rem;
+                            font-weight: 700;
+                            margin-bottom: 25px;
+                            text-transform: uppercase;
+                        }
+                        .dirigente-name {
+                            text-decoration: underline;
+                        }
+                        .info-notice {
+                            font-size: 0.92rem;
+                            color: #000000;
+                            margin: 8px 0;
+                            line-height: 1.4;
+                            padding-left: 15px;
+                            position: relative;
+                            font-weight: 500;
+                        }
+                        .info-notice::before {
+                            content: "-";
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                        }
+                        .escala-list {
+                            list-style: none;
+                            padding: 0;
+                            margin: 30px 0 0 0;
+                        }
+                        .escala-item {
+                            font-size: 1.25rem;
+                            font-weight: 700;
+                            margin-bottom: 20px;
+                            display: flex;
+                            align-items: flex-start;
+                            position: relative;
+                            padding-left: 25px;
+                        }
+                        .escala-item::before {
+                            content: "";
+                            position: absolute;
+                            left: 5px;
+                            top: 10px;
+                            width: 7px;
+                            height: 7px;
+                            background-color: #64748b;
+                            border-radius: 50%;
+                        }
+                        .escala-time {
+                            margin-right: 8px;
+                        }
+                        .escala-resp {
+                            text-decoration: underline;
+                        }
+                        .pdf-participants {
+                            margin-top: 35px;
+                            border-top: 2px dashed #475569;
+                            padding-top: 20px;
+                        }
+                        .pdf-part-title {
+                            margin: 0 0 12px 0;
+                            font-size: 1.2rem;
+                            text-transform: uppercase;
+                            color: #e11d48;
+                            font-weight: 900;
+                        }
+                        .pdf-part-grid {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 12px;
+                            font-size: 1.05rem;
+                        }
+                        @media print {
+                            body {
+                                background-color: #b3d2be !important;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="escala-container">
+                        <img src="assets/logo_3.png" class="logo-img">
+                        <h1 class="header-title">ESCALA DO CULTO</h1>
+                        <div class="header-date">${displayDate}</div>
+                        <div class="header-subtitle">${escala.horario_inicio}H - ${escala.nome_culto.toUpperCase()}</div>
+                        
+                        <div class="dirigente-box">
+                            DIRIGENTE DO CULTO: <span class="dirigente-name">${escala.dirigente ? escala.dirigente.toUpperCase() : 'NÃO DEFINIDO'}</span>
+                        </div>
+                        
+                        <div class="info-notice">
+                            É função do dirigente, contactar três dias antes, a todos que irão participar no culto, para comprovada participação e organização.
+                        </div>
+                        <div class="info-notice">
+                            Deve o dirigente estar atento para que todos subam à sua hora, sem serem chamados e estar pronto para os substituir se caso necessário.
+                        </div>
+                        
+                        <ul class="escala-list">
+                            ${programacaoHtml}
+                        </ul>
+
+                        ${participantsHtml}
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                            }, 500);
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `;
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+        }
+
+        function logout() {
+            if (window.self !== window.top) {
+                window.parent.postMessage({ type: 'MASTER_LOGOUT' }, '*');
+            } else {
+                firebase.auth().signOut().then(() => {
+                    location.href = 'mobile_v2.html';
+                });
+            }
+        }
     </script>
 </body>
 </html>
