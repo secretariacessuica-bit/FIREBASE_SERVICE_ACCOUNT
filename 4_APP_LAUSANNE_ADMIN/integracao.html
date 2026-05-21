@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jornada de Integração | CES Lausanne v70.3.76</title>
+    <title>Jornada de Integração | CES Lausanne v70.3.77</title>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js?v=70.3.76"></script>
-    <script src="js/auth-manager.js?v=70.3.76"></script>
+    <script src="js/firebase-config.js?v=70.3.77"></script>
+    <script src="js/auth-manager.js?v=70.3.77"></script>
 
     <script>
         (function() {
@@ -473,8 +473,8 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">Amigo / Acompanhante</label>
-                <input type="text" id="mon-companion" class="form-control" placeholder="Nome da pessoa que vai acompanhar">
+                <label class="form-label">Integrador</label>
+                <input type="text" id="mon-companion" class="form-control" placeholder="Nome do Integrador (quem vai acompanhar)">
             </div>
 
             <div class="form-group">
@@ -484,6 +484,28 @@
 
             <button onclick="saveMonitorAssignment()" class="btn-sm btn-gold" style="width:100%; padding:14px; font-size:0.9rem; border-radius:12px;">
                 <i class="fas fa-play-circle"></i> Iniciar Monitoramento de 30 Dias
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: EDITAR INTEGRADOR ===== -->
+    <div class="modal-overlay" id="modal-edit-integrador">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 class="modal-title">Designar/Alterar Integrador</h3>
+                <button class="modal-close" onclick="closeModal('modal-edit-integrador')">✕</button>
+            </div>
+            <input type="hidden" id="edit-int-id">
+
+            <div id="edit-int-person-info" style="background:#fafaf9; border-radius:12px; padding:14px; margin-bottom:18px; font-size:0.9rem;"></div>
+
+            <div class="form-group">
+                <label class="form-label gold">Nome do Integrador</label>
+                <input type="text" id="edit-int-name" class="form-control" placeholder="Nome da pessoa que vai acompanhar o visitante">
+            </div>
+
+            <button onclick="saveIntegradorUpdate()" class="btn-sm btn-gold" style="width:100%; padding:14px; font-size:0.9rem; border-radius:12px;">
+                <i class="fas fa-save"></i> Salvar Integrador
             </button>
         </div>
     </div>
@@ -841,7 +863,7 @@
                 '</div>' +
                 '<div class="info-grid">' +
                     '<div class="info-item"><div class="info-item-label">Monitor</div><div class="info-item-value">' + (d.monitor || '—') + '</div></div>' +
-                    '<div class="info-item"><div class="info-item-label">Amigo/Acomp.</div><div class="info-item-value">' + (d.companion || '—') + '</div></div>' +
+                    '<div class="info-item"><div class="info-item-label">Integrador</div><div class="info-item-value" style="display:flex; align-items:center; gap:6px;"><span>' + (d.companion || '—') + '</span><i class="fas fa-edit" onclick="openEditIntegrador(\'' + d.id + '\')" style="cursor:pointer; color:var(--gold);" title="Alterar Integrador"></i></div></div>' +
                 '</div>' +
                 getActivitiesBadges(d.parallel_activities) +
                 '<div class="card-actions">' +
@@ -850,6 +872,9 @@
                     '</button>' +
                     '<button class="btn-sm btn-outline" onclick="openTimeline(\'' + d.id + '\')">' +
                         '<i class="fas fa-history"></i> Jornada' +
+                    '</button>' +
+                    '<button class="btn-sm btn-outline" style="border-color:#25d366; color:#25d366;" onclick="sendConnectLink(\'' + d.id + '\')">' +
+                        '<i class="fab fa-whatsapp"></i> Link Connect' +
                     '</button>' +
                     (canExit ?
                         '<button class="btn-sm btn-green" onclick="openRelease(\'' + d.id + '\')">' +
@@ -889,6 +914,7 @@
                 '</div>' +
                 '<div class="info-grid">' +
                     '<div class="info-item"><div class="info-item-label">Monitor</div><div class="info-item-value">' + (d.monitor || '—') + '</div></div>' +
+                    '<div class="info-item"><div class="info-item-label">Integrador</div><div class="info-item-value" style="display:flex; align-items:center; gap:6px;"><span>' + (d.companion || '—') + '</span><i class="fas fa-edit" onclick="openEditIntegrador(\'' + d.id + '\')" style="cursor:pointer; color:var(--gold);" title="Alterar Integrador"></i></div></div>' +
                     '<div class="info-item"><div class="info-item-label">Monit. Inicial</div><div class="info-item-value">' + getDays(d.monitoring_start) + ' dias</div></div>' +
                 '</div>' +
                 '<div class="card-actions">' +
@@ -921,6 +947,7 @@
                 '</div>' +
                 '<div class="info-grid">' +
                     '<div class="info-item"><div class="info-item-label">Monitor</div><div class="info-item-value">' + (d.monitor || '—') + '</div></div>' +
+                    '<div class="info-item"><div class="info-item-label">Integrador</div><div class="info-item-value">' + (d.companion || '—') + '</div></div>' +
                     '<div class="info-item"><div class="info-item-label">Responsável Final</div><div class="info-item-value">' + (d.final_responsible || '—') + '</div></div>' +
                 '</div>' +
                 '<div class="card-actions">' +
@@ -977,6 +1004,79 @@
             }).then(() => {
                 closeModal('modal-monitor');
             }).catch(e => alert('Erro: ' + e.message));
+        }
+
+        function openEditIntegrador(id) {
+            var d = _dataCache[id];
+            if (!d) return;
+            document.getElementById('edit-int-id').value = id;
+            document.getElementById('edit-int-person-info').innerHTML =
+                '<strong>' + (d.name || 'Sem nome') + '</strong> · ' + (d.contact || '') +
+                '<br><small style="color:#64748b;">Monitor atual: ' + (d.monitor || '—') + '</small>';
+            document.getElementById('edit-int-name').value = d.companion || '';
+            document.getElementById('modal-edit-integrador').classList.add('open');
+        }
+
+        function saveIntegradorUpdate() {
+            var id = document.getElementById('edit-int-id').value;
+            var integratorName = document.getElementById('edit-int-name').value.trim();
+
+            if (!id) return;
+
+            db.collection('integracao').doc(id).update({
+                companion: integratorName
+            }).then(() => {
+                var entry = {
+                    action: 'Integrador Atualizado',
+                    by: 'Equipa',
+                    notes: 'Definido/Alterado Integrador para: ' + (integratorName || 'Nenhum'),
+                    stage: 'Em Monitoramento',
+                    date: new Date().toLocaleDateString('pt-PT')
+                };
+                return db.collection('integracao').doc(id).update({
+                    timeline: firebase.firestore.FieldValue.arrayUnion(entry)
+                });
+            }).then(() => {
+                closeModal('modal-edit-integrador');
+                showToast('Atualizado', 'Integrador atualizado com sucesso!');
+            }).catch(e => alert('Erro ao salvar integrador: ' + e.message));
+        }
+
+        function sendConnectLink(id) {
+            var d = _dataCache[id];
+            if (!d) return;
+
+            var firstName = d.name ? d.name.split(' ')[0] : 'visitante';
+            var monitorName = d.monitor || '';
+            var connectUrl = 'https://catedral-connect-6c55e.web.app/connect.html?vid=' + d.id + 
+                             '&n=' + encodeURIComponent(firstName) + 
+                             '&i=' + encodeURIComponent(monitorName);
+            
+            var msg = 'Olá ' + firstName + '! Segue o seu link de acesso exclusivo ao portal Connect da Catedral Lausanne. Lá você poderá fazer pedidos de oração, acompanhar atividades e muito mais:\n\n' + connectUrl;
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(connectUrl).then(function() {
+                showToast('Link Copiado', 'Link do Connect copiado!');
+            }).catch(function() {
+                var dummy = document.createElement('textarea');
+                document.body.appendChild(dummy);
+                dummy.value = connectUrl;
+                dummy.select();
+                document.execCommand('copy');
+                document.body.removeChild(dummy);
+                showToast('Link Copiado', 'Link do Connect copiado!');
+            });
+
+            var phone = d.contact ? d.contact.replace(/\D/g, '') : '';
+            if (phone) {
+                if (phone.length <= 10) phone = '41' + phone;
+                var confirmMsg = 'Deseja abrir o WhatsApp para enviar o link do Connect para ' + d.name + '?\n\n(O link também foi copiado para sua área de transferência para que possa enviar ao Integrador)';
+                if (confirm(confirmMsg)) {
+                    window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+                }
+            } else {
+                alert('Este visitante não possui telefone cadastrado. O link do Connect foi copiado para a sua área de transferência para que você possa enviá-lo ao Integrador.');
+            }
         }
 
         function sendToSecretariaTriage(id) {
@@ -1152,7 +1252,7 @@
                     '<div class="report-row"><span class="report-row-label">Entrada</span><span class="report-row-value">' + getDateStr(d.entry_date || d.timestamp) + '</span></div>' +
                     '<div class="report-row"><span class="report-row-label">Via</span><span class="report-row-value">' + (d.entry_source || 'manual') + '</span></div>' +
                     '<div class="report-row"><span class="report-row-label">Monitor</span><span class="report-row-value">' + (d.monitor || '—') + '</span></div>' +
-                    '<div class="report-row"><span class="report-row-label">Amigo/Acomp.</span><span class="report-row-value">' + (d.companion || '—') + '</span></div>' +
+                    '<div class="report-row"><span class="report-row-label">Integrador</span><span class="report-row-value">' + (d.companion || '—') + '</span></div>' +
                     '<div class="report-row"><span class="report-row-label">Atividades</span><span class="report-row-value">' + acts + '</span></div>' +
                     '<div class="report-row"><span class="report-row-label">Total de dias</span><span class="report-row-value">' + totalDays + ' dias</span></div>' +
                     '<div class="report-row"><span class="report-row-label">Registros de acolhimento</span><span class="report-row-value">' + contacts + '</span></div>' +
