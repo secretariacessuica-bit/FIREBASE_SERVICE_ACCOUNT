@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.74"></script>
+    <script src="js/auth-manager.js?v=70.3.74"></script>
+    <script>
+        // SECURITY GUARD v71.2.0 - Lausanne Edition
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                // Optional: Redirect to mobile shell if accessed directly
+                // window.location.href = 'mobile_v2.html';
+            }
+        })();
+    </script>
+    <link rel="icon" type="image/png" href="assets/logo_3.png?v=3">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Altar | Lausanne Connect Premium</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root {
+            --gold: #C9A050;
+            --gold-bright: #D4AF37;
+            --gold-dim: rgba(201, 160, 80, 0.1);
+            --bg: #ffffff;
+            --bg-card: #f8fafc;
+            --text: #1e293b;
+            --text-dim: #64748b;
+            --border: #e2e8f0;
+            --font: 'Outfit', sans-serif;
+            --accent-blue: #3b82f6;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── BACKGROUND ── */
+        .app-background {
+            position: fixed; inset: 0; z-index: -1;
+            background: radial-gradient(circle at top right, #fffcf5 0%, #ffffff 60%);
+        }
+        .bg-watermark {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80vw; height: 80vh;
+            background: url('assets/logo_3.png') center/contain no-repeat;
+            opacity: 0.03; filter: grayscale(100%) blur(2px);
+            pointer-events: none;
+        }
+
+        /* ── TOP BAR ── */
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 40px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+            z-index: 10;
+        }
+
+        .brand-area { display: flex; align-items: center; gap: 20px; }
+        .logo-img { height: 60px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.05)); }
+        .brand-text { font-weight: 900; font-size: 1.5rem; letter-spacing: -1px; color: var(--text); }
+        .brand-text span { color: var(--gold); }
+
+        .clock-area { text-align: right; border-left: 2px solid var(--gold-dim); padding-left: 25px; }
+        #clock { font-size: 3.5rem; font-weight: 300; line-height: 1; color: var(--text); letter-spacing: -2px; }
+        #date { font-size: 0.9rem; font-weight: 800; color: var(--gold); text-transform: uppercase; letter-spacing: 3px; margin-top: 5px; }
+
+        /* ── MAIN LAYOUT ── */
+        .dashboard-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            padding: 25px 40px;
+            overflow: hidden;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .column-header {
+            padding: 20px 25px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .column-header h2 {
+            font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;
+            color: var(--text-dim); display: flex; align-items: center; gap: 10px;
+        }
+        .column-header h2 i { color: var(--gold); font-size: 1.1rem; }
+        .counter-badge {
+            background: var(--gold); color: #fff;
+            font-size: 0.75rem; font-weight: 900;
+            padding: 4px 12px; border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(201, 160, 80, 0.3);
+        }
+
+        .column-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            scrollbar-width: none;
+        }
+        .column-content::-webkit-scrollbar { display: none; }
+
+        /* ── CARDS ── */
+        .item-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+            animation: cardFadeIn 0.5s ease forwards;
+        }
+        .item-card:hover { transform: translateY(-3px); border-color: var(--gold-bright); box-shadow: 0 10px 25px rgba(201,160,80,0.1); }
+
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .item-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; }
+        .item-name { font-size: 1.4rem; font-weight: 800; color: var(--text); letter-spacing: -0.5px; line-height: 1.2; }
+        .item-time { font-size: 0.75rem; font-weight: 800; color: var(--gold); background: var(--gold-dim); padding: 4px 10px; border-radius: 8px; white-space: nowrap; }
+        .item-detail { font-size: 1rem; color: var(--text-dim); margin-top: 10px; font-weight: 500; display: block; line-height: 1.4; }
+
+        /* Types Styling */
+        .card-visitante { border-left: 5px solid var(--gold); background: linear-gradient(to right, #fffcf5, #fff); }
+        .card-request { border-left: 5px solid var(--accent-blue); }
+        .card-decision { border-left: 5px solid var(--accent-green); background: linear-gradient(to right, #f0fdf4, #fff); }
+        .card-birthday { border-left: 5px solid #ec4899; background: linear-gradient(to right, #fdf2f8, #fff); }
+
+        .badge-type { font-size: 0.65rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; display: inline-block; padding: 2px 8px; border-radius: 6px; }
+        .badge-request { background: #dbeafe; color: #1e40af; }
+        .badge-decision { background: #dcfce7; color: #166534; }
+        .badge-birthday { background: #fce7f3; color: #9d174d; }
+
+        /* ── BANNERS ── */
+        #special-banner {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            width: 85%; max-width: 1200px;
+            background: #fff;
+            border: 2px solid var(--gold);
+            border-radius: 30px;
+            padding: 30px 60px;
+            display: none;
+            align-items: center; justify-content: center;
+            box-shadow: 0 30px 100px rgba(0,0,0,0.15), 0 0 50px rgba(201,160,80,0.1);
+            z-index: 1000;
+            animation: bannerPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes bannerPop {
+            0% { opacity: 0; transform: translate(-50%, 100px) scale(0.8); }
+            100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+        #banner-text { font-size: 2.8rem; font-weight: 900; color: var(--text); text-align: center; line-height: 1.2; letter-spacing: -1px; }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; opacity: 0.2; gap: 15px;
+        }
+        .empty-state i { font-size: 3rem; }
+        .empty-state p { font-weight: 700; text-transform: uppercase; letter-spacing: 2px; font-size: 0.8rem; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 1280px) {
+            .dashboard-grid { grid-template-columns: repeat(2, 1fr); padding: 15px; }
+            .col-celeb { grid-column: span 2; }
+            #banner-text { font-size: 2rem; }
+        }
+        @media (max-width: 900px) {
+            .dashboard-grid { grid-template-columns: 1fr; overflow-y: auto; height: auto; display: flex; flex-direction: column; }
+            .column { min-height: 400px; height: auto; overflow: visible; }
+            .topbar { padding: 15px 20px; flex-direction: column; gap: 15px; text-align: center; }
+            .clock-area { border: none; padding: 0; text-align: center; }
+            #clock { font-size: 2.5rem; }
+            .logo-img { height: 40px; }
+            #special-banner { bottom: 20px; width: 95%; padding: 20px; }
+            #banner-text { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-background"></div>
+    <div class="bg-watermark"></div>
+
+    <header class="topbar">
+        <div class="brand-area">
+            <img src="assets/logo_3.png" class="logo-img" alt="Lausanne">
+            <div class="brand-text">LAUSANNE <span>CONNECT</span></div>
+        </div>
+        <div class="clock-area">
+            <div id="clock">00:00:00</div>
+            <div id="date">QUARTA-FEIRA, 14 DE MAIO</div>
+        </div>
+    </header>
+
+    <main class="dashboard-grid">
+        <!-- COL 1: VISITANTES -->
+        <section class="column">
+            <header class="column-header">
+                <h2><i class="fas fa-user-plus"></i> VISITANTES</h2>
+                <div class="counter-badge" id="count-visitors">0</div>
+            </header>
+            <div class="column-content" id="content-visitors">
+                <div class="empty-state"><i class="fas fa-users"></i><p>Aguardando...</p></div>
+            </div>
+        </section>
+
+        <!-- COL 2: ORAÇÃO -->
+        <section class="column">
+            <header class="column-header">
+                <h2><i class="fas fa-hands-praying"></i> ORAÇÃO</h2>
+                <div class="counter-badge" id="count-prayers">0</div>
+            </header>
+            <div class="column-content" id="content-prayers">
+                <div class="empty-state"><i class="fas fa-heart"></i><p>Nenhum pedido</p></div>
+            </div>
+        </section>
+
+        <!-- COL 3: CELEBRAÇÃO -->
+        <section class="column col-celeb">
+            <header class="column-header">
+                <h2><i class="fas fa-star"></i> CELEBRAÇÃO</h2>
+                <div class="counter-badge" id="count-celebs">0</div>
+            </header>
+            <div class="column-content" id="content-celebs">
+                <div class="empty-state"><i class="fas fa-award"></i><p>Em paz</p></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="special-banner">
+        <div id="banner-text">MENSAGEM DE TESTE</div>
+    </div>
+
+    <script>
+        // --- TIME ENGINE ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('pt-BR');
+            const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            document.getElementById('date').innerText = now.toLocaleDateString('pt-BR', options).toUpperCase();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- FIREBASE SYNC ---
+        const db = firebase.firestore();
+        let lastDocCount = -1;
+
+        function renderDashboard() {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            db.collection('attendance')
+              .where('timestamp', '>=', today)
+              .orderBy('timestamp', 'desc')
+              .limit(30)
+              .onSnapshot(snap => {
+                if (snap.empty) {
+                    resetContainers();
+                    return;
+                }
+
+                // Celebration logic (Confetti)
+                if (lastDocCount !== -1 && snap.size > lastDocCount) {
+                    const newDoc = snap.docs[0].data();
+                    const type = (newDoc.type || '').toLowerCase();
+                    if (type === 'decision' || type === 'convert' || type === 'celebration') {
+                        triggerConfetti();
+                    }
+                }
+                lastDocCount = snap.size;
+
+                const containers = {
+                    visitors: document.getElementById('content-visitors'),
+                    prayers: document.getElementById('content-prayers'),
+                    celebs: document.getElementById('content-celebs')
+                };
+
+                const counters = { v: 0, p: 0, c: 0 };
+                const htmls = { v: '', p: '', c: '' };
+                let activeWarning = null;
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const id = doc.id;
+                    const type = (d.type || '').toLowerCase();
+                    const name = d.name || d.person_name || 'Visitante';
+                    const detail = d.detail || d.obs || '';
+                    const time = d.timestamp ? d.timestamp.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '--:--';
+
+                    // Check for Birthday Banner
+                    if (type === 'birthday') {
+                        activeWarning = `🎂 PARABÉNS PELO SEU DIA, <b>${name.toUpperCase()}</b>!`;
+                    }
+
+                    if (type === 'visitante' || type.includes('visitant') || type === 'visitor_new') {
+                        counters.v++;
+                        htmls.v += createCard(name, detail, time, 'visitante');
+                    } else if (type === 'request' || type.includes('ora')) {
+                        counters.p++;
+                        htmls.p += createCard(name, detail, time, 'request');
+                    } else if (type === 'decision' || type === 'convert' || type === 'batismo' || type === 'baby' || type === 'kids') {
+                        counters.c++;
+                        htmls.c += createCard(name, detail, time, 'decision');
+                    }
+                });
+
+                // Update Counters
+                document.getElementById('count-visitors').innerText = counters.v;
+                document.getElementById('count-prayers').innerText = counters.p;
+                document.getElementById('count-celebs').innerText = counters.c;
+
+                // Update Content
+                containers.visitors.innerHTML = htmls.v || '<div class="empty-state"><i class="fas fa-users"></i><p>Nenhum visitante</p></div>';
+                containers.prayers.innerHTML = htmls.p || '<div class="empty-state"><i class="fas fa-heart"></i><p>Nenhum pedido</p></div>';
+                containers.celebs.innerHTML = htmls.c || '<div class="empty-state"><i class="fas fa-award"></i><p>Nenhuma celebração</p></div>';
+
+                // Handle Banner
+                showBanner(activeWarning);
+
+            }, err => console.error("Firestore Error:", err));
+
+            // Sync Warning Message (General announcements)
+            db.collection('config').doc('mural_avisos').onSnapshot(doc => {
+                if(doc.exists) {
+                    const d = doc.data();
+                    if(d.active && d.msg) {
+                        showBanner(`📢 <b>AVISO:</b> ${d.msg}`, true);
+                    } else {
+                        // Only hide if not a birthday
+                        if (!currentBannerIsBirthday()) hideBanner();
+                    }
+                }
+            });
+        }
+
+        function createCard(name, detail, time, category) {
+            let badge = '';
+            if (category === 'request') badge = '<span class="badge-type badge-request">Pedido de Oração</span>';
+            if (category === 'decision') badge = '<span class="badge-type badge-decision">Celebração</span>';
+            if (category === 'birthday') badge = '<span class="badge-type badge-birthday">Aniversário</span>';
+
+            return `
+                <div class="item-card card-${category}">
+                    <div class="item-row">
+                        <div class="item-name">${name}</div>
+                        <div class="item-time">${time}</div>
+                    </div>
+                    <span class="item-detail">${detail}</span>
+                    ${badge}
+                </div>
+            `;
+        }
+
+        function resetContainers() {
+            document.getElementById('content-visitors').innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>Aguardando...</p></div>';
+            document.getElementById('content-prayers').innerHTML = '<div class="empty-state"><i class="fas fa-heart"></i><p>Nenhum pedido</p></div>';
+            document.getElementById('content-celebs').innerHTML = '<div class="empty-state"><i class="fas fa-award"></i><p>Em paz</p></div>';
+            document.getElementById('count-visitors').innerText = '0';
+            document.getElementById('count-prayers').innerText = '0';
+            document.getElementById('count-celebs').innerText = '0';
+            hideBanner();
+        }
+
+        let bannerTimeout = null;
+        function showBanner(html, persistent = false) {
+            const banner = document.getElementById('special-banner');
+            const text = document.getElementById('banner-text');
+            if(!html) return;
+
+            text.innerHTML = html;
+            banner.style.display = 'flex';
+
+            if(!persistent) {
+                if(bannerTimeout) clearTimeout(bannerTimeout);
+                bannerTimeout = setTimeout(hideBanner, 15000); // 15s for birthdays
+            }
+        }
+
+        function hideBanner() {
+            document.getElementById('special-banner').style.display = 'none';
+        }
+
+        function currentBannerIsBirthday() {
+            const text = document.getElementById('banner-text').innerHTML;
+            return text.includes('🎂');
+        }
+
+        function triggerConfetti() {
+            const count = 200;
+            const defaults = { origin: { y: 0.7 }, zIndex: 9999 };
+
+            function fire(particleRatio, opts) {
+                confetti({ ...defaults, ...opts, particleCount: Math.floor(count * particleRatio) });
+            }
+
+            fire(0.25, { spread: 26, startVelocity: 55 });
+            fire(0.2, { spread: 60 });
+            fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+            fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+            fire(0.1, { spread: 120, startVelocity: 45 });
+        }
+
+        renderDashboard();
+    </script>
+</body>
+</html>

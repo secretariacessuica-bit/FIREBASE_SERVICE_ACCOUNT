@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JORNADA Connect Lausanne | v70.3.30</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.72"></script>
+    
+    <script>
+        // SECURITY GUARD v70.3.72 - iframe-safe
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile_v2.html';
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="css/style-v2.css?v=70.3.72">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --premium-red: #da291c;
+            --premium-red-dim: rgba(218, 41, 28, 0.1);
+            --bg-body: #f8fafc;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .card-floating {
+            background: #fff;
+            border-radius: 24px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 15px 25px;
+            font-weight: 800;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.95rem;
+            border-bottom: 4px solid transparent;
+            min-width: 160px;
+            transition: all 0.3s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .tab-btn i { font-size: 1.1rem; opacity: 0.6; }
+
+        .tab-btn.active {
+            color: var(--premium-red);
+            border-bottom-color: var(--premium-red);
+            background: var(--premium-red-dim);
+            border-radius: 12px 12px 0 0;
+        }
+        .tab-btn.active i { opacity: 1; color: var(--premium-red); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: slideUp 0.4s ease-out; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .list-card {
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .list-card:hover {
+            box-shadow: 0 12px 30px rgba(218, 41, 28, 0.08);
+            transform: translateY(-3px);
+            border-color: var(--premium-red-dim);
+        }
+
+        .list-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px dashed #f1f5f9;
+            padding-bottom: 12px;
+        }
+
+        .btn-action {
+            padding: 12px 20px;
+            font-size: 0.9rem;
+            border-radius: 12px;
+            cursor: pointer;
+            border: none;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+            font-family: 'Outfit';
+        }
+
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.25);
+        }
+        .btn-whatsapp:hover { background: #128C7E; transform: scale(1.02); }
+
+        .btn-outline-red {
+            background: white;
+            border: 1.5px solid var(--premium-red);
+            color: var(--premium-red);
+        }
+        .btn-outline-red:hover { background: var(--premium-red-dim); }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            align-items: center; justify-content: center;
+            z-index: 99999; padding: 20px;
+        }
+
+        .modal-card {
+            background: #fff; padding: 30px; border-radius: 28px;
+            width: 100%; max-width: 500px; box-shadow: 0 30px 70px rgba(0, 0, 0, 0.2);
+            animation: modalIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes modalIn { from { transform: scale(0.9) translateY(30px); opacity: 0; } }
+
+        .modal-card input, .modal-card select, .modal-card textarea {
+            width: 100%; padding: 14px; border: 1.5px solid #e2e8f0;
+            border-radius: 14px; margin-bottom: 20px; font-family: inherit; font-size:1rem;
+            outline: none; transition: 0.3s;
+        }
+        .modal-card input:focus, .modal-card select:focus, .modal-card textarea:focus {
+            border-color: var(--premium-red); box-shadow: 0 0 15px var(--premium-red-dim);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="background:var(--premium-red-dim); padding:15px; border-radius:20px; color:var(--premium-red); border:1px solid rgba(218,41,28,0.2);">
+                <i class="fas fa-heart-pulse" style="font-size: 2rem;"></i>
+            </div>
+            <div>
+                <h1 style="margin: 0; font-size: 2rem; letter-spacing: -1px; color:var(--text-main); font-weight:900;">Cuidado Pastoral</h1>
+                <p style="margin:0; color:var(--text-muted); font-size:1rem; font-weight:600;">Jornada de Integração Lausanne</p>
+            </div>
+        </div>
+        <button onclick="logout()" class="btn-action" style="background:#f1f5f9; color:#475569;">
+            <i class="fas fa-power-off"></i> Sair
+        </button>
+    </div>
+
+    <!-- TABS -->
+    <div style="display: flex; gap: 10px; border-bottom: 2px solid #e2e8f0; margin-bottom: 30px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+        <button class="tab-btn active" onclick="switchTab('contato', this)" data-stage="Novos Amigos (3m)">
+            <i class="fas fa-seedling"></i> Novos Amigos
+            <span id="badge-contato" class="tab-badge" style="background:var(--premium-red);">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('evento', this)" data-stage="Evento">
+            <i class="fas fa-calendar-check"></i> Evento
+            <span id="badge-evento" class="tab-badge" style="background:#f59e0b;">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('curso', this)" data-stage="PCE">
+            <i class="fas fa-graduation-cap"></i> PCE
+            <span id="badge-curso" class="tab-badge" style="background:#8b5cf6;">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('grupo', this)" data-stage="PG ou GG">
+            <i class="fas fa-users-rays"></i> PG ou GG
+            <span id="badge-grupo" class="tab-badge" style="background:#10b981;">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('monitoramento', this)" data-stage="Monitoramento (3m)">
+            <i class="fas fa-shield-heart"></i> Monitoramento
+            <span id="badge-monitor" class="tab-badge" style="background:#ec4899;">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('finalizados', this)" data-stage="Concluído">
+            <i class="fas fa-crown"></i> Concluído
+        </button>
+    </div>
+
+    <style>
+        .tab-badge {
+            color: white; border-radius: 20px; padding: 2px 8px; font-size: 0.7rem; margin-left: 5px; display: none; font-weight: 900;
+        }
+    </style>
+
+    <div id="tab-contato" class="tab-content active">
+        <div class="card-floating" style="border-left: 6px solid var(--premium-red);">
+            <h3 style="margin-top:0; color:var(--text-main); font-weight:900;"><i class="fas fa-star" style="color:var(--premium-red);"></i> 1. Novos Amigos (Boas-vindas)</h3>
+            <p style="font-size:0.95rem; color:var(--text-muted); margin-bottom:25px;">Primeiro contato, diagnóstico de necessidades e acolhimento inicial.</p>
+            <div id="list-contato">Sincronizando jornada...</div>
+        </div>
+    </div>
+
+    <div id="tab-evento" class="tab-content">
+        <div class="card-floating" style="border-left: 6px solid #f59e0b;">
+            <h3 style="color:var(--text-main); margin-top:0; font-weight:900;"><i class="fas fa-ticket" style="color:#f59e0b;"></i> 2. Evento de Integração</h3>
+            <p style="font-size:0.95rem; color:var(--text-muted); margin-bottom:25px;">Pessoas aguardando ou participando do café/evento de recepção oficial.</p>
+            <div id="list-evento">Carregando...</div>
+        </div>
+    </div>
+
+    <div id="tab-curso" class="tab-content">
+        <div class="card-floating" style="border-left: 6px solid #8b5cf6;">
+            <h3 style="color:var(--text-main); margin-top:0; font-weight:900;"><i class="fas fa-book-open" style="color:#8b5cf6;"></i> 3. Ensino (PCE)</h3>
+            <p style="font-size:0.95rem; color:var(--text-muted); margin-bottom:25px;">Crescimento espiritual através da Classe de Crescimento.</p>
+            <div id="list-curso">Carregando...</div>
+        </div>
+    </div>
+
+    <div id="tab-grupo" class="tab-content">
+        <div class="card-floating" style="border-left: 6px solid #10b981;">
+            <h3 style="color:var(--text-main); margin-top:0; font-weight:900;"><i class="fas fa-house-chimney-user" style="color:#10b981;"></i> 4. PG / GG (Célula)</h3>
+            <p style="font-size:0.95rem; color:var(--text-muted); margin-bottom:25px;">Inserção plena na vida comunitária através dos grupos pequenos.</p>
+            <div id="list-grupo">Carregando...</div>
+        </div>
+    </div>
+
+    <div id="tab-monitoramento" class="tab-content">
+        <div class="card-floating" style="border-left: 6px solid #ec4899;">
+            <h3 style="color:var(--text-main); margin-top:0; font-weight:900;"><i class="fas fa-handshake-angle" style="color:#ec4899;"></i> 5. Monitoramento Ativo</h3>
+            <p style="font-size:0.95rem; color:var(--text-muted); margin-bottom:25px;">Acompanhamento estratégico para garantir a permanência na igreja.</p>
+            <div id="list-monitoramento">Carregando...</div>
+        </div>
+    </div>
+
+    <div id="tab-finalizados" class="tab-content">
+        <div class="card-floating" style="border-left: 6px solid #64748b;">
+            <h3 style="color:var(--text-main); margin-top:0; font-weight:900;"><i class="fas fa-check-double" style="color:#64748b;"></i> 6. Concluído</h3>
+            <p style="font-size:0.95rem; color:var(--text-muted); margin-bottom:25px;">Histórico de vidas integradas com sucesso à Família Lausanne.</p>
+            <div id="list-finalizados">Carregando...</div>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div id="followup-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+                <h3 style="margin:0; color:var(--text-main); font-weight:900;"><i class="fas fa-clipboard-check" style="color:var(--premium-red);"></i> Registrar Acolhimento</h3>
+                <button onclick="closeModal()" style="background:none; border:none; font-size:2rem; color:#aaa; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            
+            <input type="hidden" id="fu-id">
+            
+            <label style="font-size:0.8rem; color:var(--premium-red); font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:block;">Ação Realizada</label>
+            <select id="fu-action">
+                <option value="Ligação Realizada">Ligação Realizada</option>
+                <option value="Agendou Visita">Agendou Visita</option>
+                <option value="Mensagem Enviada">Whats de Acompanhamento</option>
+                <option value="Mudança de Etapa">Apenas Mudar de Etapa</option>
+                <option value="Cancelado/Arquivado">Interromper Processo</option>
+            </select>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                <div>
+                    <label style="font-size:0.8rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; display:block; margin-bottom:6px;">Cuidador (Acomp)</label>
+                    <input type="text" id="fu-helper" placeholder="Quem cuidou?">
+                </div>
+                <div>
+                    <label style="font-size:0.8rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; display:block; margin-bottom:6px;">Líder Supervisor</label>
+                    <input type="text" id="fu-leader" placeholder="Líder do setor">
+                </div>
+            </div>
+
+            <label style="font-size:0.8rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; display:block; margin-bottom:6px;">Necessidade / Motivo Oração</label>
+            <input type="text" id="fu-need" placeholder="Ex: Cura, Família, Emprego...">
+
+            <label style="font-size:0.8rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; display:block; margin-bottom:6px;">Resumo da Conversa</label>
+            <textarea id="fu-notes" rows="3" placeholder="Detalhes do acolhimento..."></textarea>
+
+            <label style="font-size:0.8rem; color:var(--premium-red); font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:block;">Próxima Estação:</label>
+            <select id="fu-status-stage" style="border-color:var(--premium-red); font-weight:800;">
+                <option value="Novos Amigos (3m)">1. Novos Amigos (3m)</option>
+                <option value="Evento">2. Evento</option>
+                <option value="PCE">3. PCE</option>
+                <option value="PG ou GG">4. PG ou GG</option>
+                <option value="Monitoramento (3m)">5. Monitoramento (3m)</option>
+                <option value="Concluído">✅ 6. Concluído</option>
+                <option value="Arquivado">❌ Arquivar Desistência</option>
+            </select>
+
+            <button onclick="saveFollowUp()" class="btn-action" style="width:100%; background:var(--premium-red); color:white; font-size:1.1rem; margin-top:10px; box-shadow: 0 10px 25px rgba(218, 41, 28, 0.3);">
+                SALVAR E CONSOLIDAR
+            </button>
+        </div>
+    </div>
+
+    <script>
+        var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            firebase.auth().onAuthStateChanged(user => {
+                const overlay = document.getElementById('login-overlay');
+                if (user) {
+                    if (overlay) overlay.style.display = 'none';
+                    initData();
+                } else {
+                    const isInsideIframe = window.self !== window.top;
+                    if (!isInsideIframe && overlay) overlay.style.display = 'flex';
+                }
+            });
+        });
+
+        function logout() { firebase.auth().signOut().then(() => location.reload()); }
+
+        function initData() {
+            const stages = [
+                { stage: 'Novos Amigos (3m)', cont: 'list-contato', badge: 'badge-contato' },
+                { stage: 'Evento', cont: 'list-evento', badge: 'badge-evento' },
+                { stage: 'PCE', cont: 'list-curso', badge: 'badge-curso' },
+                { stage: 'PG ou GG', cont: 'list-grupo', badge: 'badge-grupo' },
+                { stage: 'Monitoramento (3m)', cont: 'list-monitoramento', badge: 'badge-monitor' },
+                { stage: 'Concluído', cont: 'list-finalizados', badge: null }
+            ];
+
+            stages.forEach(s => {
+                db.collection('integracao')
+                  .where('status', '==', 'em_integracao')
+                  .where('integ_stage', '==', s.stage)
+                  .onSnapshot(snap => {
+                    renderList(snap, s.cont, s.stage);
+                    if (s.badge) {
+                        const b = document.getElementById(s.badge);
+                        b.innerText = snap.size;
+                        b.style.display = snap.size > 0 ? 'inline-block' : 'none';
+                    }
+                });
+            });
+        }
+
+        function renderList(snap, containerId, listType) {
+            const list = document.getElementById(containerId);
+            if (snap.empty) {
+                list.innerHTML = `<div style="text-align:center; padding:60px 20px; opacity:0.3;"><i class="fas fa-heart-circle-check" style="font-size:3rem; margin-bottom:15px;"></i><br><p style="font-weight:700;">Etapa concluída! Sem registros pendentes.</p></div>`;
+                return;
+            }
+
+            let html = '';
+            let docsData = [];
+            snap.forEach(doc => docsData.push({ id: doc.id, data: doc.data() }));
+            
+            docsData.sort((a,b) => {
+                const tA = a.data.last_update || a.data.dispatched_at || a.data.timestamp;
+                const tB = b.data.last_update || b.data.dispatched_at || b.data.timestamp;
+                return (tB ? tB.seconds : 0) - (tA ? tA.seconds : 0);
+            });
+
+            docsData.forEach(item => {
+                const id = item.id;
+                const d = item.data;
+                const isConvert = (d.type || '').toLowerCase() === 'conversao';
+                let ageStr = d.dispatched_at ? calculateDays(d.dispatched_at.toDate()) : 'Novo';
+                
+                let historyHtml = '';
+                if (d.history && d.history.length > 0) {
+                    const lastAction = d.history[d.history.length - 1];
+                    historyHtml = `<div style="background:var(--bg-body); padding:15px; border-radius:14px; border-left:4px solid var(--premium-red); margin-top:15px; font-size:0.9rem;">
+                        <span style="font-size:0.75rem; color:var(--premium-red); font-weight:900; text-transform:uppercase;">Última Interação: ${lastAction.action || 'Atualização'}</span>
+                        <div style="color:var(--text-main); margin-top:5px; line-height:1.4;">${lastAction.notes || ''}</div>
+                    </div>`;
+                }
+
+                let contact = (d.contact || '').replace(/\D/g, '');
+                let waUrl = contact ? `https://wa.me/${contact}` : '#';
+
+                html += `
+                <div class="list-card" style="border-left: 6px solid ${isConvert ? '#22c55e' : 'var(--premium-red)'};">
+                    <div class="list-card-header">
+                        <div style="width:100%;">
+                            <strong style="font-size:1.6rem; color:var(--text-main); display:block; letter-spacing:-0.5px;">${d.name || 'Sem Nome'}</strong>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                                <div style="font-size:0.95rem; color:var(--text-muted); font-weight:600;">
+                                    <i class="fab fa-whatsapp" style="color:#25D366; margin-right:5px;"></i> ${d.contact || 'S/ telefone'}
+                                    ${isConvert ? `<span style="background:#dcfce7; color:#15803d; padding:3px 10px; border-radius:8px; margin-left:12px; font-weight:900; font-size:0.7rem; text-transform:uppercase;">Decisão</span>` : ''}
+                                </div>
+                                <div style="background:var(--premium-red-dim); color:var(--premium-red); padding:4px 12px; border-radius:10px; font-size:0.75rem; font-weight:900; border:1px solid rgba(218,41,28,0.1);">${ageStr}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:0.9rem;">
+                        <div style="color:var(--text-muted);"><i class="fas fa-heart"></i> Cuidador: <strong style="color:var(--text-main);">${d.helper || '-'}</strong></div>
+                        <div style="color:var(--text-muted);"><i class="fas fa-shield"></i> Líder: <strong style="color:var(--text-main);">${d.leader || '-'}</strong></div>
+                    </div>
+                    
+                    ${d.need ? `<div style="font-size:0.9rem; color:var(--text-main); background:rgba(218,41,28,0.03); padding:12px; border-radius:10px; border:1px solid rgba(0,0,0,0.02);"><strong>Necessidade:</strong> ${d.need}</div>` : ''}
+                    ${historyHtml}
+
+                    ${listType !== 'Concluído' ? `
+                    <div style="display:flex; justify-content:space-between; gap:12px; margin-top:15px; border-top:1px dashed #e2e8f0; padding-top:20px;">
+                        <a href="${waUrl}" target="_blank" class="btn-action btn-whatsapp" style="flex:1; text-decoration:none;">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </a>
+                        <button onclick="openModal('${id}', \`${JSON.stringify({ helper: d.helper||'', leader: d.leader||'', need: d.need||'' }).replace(/"/g, '&quot;')}\`, '${listType}')" class="btn-action btn-outline-red" style="flex:1;">
+                            <i class="fas fa-pen-to-square"></i> Registrar
+                        </button>
+                    </div>` : `
+                    <div style="text-align:right; font-size:0.8rem; color:var(--text-muted); font-weight:800; margin-top:10px; text-transform:uppercase;">Integrado por: ${d.leader || 'Equipe Lausanne'} ✅</div>
+                    `}
+                </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+        function calculateDays(dateObj) {
+            const diffDays = Math.floor(Math.abs(new Date() - dateObj) / (1000 * 60 * 60 * 24)); 
+            return diffDays === 0 ? "Hoje" : (diffDays === 1 ? "Há 1 dia" : `Há ${diffDays} dias`);
+        }
+
+        function openModal(id, metaJson, currentStage) {
+            const meta = JSON.parse(metaJson.replace(/&quot;/g, '"'));
+            document.getElementById('fu-id').value = id;
+            document.getElementById('fu-notes').value = '';
+            document.getElementById('fu-helper').value = meta.helper || '';
+            document.getElementById('fu-leader').value = meta.leader || '';
+            document.getElementById('fu-need').value = meta.need || '';
+            document.getElementById('fu-action').value = "Ligação Realizada";
+            document.getElementById('fu-status-stage').value = currentStage;
+            document.getElementById('followup-modal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('followup-modal').style.display = 'none'; }
+
+        async function saveFollowUp() {
+            const id = document.getElementById('fu-id').value;
+            const action = document.getElementById('fu-action').value;
+            const notes = document.getElementById('fu-notes').value;
+            const newStage = document.getElementById('fu-status-stage').value;
+            const helper = document.getElementById('fu-helper').value;
+            const leader = document.getElementById('fu-leader').value;
+            const need = document.getElementById('fu-need').value;
+
+            if (!helper || !leader) return alert("⚠️ Identificação do Cuidador e Líder é obrigatória!");
+
+            const historyEntry = { action, notes, helper, leader, timestamp: firebase.firestore.Timestamp.now() };
+
+            try {
+                const docRef = db.collection('integracao').doc(id);
+                const docSnap = await docRef.get();
+                const d = docSnap.data();
+
+                await docRef.update({
+                    integ_stage: newStage,
+                    status: newStage === 'Arquivado' ? 'arquivado' : (newStage === 'Concluído' ? 'pendente_secretaria' : 'em_integracao'),
+                    helper, leader, need,
+                    last_update: firebase.firestore.FieldValue.serverTimestamp(),
+                    history: firebase.firestore.FieldValue.arrayUnion(historyEntry)
+                });
+
+                await db.collection('pending').add({
+                    type: 'log_integracao',
+                    name: d.name || 'Sem Nome',
+                    contact: d.contact || '',
+                    action: `CRM: ${action}`,
+                    extra: `[Etapa: ${newStage}] ${notes}`,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    origin: 'followup_lausanne'
+                });
+
+                closeModal();
+            } catch(e) { alert("Erro: " + e.message); }
+        }
+    </script>
+
+    <!-- LOGIN MODAL -->
+    <div id="login-overlay" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body); z-index: 99999; flex-direction: column; justify-content: center; align-items: center; padding:20px;">
+        <div style="background: #fff; padding: 40px; border-radius: 28px; width: 100%; max-width: 340px; text-align: center; box-shadow:0 20px 50px rgba(0,0,0,0.1); border:1px solid #f1f5f9;">
+            <div style="background:var(--premium-red-dim); width:70px; height:70px; border-radius:20px; display:flex; align-items:center; justify-content:center; margin:0 auto 25px; color:var(--premium-red);">
+                <i class="fas fa-heart-circle-check" style="font-size:2rem;"></i>
+            </div>
+            <h2 style="color: var(--text-main); margin-bottom: 10px; font-weight:900;">Jornada Connect</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:30px; font-weight:600;">Faça login para gerenciar o acolhimento.</p>
+
+            <input type="email" id="login-email" placeholder="Email Pastoral" style="width: 100%; box-sizing:border-box; padding: 14px; margin-bottom: 15px; border: 1.5px solid #e2e8f0; border-radius: 12px; font-family:'Outfit';">
+            <input type="password" id="login-pass" placeholder="Senha de Acesso" style="width: 100%; box-sizing:border-box; padding: 14px; margin-bottom: 25px; border: 1.5px solid #e2e8f0; border-radius: 12px; font-family:'Outfit';">
+
+            <button onclick="doLogin()" style="width: 100%; padding: 16px; background: var(--premium-red); color: white; font-weight: 900; border: none; border-radius: 14px; cursor: pointer; font-family:'Outfit'; box-shadow:0 10px 20px rgba(218, 41, 28, 0.2);">ENTRAR</button>
+            <p id="login-msg" style="color: #ef4444; margin-top: 20px; font-size: 0.9rem; font-weight:700;"></p>
+        </div>
+    </div>
+    
+    <script>
+        function doLogin() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            const msg = document.getElementById('login-msg');
+            if (!email || !pass) return;
+            msg.innerText = "Verificando...";
+            firebase.auth().signInWithEmailAndPassword(email.trim(), pass).catch(error => msg.innerText = "Acesso Negado!");
+        }
+    </script>
+</body>
+
+</html>

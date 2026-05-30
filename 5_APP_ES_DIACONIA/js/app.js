@@ -1,0 +1,7021 @@
+// CES Diaconia - Main Application Controller (SPA)
+
+const App = {
+    // --- STATE MANAGEMENT ---
+    currentUser: null,       // Logged in user object
+    activeSectorId: null,    // Selected sector for member view (e.g., 'limpeza')
+    memberActiveTab: 'escala', // Active tab in member portal ('escala', 'reposicao', 'avisos', 'perfil')
+    memberPeriod: 'week',     // 'week' or 'month' view in member portal
+    memberCurrentDate: new Date(), // Selected date for member scales view
+    adminActiveTab: 'dashboard',  // Active tab in admin portal
+    adminCurrentDate: new Date(),  // For admin scales filter
+    adminSelectedCultoId: null,
+    cultosData: [],
+    openAccordions: {},
+    showingMonthlyCalendar: false,
+    
+    // Static lists for Sectors and their Roles
+    sectorsData: {
+        'diaconia_templo': {
+            nome: "Diaconia do Templo",
+            funcoes: ["Portaria", "Check-in", "Apoio ao Templo - Lado Direito", "Apoio ao Templo - Lado Esquerdo", "Ronda do Templo - Lado Direito", "Ronda do Templo - Lado Esquerdo"],
+            cor: "#127369",
+            themeClass: "theme-diaconia"
+        },
+        'acolhimento_integracao': {
+            nome: "Acolhimento e Integração",
+            funcoes: ["Acolhimento", "Integração"],
+            cor: "#D9A752",
+            themeClass: "theme-acolhimento"
+        },
+        'limpeza': {
+            nome: "Limpeza",
+            funcoes: ["Limpeza geral", "Salão e banheiros", "Áreas externas", "Reposição de produtos"],
+            cor: "#4C5958",
+            themeClass: "theme-limpeza"
+        },
+        'manutencao': {
+            nome: "Manutenção",
+            funcoes: ["Manutenção predial", "Elétrica", "Hidráulica", "Ar-condicionado", "Reparos gerais"],
+            cor: "#8AA6A3",
+            themeClass: "theme-manutencao"
+        }
+    },
+
+    getSectorFunctions(sectorId, cultoTipo = null) {
+        if (!cultoTipo && this.adminSelectedCultoId) {
+            const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+            if (c) {
+                cultoTipo = c.tipo;
+            }
+        }
+        
+        if (sectorId === 'acolhimento_integracao') {
+            if (cultoTipo === 'especial') {
+                return ["Acolhimento", "Decoração", "Integração"];
+            } else {
+                return ["Acolhimento", "Integração"];
+            }
+        }
+        
+        const sector = this.sectorsData[sectorId];
+        return sector ? sector.funcoes : [];
+    },
+
+    adjustEscalaFormFields() {
+        const sectorId = document.getElementById('escala-setor').value;
+        const funcao = document.getElementById('escala-funcao').value;
+        
+        const dataInput = document.getElementById('escala-data');
+        const horaInInput = document.getElementById('escala-horainicio');
+        const horaFimInput = document.getElementById('escala-horafim');
+        
+        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+        const cultoTipo = c ? c.tipo : 'regular';
+        
+        let isOutsideCulto = false;
+        if (cultoTipo === 'especial') {
+            isOutsideCulto = (sectorId === 'manutencao' || funcao === 'Integração');
+        } else {
+            isOutsideCulto = (sectorId === 'limpeza' || sectorId === 'manutencao' || funcao === 'Integração');
+        }
+        
+        if (c) {
+            if (isOutsideCulto) {
+                dataInput.disabled = false;
+                horaInInput.disabled = false;
+                horaFimInput.disabled = false;
+            } else {
+                dataInput.value = c.data;
+                dataInput.disabled = true;
+                horaInInput.value = c.horarioInicio;
+                horaInInput.disabled = true;
+                horaFimInput.value = c.horarioFim;
+                horaFimInput.disabled = true;
+            }
+        } else {
+            dataInput.disabled = false;
+            horaInInput.disabled = false;
+            horaFimInput.disabled = false;
+        }
+    },
+
+    // --- INITIALIZATION ---
+    async init() {
+        console.log("Initializing CES Diaconia App...");
+        
+        // Wait for Firebase database to run first verification/seeding
+        if (typeof DbService !== 'undefined') {
+            await DbService.checkAndSeedDatabase();
+            
+            // Ensure compatibility migration for legacy products
+            try {
+                const prodSnap = await db.collection('produtos').get();
+                const promises = [];
+                prodSnap.forEach(doc => {
+                    const data = doc.data();
+                    const updates = {};
+                    let needsUpdate = false;
+                    
+                    if (!data.setorId) {
+                        updates.setorId = 'limpeza';
+                        needsUpdate = true;
+                    }
+                    if (data.quantidade === undefined) {
+                        updates.quantidade = 10;
+                        needsUpdate = true;
+                    }
+                    
+                    if (needsUpdate) {
+                        promises.push(db.collection('produtos').doc(doc.id).update(updates));
+                    }
+                });
+                if (promises.length > 0) {
+                    await Promise.all(promises);
+                    console.log(`Migrated ${promises.length} legacy products to default sector/quantity.`);
+                }
+            } catch (e) {
+                console.log("Could not run product migration:", e);
+            }
+
+            // Ensure sector color in Firestore matches the new palette
+            try {
+                await db.collection('setores').doc('diaconia_templo').update({ cor: "#127369" });
+            } catch (e) {
+                console.log("Could not auto-update sector color in Firestore:", e);
+            }
+
+            // Ensure Acolhimento e Integração sector in Firestore does not have "Recepção" anymore
+            try {
+                await db.collection('setores').doc('acolhimento_integracao').update({
+                    funcoes: ["Acolhimento", "Integração"]
+                });
+            } catch (e) {
+                console.log("Could not update acolhimento_integracao sector in Firestore:", e);
+            }
+
+            // Ensure diaconia_templo sector in Firestore has the updated functions list
+            try {
+                await db.collection('setores').doc('diaconia_templo').update({
+                    funcoes: ["Portaria", "Check-in", "Apoio ao Templo - Lado Direito", "Apoio ao Templo - Lado Esquerdo", "Ronda do Templo - Lado Direito", "Ronda do Templo - Lado Esquerdo"]
+                });
+            } catch (e) {
+                console.log("Could not update diaconia_templo sector functions in Firestore:", e);
+            }
+        } else {
+            console.error("DbService not loaded!");
+        }
+
+        // Set date strings in Admin Top Bar
+        this.updateDateIndicators();
+        
+        // Document click listener to close profile dropdown (v3.6.5)
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('profile-dropdown-menu');
+            if (menu && menu.style.display === 'block') {
+                const profileArea = document.querySelector('.selector-header-pill');
+                if (profileArea && !profileArea.contains(e.target)) {
+                    menu.style.display = 'none';
+                }
+            }
+        });
+        
+        // Setup autocomplete event listener for standard services (culto-nome)
+        const cultoNomeInput = document.getElementById('culto-nome');
+        if (cultoNomeInput) {
+            cultoNomeInput.addEventListener('input', () => {
+                const val = cultoNomeInput.value.trim();
+                const templates = {
+                    "Celebração das Primícias": { inicio: "10:00", fim: "12:30", tipo: "regular" },
+                    "Celebração das Famílias": { inicio: "10:00", fim: "12:30", tipo: "regular" },
+                    "Celebração da Ceia do Senhor": { inicio: "10:00", fim: "12:30", tipo: "regular" },
+                    "Celebração Missionária": { inicio: "10:00", fim: "12:30", tipo: "regular" },
+                    "Celebração do Fortalecimento": { inicio: "10:00", fim: "12:30", tipo: "regular" },
+                    "Celebração do Natal": { inicio: "10:00", fim: "12:30", tipo: "regular" },
+                    "Rede de Homens": { inicio: "17:00", fim: "19:30", tipo: "regular" },
+                    "Rede de Mulheres": { inicio: "17:00", fim: "19:30", tipo: "regular" },
+                    "Conexão / Batismos": { inicio: "17:00", fim: "19:30", tipo: "regular" },
+                    "Conexão Rede de Jovens e Adolescentes": { inicio: "17:00", fim: "19:30", tipo: "regular" },
+                    "Louvorzão com Grupo de Louvor": { inicio: "17:00", fim: "19:30", tipo: "regular" },
+                    "Culto Alicerce": { inicio: "19:30", fim: "21:30", tipo: "regular" },
+                    "Atualiza (Treinamento)": { inicio: "19:30", fim: "21:30", tipo: "regular" },
+                    "Atualiza": { inicio: "19:30", fim: "21:30", tipo: "regular" },
+                    "Conectadas (Mulheres)": { inicio: "19:30", fim: "21:30", tipo: "regular" },
+                    "Conectadas": { inicio: "19:30", fim: "21:30", tipo: "regular" },
+                    "Flamme (Jovens)": { inicio: "19:00", fim: "21:30", tipo: "regular" },
+                    "Flamme": { inicio: "19:00", fim: "21:30", tipo: "regular" },
+                    "Revisão (GD / Diretoria)": { inicio: "14:00", fim: "16:30", tipo: "especial" },
+                    "Revisão": { inicio: "14:00", fim: "16:30", tipo: "especial" },
+                    "Ministério de Intercessão em Ação": { inicio: "09:30", fim: "11:30", tipo: "regular" },
+                    "Culto da Virada": { inicio: "21:30", fim: "00:30", tipo: "regular" }
+                };
+                
+                if (templates[val]) {
+                    document.getElementById('culto-horainicio').value = templates[val].inicio;
+                    document.getElementById('culto-horafim').value = templates[val].fim;
+                    document.getElementById('culto-tipo').value = templates[val].tipo;
+                    this.updateCultoFormLabels();
+                }
+            });
+        }
+        
+        // Check for saved login session
+        await this.checkSession();
+    },
+
+    updateDateIndicators() {
+        const options = { weekday: 'long', day: 'numeric', month: 'long' };
+        const dateStr = new Date().toLocaleDateString('pt-BR', options);
+        const el = document.getElementById('admin-date-indicator');
+        if (el) el.innerText = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+    },
+
+    async checkSession() {
+        // Sempre mostra o login primeiro enquanto valida a sessão
+        this.navigateTo('view-login');
+        // Limpa os campos manualmente para evitar que o browser reinsira via autocomplete
+        const emailField = document.getElementById('login-email');
+        const passField  = document.getElementById('login-password');
+        if (emailField) emailField.value = '';
+        if (passField)  passField.value  = '';
+
+        const localSession    = localStorage.getItem('diaconia_user_session');
+        const sessionOnly     = sessionStorage.getItem('diaconia_user_session');
+        const savedSession    = localSession || sessionOnly;
+
+        if (!savedSession) return; // Tela de login já está ativa
+
+        try {
+            const sessionData = JSON.parse(savedSession);
+
+            // Sessões do localStorage precisam ter _expiresAt (adicionado a partir desta versão).
+            // Sessões antigas sem _expiresAt (ex: Adelino) são descartadas automaticamente.
+            if (localSession) {
+                if (!sessionData._expiresAt || Date.now() > sessionData._expiresAt) {
+                    console.log('[Sessão] Expirada ou formato antigo. Exigindo novo login.');
+                    localStorage.removeItem('diaconia_user_session');
+                    return; // Login já visível
+                }
+            }
+
+            // Valida se o usuário ainda está ativo no Firestore
+            try {
+                const userDoc = await db.collection('membros').doc(sessionData.id).get();
+                if (!userDoc.exists || userDoc.data().status !== 'ativo') {
+                    console.log('[Sessão] Usuário não encontrado ou inativo. Exigindo novo login.');
+                    localStorage.removeItem('diaconia_user_session');
+                    sessionStorage.removeItem('diaconia_user_session');
+                    return;
+                }
+            } catch (netErr) {
+                // Sem conexão — mantém sessão em cache para modo offline
+                console.warn('[Sessão] Sem conexão. Usando sessão em cache.', netErr);
+            }
+
+            // Sessão válida — restaura e navega
+            this.currentUser = sessionData;
+            console.log('[Sessão] Restaurada:', this.currentUser.nome);
+            this.onUserLoggedIn();
+
+        } catch (e) {
+            console.error('[Sessão] Erro ao restaurar:', e);
+            localStorage.removeItem('diaconia_user_session');
+            sessionStorage.removeItem('diaconia_user_session');
+            // Login já visível
+        }
+    },
+
+    // --- NAVIGATION ROUTER ---
+    navigateTo(viewId) {
+        console.log("DEBUG: navigateTo called with viewId:", viewId, "showingMonthlyCalendar:", this.showingMonthlyCalendar);
+        if (viewId !== 'view-member') {
+            this.showingMonthlyCalendar = false;
+            this.forceShowFullScales = false;
+        }
+        document.querySelectorAll('.view-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        const target = document.getElementById(viewId);
+        if (target) {
+            target.classList.add('active');
+            
+            // Toggle body class for side nav triggers visibility
+            if (viewId === 'view-member' || viewId === 'view-setor-select') {
+                document.body.classList.add('member-view-active');
+            } else {
+                document.body.classList.remove('member-view-active');
+            }
+
+            // Trigger specific view updates
+            if (viewId === 'view-setor-select') {
+                this.renderSectorSelectionScreen();
+            } else if (viewId === 'view-member') {
+                this.loadAndRenderMemberPortal();
+            } else if (viewId === 'view-admin') {
+                this.loadAndRenderAdminPortal();
+            }
+        }
+    },
+    navigateToNextService(escalaId, dataStr, cultoId, horarioInicio, setorId, funcao, observacoes) {
+        if (!setorId) return;
+        this.activeSectorId = setorId;
+        this.memberActiveTab = 'escala';
+        
+        // Build and select the event key so the organograma focuses on this specific culto
+        const eventKey = `${dataStr}_${cultoId || 'sem-culto'}_${horarioInicio || '00:00'}`;
+        this.memberSelectedEventKey = eventKey;
+        
+        // Update member date to match scale date
+        const dateParts = dataStr.split('-');
+        this.memberCurrentDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+
+        // Map sector and function to area detail nodeId to automatically open the detail page
+        let nodeId = null;
+        if (setorId === 'acolhimento_integracao') {
+            nodeId = 'acolhimento';
+        } else if (setorId === 'diaconia_templo') {
+            const funcLower = (funcao || '').toLowerCase();
+            if (funcLower.includes('portaria') || funcLower.includes('check')) {
+                nodeId = 'recepcao';
+            } else if (funcLower.includes('apoio')) {
+                nodeId = 'templo';
+            } else if (funcLower.includes('ronda')) {
+                nodeId = 'ronda';
+            }
+        }
+
+        if (nodeId) {
+            this.pendingOpenAreaDetailNodeId = nodeId;
+        } else {
+            this.pendingHighlightScaleId = escalaId;
+        }
+
+        this.navigateTo('view-member');
+    },
+
+
+
+    // --- AUTHENTICATION FLOWS ---
+    async handleLogin(event) {
+        event.preventDefault();
+        const nomeInput = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        const remember = document.getElementById('login-remember').checked;
+        const submitBtn = document.getElementById('btn-login-submit');
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>Entrando...</span> <i class="fa-solid fa-spinner fa-spin"></i>`;
+
+        const res = await DbService.authenticateUser(nomeInput, password);
+
+        if (res.success) {
+            this.currentUser = res.user;
+            // Adiciona expiração de 30 dias para sessões "Lembrar-me"
+            const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
+            const sessionData = { ...res.user, _expiresAt: expiresAt, _savedAt: Date.now() };
+            const sessionStr = JSON.stringify(sessionData);
+
+            if (remember) {
+                localStorage.setItem('diaconia_user_session', sessionStr);
+            } else {
+                // sessionStorage expira naturalmente ao fechar a aba
+                sessionStorage.setItem('diaconia_user_session', JSON.stringify(res.user));
+            }
+
+            this.showToast(`Bem-vindo, ${res.user.nome}!`, 'success');
+            this.onUserLoggedIn();
+        } else {
+            this.showAlert(res.error, 'Erro de Acesso');
+        }
+
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span>Entrar</span> <i class="fa-solid fa-right-to-bracket"></i>`;
+    },
+
+    onUserLoggedIn() {
+        // If user is Admin, they can access anything
+        if (this.currentUser.perfil === 'admin') {
+            document.getElementById('admin-shortcut-container').style.display = 'block';
+            document.getElementById('admin-profile-name-footer').innerText = this.currentUser.nome;
+            this.navigateTo('view-setor-select');
+        } else {
+            // Member goes to sector select (only active sector card will show)
+            document.getElementById('admin-shortcut-container').style.display = 'none';
+            this.navigateTo('view-setor-select');
+        }
+
+        // ── Notificações Push ────────────────────────────────────
+        this.setupNotifications();
+    },
+
+    // ── SISTEMA DE NOTIFICAÇÕES ──────────────────────────────────────
+
+    _notificationInterval: null,   // Reference to the setInterval for reminders
+    _swRegistration: null,          // Service Worker registration reference
+
+    isIOS() {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    },
+
+    showIOSNotificationInstructions() {
+        const html = `
+            <div style="text-align: center;">
+                <div style="width: 60px; height: 60px; background: rgba(217,167,82,0.15); border: 1.5px solid rgba(217,167,82,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 1.8rem; color: #D9A752;">
+                    <i class="fa-brands fa-apple"></i>
+                </div>
+                <h4 style="margin-bottom: 12px; color: #ffffff;">Notificações no iPhone (iOS)</h4>
+                <p style="color: #8AA6A3; font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5; text-align: left;">
+                    Para receber alertas de escala no iPhone (iOS), o sistema da Apple exige que o aplicativo seja adicionado à sua tela inicial:
+                </p>
+                <ol style="color: #8AA6A3; font-size: 0.85rem; margin-bottom: 20px; line-height: 1.6; text-align: left; padding-left: 20px;">
+                    <li>Toque no botão de <strong>Compartilhar</strong> (ícone com seta para cima <i class="fa-solid fa-share-from-square"></i> no Safari).</li>
+                    <li>Role para baixo e toque em <strong>"Adicionar à Tela de Início"</strong>.</li>
+                    <li>Abra o aplicativo através do novo ícone na sua tela inicial e ative as notificações.</li>
+                </ol>
+                <button class="btn-primary" onclick="App.closeAlert()" style="width: 100%; height: 44px; border-radius: 12px; font-weight: 700; font-size: 0.88rem; background: var(--teal-primary);">
+                    Entendi
+                </button>
+            </div>
+        `;
+        this.showAlert(html, 'Notificações no iPhone');
+    },
+
+    async setupNotifications() {
+        if (!('serviceWorker' in navigator)) {
+            console.log('[Notificações] Navegador não suporta Service Workers.');
+            return;
+        }
+
+        // Register Service Worker
+        try {
+            this._swRegistration = await navigator.serviceWorker.register('/sw-notifications.js?v=3.6.34', { scope: '/' });
+            console.log('[Notificações] Service Worker registrado:', this._swRegistration.scope);
+        } catch (err) {
+            console.warn('[Notificações] Falha ao registrar Service Worker:', err);
+        }
+
+        // Listen for messages from Service Worker (notification click actions)
+        navigator.serviceWorker.addEventListener('message', event => {
+            const data = event.data;
+            if (!data || data.type !== 'NOTIFICATION_ACTION') return;
+            this.handleNotificationAction(data.action, data.scaleId);
+        });
+
+        // Also handle URL params (when app is opened from a closed state via notification click)
+        this.handleNotificationUrlParams();
+
+        // Request permission and start reminder loop
+        await this.requestNotificationPermission();
+    },
+
+    async requestNotificationPermission() {
+        const hasNotificationSupport = 'Notification' in window;
+        const isIOSDevice = this.isIOS();
+
+        if (!hasNotificationSupport) {
+            if (isIOSDevice) {
+                // Show iOS instructions if they requested to trigger it
+                this.showIOSNotificationInstructions();
+            } else {
+                console.log('[Notificações] Navegador não suporta a API Notification.');
+            }
+            return;
+        }
+
+        if (Notification.permission === 'denied') {
+            console.log('[Notificações] Permissão negada pelo usuário.');
+            return;
+        }
+
+        if (Notification.permission !== 'granted') {
+            // Show a friendly in-app prompt before asking the browser
+            const userWantsNotifications = await new Promise(resolve => {
+                const html = `
+                    <div style="text-align: center;">
+                        <div style="width: 60px; height: 60px; background: rgba(18,115,105,0.15); border: 1.5px solid rgba(18,115,105,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 1.8rem; color: var(--teal-primary);">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <p style="color: #8AA6A3; font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5;">
+                            Receba alertas diários de escalas pendentes e lembretes um dia antes dos cultos em que você está confirmado.
+                        </p>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-primary" onclick="App._resolveNotifPrompt(true)" style="flex:1; height: 44px; border-radius: 12px; font-weight: 700; font-size: 0.88rem;">
+                                <i class="fa-solid fa-bell"></i> Ativar Notificações
+                            </button>
+                            <button class="btn-secondary" onclick="App._resolveNotifPrompt(false)" style="width: 80px; height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #8AA6A3; font-size: 0.85rem;">
+                                Agora não
+                            </button>
+                        </div>
+                    </div>
+                `;
+                this._notifPromptResolve = resolve;
+                this.showAlert(html, 'Notificações de Escala');
+            });
+
+            if (!userWantsNotifications) return;
+
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                this.showToast('Notificações bloqueadas. Ative nas configurações do navegador.', 'warning');
+                return;
+            }
+        }
+
+        // Permission granted — start checking
+        this.showToast('🔔 Notificações ativadas!', 'success');
+        this.startNotificationReminderLoop();
+    },
+
+    _resolveNotifPrompt(value) {
+        this.closeAlert();
+        if (this._notifPromptResolve) {
+            this._notifPromptResolve(value);
+            this._notifPromptResolve = null;
+        }
+    },
+
+    async startNotificationReminderLoop() {
+        // Check immediately on login
+        await this.runNotificationChecks();
+
+        // Clear any previous interval
+        if (this._notificationInterval) clearInterval(this._notificationInterval);
+
+        // Re-check every 1 hour to see if date changed or reminders need to trigger
+        this._notificationInterval = setInterval(async () => {
+            await this.runNotificationChecks();
+        }, 60 * 60 * 1000); // 1 hour
+    },
+
+    async runNotificationChecks() {
+        if (!this.currentUser) return;
+        
+        // 1. Check pending scales (notifies once per day)
+        await this.checkAndNotifyPendingScales();
+
+        // 2. Check confirmed scales for tomorrow (reminds once per scale 1 day before)
+        await this.checkAndNotifyUpcomingConfirmedScales();
+    },
+
+    async checkAndNotifyPendingScales() {
+        if (!this.currentUser) return false;
+        if (Notification.permission !== 'granted') return false;
+
+        try {
+            const now = new Date();
+            const hojeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+            // Check notified pending IDs in localStorage
+            const notifiedKey = `notified_pending_ids_${this.currentUser.id}`;
+            const notifiedStr = localStorage.getItem(notifiedKey);
+            let notifiedIds = [];
+            try {
+                if (notifiedStr) notifiedIds = JSON.parse(notifiedStr);
+            } catch (e) {
+                notifiedIds = [];
+            }
+
+            // Check if we already sent pending scale alert today
+            const storageKey = `last_pending_alert_${this.currentUser.id}`;
+            const lastAlertDate = localStorage.getItem(storageKey);
+
+            // Get next 60 days
+            const future = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+            const futureStr = `${future.getFullYear()}-${String(future.getMonth()+1).padStart(2,'0')}-${String(future.getDate()).padStart(2,'0')}`;
+
+            const escalas = await DbService.getEscalas(null, hojeStr, futureStr);
+            const pendentes = escalas.filter(e =>
+                e.membroId === this.currentUser.id &&
+                e.statusPresenca === 'Pendente' &&
+                e.data >= hojeStr
+            );
+
+            if (pendentes.length === 0) {
+                // Clear notified list so future additions trigger immediately
+                localStorage.setItem(notifiedKey, JSON.stringify([]));
+                return false;
+            }
+
+            // Check if there are any new pending scales we haven't notified about yet
+            const currentPendingIds = pendentes.map(p => p.id);
+            const hasNewPending = currentPendingIds.some(id => !notifiedIds.includes(id));
+
+            // If already alerted today and there are no new pending scales, skip sending again
+            if (lastAlertDate === hojeStr && !hasNewPending) {
+                console.log('[Notificações] Alerta diário de escalas pendentes já enviado hoje e sem novas pendências.');
+                return true;
+            }
+
+            // Format data for the SW notification
+            const scalePayload = pendentes.map(e => {
+                const [y, m, d] = e.data.split('-');
+                return {
+                    id: e.id,
+                    cultoNome: e.cultoNome || 'Culto',
+                    dataFmt: `${d}/${m}`,
+                    horarioInicio: e.horarioInicio || '',
+                    funcao: e.funcao || ''
+                };
+            });
+
+            // Send to service worker to show notification
+            if (this._swRegistration && this._swRegistration.active) {
+                this._swRegistration.active.postMessage({
+                    type: 'SHOW_PENDING_NOTIFICATION',
+                    scales: scalePayload
+                });
+            } else {
+                // Fallback: show browser notification directly
+                this.showDirectNotification(scalePayload);
+            }
+
+            // Mark today as alerted and save notified IDs list
+            localStorage.setItem(storageKey, hojeStr);
+            localStorage.setItem(notifiedKey, JSON.stringify(currentPendingIds));
+            return true;
+        } catch (err) {
+            console.warn('[Notificações] Erro ao verificar escalas pendentes:', err);
+            return false;
+        }
+    },
+
+    async checkAndNotifyUpcomingConfirmedScales() {
+        if (!this.currentUser) return;
+        if (Notification.permission !== 'granted') return;
+
+        try {
+            const now = new Date();
+            // Tomorrow is today + 1 day
+            const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,'0')}-${String(tomorrow.getDate()).padStart(2,'0')}`;
+
+            // Fetch scales for tomorrow
+            const escalas = await DbService.getEscalas(null, tomorrowStr, tomorrowStr);
+            const confirmadasAmanha = escalas.filter(e =>
+                e.membroId === this.currentUser.id &&
+                e.statusPresenca === 'Confirmada'
+            );
+
+            for (const escala of confirmadasAmanha) {
+                const storageKey = `confirmed_reminder_${this.currentUser.id}_${escala.id}`;
+                const alreadyReminded = localStorage.getItem(storageKey);
+
+                if (!alreadyReminded) {
+                    const [y, m, d] = escala.data.split('-');
+                    const scalePayload = {
+                        id: escala.id,
+                        cultoNome: escala.cultoNome || 'Culto',
+                        dataFmt: `${d}/${m}`,
+                        horarioInicio: escala.horarioInicio || '',
+                        funcao: escala.funcao || ''
+                    };
+
+                    if (this._swRegistration && this._swRegistration.active) {
+                        this._swRegistration.active.postMessage({
+                            type: 'SHOW_CONFIRMED_REMINDER_NOTIFICATION',
+                            scale: scalePayload
+                        });
+                    } else {
+                        this.showDirectConfirmedNotification(scalePayload);
+                    }
+
+                    // Mark this specific scale ID as reminded so we never notify it again
+                    localStorage.setItem(storageKey, 'true');
+                    console.log(`[Notificações] Lembrete de 1 dia antes enviado para escala: ${escala.id}`);
+                }
+            }
+        } catch (err) {
+            console.warn('[Notificações] Erro ao verificar lembretes de escalas confirmadas:', err);
+        }
+    },
+
+    showDirectNotification(scales) {
+        if (!scales || scales.length === 0) return;
+        const first = scales[0];
+        const count = scales.length;
+        const title = count === 1 ? '⚠️ Escala aguardando confirmação' : `⚠️ ${count} escalas aguardando confirmação`;
+        const body = count === 1
+            ? `${first.cultoNome} em ${first.dataFmt} às ${first.horarioInicio}\nConfirme ou recuse sua presença no app.`
+            : scales.slice(0,2).map(s => `• ${s.cultoNome} – ${s.dataFmt}`).join('\n');
+
+        const notif = new Notification(title, {
+            body,
+            icon: '/assets/logo.png',
+            tag: 'ces-diaconia-pendente',
+            renotify: true,
+            requireInteraction: true
+        });
+
+        notif.onclick = () => {
+            window.focus();
+            notif.close();
+            this.activeSectorId = 'diaconia_templo';
+            this.navigateTo('view-member');
+        };
+    },
+
+    showDirectConfirmedNotification(scale) {
+        if (!scale) return;
+        const title = `📢 Lembrete de Escala Amanhã!`;
+        const body = `Você tem escala confirmada no "${scale.cultoNome}" amanhã às ${scale.horarioInicio}.\nFunção: ${scale.funcao}.`;
+
+        const notif = new Notification(title, {
+            body,
+            icon: '/assets/logo.png',
+            tag: `ces-diaconia-confirmada-${scale.id}`,
+            renotify: true,
+            requireInteraction: true
+        });
+
+        notif.onclick = () => {
+            window.focus();
+            notif.close();
+            this.activeSectorId = 'diaconia_templo';
+            this.navigateTo('view-member');
+        };
+    },
+
+    async handleNotificationAction(action, scaleId) {
+        if (!scaleId) {
+            this.activeSectorId = 'diaconia_templo';
+            this.navigateTo('view-member');
+            return;
+        }
+        if (action === 'confirm') {
+            await this.handleConfirmPresenca(scaleId, 'Confirmada');
+            this.showToast('✅ Presença confirmada!', 'success');
+        } else if (action === 'refuse') {
+            await this.handleConfirmPresenca(scaleId, 'Recusada');
+            this.showToast('Recusa registrada.', 'info');
+        }
+        // Run checks again to update pending list and today's alert status
+        this.runNotificationChecks();
+    },
+
+    handleNotificationUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        const action = params.get('action');
+        const scaleId = params.get('scaleId');
+        if (action && scaleId) {
+            window.history.replaceState({}, document.title, '/');
+            setTimeout(() => this.handleNotificationAction(action, scaleId), 1500);
+        }
+    },
+
+    stopNotificationLoop() {
+        if (this._notificationInterval) {
+            clearInterval(this._notificationInterval);
+            this._notificationInterval = null;
+        }
+        if (this._swRegistration && this._swRegistration.active) {
+            this._swRegistration.active.postMessage({ type: 'CLEAR_NOTIFICATIONS' });
+        }
+    },
+
+
+
+    handleLogout() {
+        this.currentUser = null;
+        this.activeSectorId = null;
+        localStorage.removeItem('diaconia_user_session');
+        sessionStorage.removeItem('diaconia_user_session');
+        
+        // Stop notification reminders
+        this.stopNotificationLoop();
+
+        // Reset forms e limpa campos explicitamente
+        document.getElementById('login-form').reset();
+        const emailField = document.getElementById('login-email');
+        const passField  = document.getElementById('login-password');
+        if (emailField) emailField.value = '';
+        if (passField)  passField.value  = '';
+
+        this.navigateTo('view-login');
+        this.showToast('Você saiu do sistema.', 'info');
+    },
+
+    // --- VIEW 2: SECTOR SELECTION SCREEN ---
+    async renderSectorSelectionScreen() {
+        this.markMuralAsRead();
+        const container = document.getElementById('sector-selection-list');
+        if (!container) return;
+        container.innerHTML = '<div style="text-align: center; padding: 30px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--teal-primary);"></i><p style="margin-top: 10px; font-size: 0.9rem;">Carregando...</p></div>';
+        
+        // Populate user initials and welcome name
+        if (this.currentUser) {
+            const names = this.currentUser.nome.split(' ');
+            const initials = names[0].charAt(0) + (names.length > 1 ? names[names.length - 1].charAt(0) : '');
+            
+            const selAvatar = document.getElementById('selector-profile-avatar');
+            if (selAvatar) {
+                const directUrl = this.getDirectPhotoUrl(this.currentUser.fotoUrl);
+                if (directUrl) {
+                    selAvatar.innerHTML = `<img src="${directUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                    selAvatar.innerText = '';
+                } else {
+                    selAvatar.innerText = initials.toUpperCase();
+                }
+            }
+            
+            const welcomeAvatar = document.getElementById('welcome-avatar-initials');
+            if (welcomeAvatar) welcomeAvatar.innerText = initials.toUpperCase();
+            
+            const selName = document.getElementById('selector-profile-name');
+            if (selName) {
+                selName.innerText = names.length > 1 ? `${names[0]} ${names[names.length - 1]}` : names[0];
+            }
+            
+            const welcomeUserName = document.getElementById('welcome-user-name');
+            if (welcomeUserName) welcomeUserName.innerText = names[0];
+            
+            // Set role display
+            const selRole = document.getElementById('selector-profile-role');
+            if (selRole) {
+                const roleText = this.currentUser.perfil === 'admin' ? 'Administrador' : 'Membro';
+                selRole.innerHTML = `${roleText} <i class="fa-solid fa-chevron-down" style="font-size: 0.65rem; margin-left: 2px;"></i>`;
+            }
+        }
+
+        try {
+            // Fetch necessary data in parallel (fetching only selected month's scales)
+            const dateRange = this.getStartAndEndDates(this.memberCurrentDate, 'month');
+            const [escalas, avisos] = await Promise.all([
+                DbService.getEscalas(null, dateRange.start, dateRange.end),
+                DbService.getAvisos()
+            ]);
+
+            // Update badge counts
+            this.updateAvisosBadgesCount(avisos);
+            
+            // Load and Render the Mural Informativo on Sector Select screen
+            this.loadAndRenderSectorSelectMural(escalas, avisos);
+            
+            // Calculate Next Service
+            const now = new Date();
+            const ano = now.getFullYear();
+            const mes = String(now.getMonth() + 1).padStart(2, '0');
+            const dia = String(now.getDate()).padStart(2, '0');
+            const hojeStr = `${ano}-${mes}-${dia}`;
+            
+            const amanha = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            const amanhaStr = `${amanha.getFullYear()}-${String(amanha.getMonth() + 1).padStart(2, '0')}-${String(amanha.getDate()).padStart(2, '0')}`;
+
+            let userScales = [];
+            if (this.currentUser) {
+                if (this.currentUser.perfil === 'admin') {
+                    userScales = escalas;
+                } else {
+                    userScales = escalas.filter(e => e.membroId === this.currentUser.id);
+                }
+            }
+
+            // Next service today or in the future
+            const futureScales = userScales.filter(e => e.data >= hojeStr);
+            // Sort chronologically
+            futureScales.sort((a, b) => a.data.localeCompare(b.data) || a.horarioInicio.localeCompare(b.horarioInicio));
+
+            // Dynamic Welcome Greeting
+            if (this.currentUser) {
+                const names = this.currentUser.nome.split(' ');
+                const genderTitle = this.isFemale(this.currentUser.nome) ? 'Diaconisa' : 'Diácono';
+                const welcomeText = `Olá, ${genderTitle} ${names[0]}!`;
+                const welcomeEl = document.getElementById('selector-welcome-greeting');
+                if (welcomeEl) welcomeEl.innerText = welcomeText;
+            }
+
+
+
+            // Render Premium Next Service Card
+            const nextHighlightEl = document.getElementById('selector-next-service-highlight');
+            if (nextHighlightEl) {
+                if (futureScales.length > 0) {
+                    const next = futureScales[0];
+                    const parts = next.data.split('-');
+                    const y = parseInt(parts[0], 10);
+                    const mIdx = parseInt(parts[1], 10) - 1;
+                    const dNum = parseInt(parts[2], 10);
+                    const dateObj = new Date(y, mIdx, dNum);
+                    const monthAbbrev = dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+
+                    const sectorName = this.sectorsData[next.setorId] ? this.sectorsData[next.setorId].nome : next.setorId;
+                    const status = next.statusPresenca || "Pendente";
+                    
+                    let badgeClass = "pendente";
+                    let badgeIcon = "fa-solid fa-triangle-exclamation";
+                    let statusDesc = "Aguardando confirmação de escala";
+
+                    if (status === "Confirmada") {
+                        badgeClass = "confirmada";
+                        badgeIcon = "fa-solid fa-circle-check";
+                        statusDesc = "Sua presença está confirmada!";
+                    } else if (status === "Recusada") {
+                        badgeClass = "recusada";
+                        badgeIcon = "fa-solid fa-circle-xmark";
+                        statusDesc = "Você marcou que não comparecerá";
+                    }
+
+                    nextHighlightEl.innerHTML = `
+                        <div class="next-service-premium-card" style="cursor: pointer;" onclick="App.navigateToNextService('${next.id}', '${next.data}', '${next.cultoId || 'sem-culto'}', '${next.horarioInicio || '00:00'}', '${next.setorId}', '${(next.funcao || '').replace(/'/g, '\\\'')}');">
+                            <div class="next-service-calendar-badge">
+                                <i class="fa-regular fa-calendar"></i>
+                                <span class="next-service-calendar-day">${String(dNum).padStart(2, '0')}</span>
+                                <span class="next-service-calendar-month">${monthAbbrev}</span>
+                            </div>
+                            <div class="next-service-details">
+                                <h4 class="next-service-title-time">${next.cultoNome || 'Culto'} - ${next.horarioInicio}</h4>
+                                <p class="next-service-location">
+                                    <i class="fa-solid fa-location-dot"></i>
+                                    <span>Templo Central • ${next.funcao} (${sectorName})</span>
+                                </p>
+                                <div class="next-service-status-row">
+                                    <span class="next-service-badge-status ${badgeClass}">
+                                        <i class="${badgeIcon}"></i> ${status.toUpperCase()}
+                                    </span>
+                                    <span class="next-service-status-desc">${statusDesc}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    nextHighlightEl.innerHTML = `
+                        <div class="next-service-premium-card" style="justify-content: center; align-items: center; padding: 20px; cursor: pointer;" onclick="App.activeSectorId = 'diaconia_templo'; App.navigateTo('view-member');">
+                            <div style="text-align: center; color: #64748b; width: 100%;">
+                                <i class="fa-regular fa-calendar-times" style="font-size: 1.8rem; margin-bottom: 8px; display: block; color: #8AA6A3;"></i>
+                                <h4 style="color: #ffffff; margin-bottom: 4px; font-size: 0.95rem;">Nenhuma Escala Agendada</h4>
+                                <p style="font-size: 0.78rem; margin: 0 0 12px 0; color: #8AA6A3;">Você não possui serviços pendentes ou confirmados.</p>
+                                <button class="btn-primary" style="margin: 0 auto; padding: 8px 20px; font-size: 0.78rem; width: auto; height: auto; background: var(--teal-primary); border-color: var(--teal-primary); border-radius: 50px; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-hand-holding-hand"></i> Ver Minha Escala
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // Update pending scales bell badge count on Scales and Activities button
+            let pendingCount = 0;
+            if (this.currentUser) {
+                pendingCount = futureScales.filter(e => e.membroId === this.currentUser.id && e.statusPresenca === 'Pendente').length;
+            }
+            const scalesBadge = document.getElementById('btn-scales-badge');
+            if (scalesBadge) {
+                if (pendingCount > 0) {
+                    scalesBadge.style.display = 'block';
+                } else {
+                    scalesBadge.style.display = 'none';
+                }
+            }
+
+            // Build events list for the premium date selector banner
+            const eventsMap = {};
+            escalas.forEach(escala => {
+                const dateStr = escala.data;
+                const timeStr = escala.horarioInicio || "00:00";
+                const cultoId = escala.cultoId || "sem-culto";
+                const eventKey = `${dateStr}_${cultoId}_${timeStr}`;
+
+                if (!eventsMap[eventKey]) {
+                    eventsMap[eventKey] = {
+                        key: eventKey,
+                        data: dateStr,
+                        cultoId: escala.cultoId || null,
+                        cultoNome: escala.cultoNome || (escala.cultoId ? "Culto" : "Escala Diária"),
+                        horarioInicio: escala.horarioInicio || "00:00",
+                        horarioFim: escala.horarioFim || "00:00",
+                        escalas: []
+                    };
+                }
+                eventsMap[eventKey].escalas.push(escala);
+            });
+
+            const eventsList = Object.values(eventsMap);
+            eventsList.sort((a, b) => {
+                if (a.data !== b.data) return a.data.localeCompare(b.data);
+                return a.horarioInicio.localeCompare(b.horarioInicio);
+            });
+
+            // Cache the sorted events list
+            this.memberDiaconiaEventsList = eventsList;
+
+            let activeEventKey = this.memberSelectedEventKey;
+            if (eventsList.length > 0) {
+                const upcomingEvents = eventsList.filter(e => e.data >= hojeStr);
+                if (upcomingEvents.length > 0) {
+                    if (!activeEventKey || !upcomingEvents.some(e => e.key === activeEventKey)) {
+                        activeEventKey = upcomingEvents[0].key;
+                        this.memberSelectedEventKey = activeEventKey;
+                    }
+                } else {
+                    if (!activeEventKey || !eventsMap[activeEventKey]) {
+                        activeEventKey = eventsList[eventsList.length - 1].key;
+                        this.memberSelectedEventKey = activeEventKey;
+                    }
+                }
+            } else {
+                this.memberSelectedEventKey = null;
+            }
+
+            const evtActive = activeEventKey ? eventsMap[activeEventKey] : null;
+
+            // Formatar datas para o banner
+            let bannerLabel = "";
+            if (evtActive) {
+                const dateParts = evtActive.data.split('-');
+                const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                const diaSemanaShort = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+                const dataFmt = `${dateParts[2]}/${dateParts[1]}`;
+                bannerLabel = `${diaSemanaShort}, ${dateParts[2]}/${dateParts[1]} • ${evtActive.cultoNome}`;
+            } else {
+                const monthName = this.memberCurrentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                bannerLabel = `${monthName.toUpperCase()}`;
+            }
+
+            // Custom Selector Banner with Prev/Next Navigation and Calendar Button
+            let selectorBannerHtml = `
+                <div class="org-selector-banner-premium">
+                    <button class="org-nav-arrow" onclick="App.navigateOrgEvent(-1)">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="org-banner-center" onclick="App.openMonthlyCalendar()">
+                        <i class="fa-regular fa-calendar-days" style="color: #127369;"></i>
+                        <div class="org-banner-date-info">
+                            <span class="org-banner-date-title">${bannerLabel}</span>
+                            <span class="org-banner-calendar-btn-label">Calendário do Mês</span>
+                        </div>
+                    </div>
+                    <button class="org-nav-arrow" onclick="App.navigateOrgEvent(1)">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            `;
+
+            const dateBannerContainer = document.getElementById('selector-date-banner-container');
+            if (dateBannerContainer) {
+                dateBannerContainer.innerHTML = selectorBannerHtml;
+            }
+
+            // Check if calendar view is scheduled to be shown after reload
+            if (this.showCalendarAfterLoading) {
+                this.showCalendarAfterLoading = false;
+                this.showMonthlyCalendar();
+                return;
+            }
+
+            // Render Sector Cards
+            container.innerHTML = '';
+            const userSetor = this.currentUser ? this.currentUser.setor : null;
+            const userSetores = this.currentUser ? (this.currentUser.setores || (this.currentUser.setor ? [this.currentUser.setor] : [])) : [];
+            const isAdmin = this.currentUser ? this.currentUser.perfil === 'admin' : false;
+
+            for (const [key, sector] of Object.entries(this.sectorsData)) {
+                // Filter out other sectors if member
+                if (!isAdmin) {
+                    const belongs = userSetores.includes(key) || userSetor === key;
+                    if (!belongs) {
+                        continue;
+                    }
+                }
+
+                let desc = '';
+                if (key === 'diaconia_templo') desc = 'Portaria, Check-in, Apoio ao Templo e Ronda';
+                else if (key === 'acolhimento_integracao') desc = 'Acolhimento e Integração';
+                else if (key === 'limpeza') desc = 'Limpeza do templo e áreas comuns';
+                else if (key === 'manutencao') desc = 'Apoio técnico, reparos e manutenção';
+
+                let iconClass = 'fa-church';
+                if (key === 'acolhimento_integracao') iconClass = 'fa-hands-holding-child';
+                else if (key === 'limpeza') iconClass = 'fa-broom';
+                else if (key === 'manutencao') iconClass = 'fa-screwdriver-wrench';
+
+                // Check badges state for this sector
+                const sectorEscalas = escalas.filter(e => e.setorId === key);
+                let userSectorEscalas = [];
+                if (this.currentUser) {
+                    if (this.currentUser.perfil === 'admin') {
+                        userSectorEscalas = sectorEscalas;
+                    } else {
+                        userSectorEscalas = sectorEscalas.filter(e => e.membroId === this.currentUser.id);
+                    }
+                }
+
+                const hasPendencia = userSectorEscalas.some(e => e.statusPresenca === 'Pendente');
+                const hasServicoHoje = userSectorEscalas.some(e => e.data === hojeStr && (e.statusPresenca === 'Confirmada' || e.statusServico === 'Em andamento'));
+
+                let badgeText = 'Escala disponível';
+                let badgeClass = 'bg-disponivel';
+
+                if (hasPendencia) {
+                    badgeText = 'Pendência';
+                    badgeClass = 'bg-pendencia';
+                } else if (hasServicoHoje) {
+                    badgeText = 'Serviço hoje';
+                    badgeClass = 'bg-hoje';
+                }
+
+                const card = document.createElement('div');
+                const sectorShortName = key.split('_')[0];
+                card.className = `sector-card ${sectorShortName}-card`;
+                card.onclick = () => {
+                    this.activeSectorId = key;
+                    this.closeSectorSelectorModal();
+                    this.navigateTo('view-member');
+                };
+
+                card.innerHTML = `
+                    <div class="sector-card-left">
+                        <div class="sector-icon"><i class="fa-solid ${iconClass}"></i></div>
+                        <div class="sector-info">
+                            <h3>${sector.nome}</h3>
+                            <p>${desc}</p>
+                        </div>
+                    </div>
+                    <div class="sector-card-right-group">
+                        <span class="sector-badge ${badgeClass}">${badgeText}</span>
+                        <div class="sector-card-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            }
+        } catch (e) {
+            console.error("Error rendering sector selection screen:", e);
+            container.innerHTML = '<div style="color: red; text-align: center; padding: 20px;">Erro ao carregar dados.</div>';
+        }
+    },
+
+    toggleProfileDropdown(event) {
+        if (event) event.stopPropagation();
+        const menu = document.getElementById('profile-dropdown-menu');
+        if (menu) {
+            const isVisible = menu.style.display === 'block';
+            menu.style.display = isVisible ? 'none' : 'block';
+        }
+    },
+
+    handleMobileNavClick(tabName) {
+        if (!this.currentUser) return;
+        
+        const targetSector = this.activeSectorId || this.currentUser.setor || (Array.isArray(this.currentUser.setores) && this.currentUser.setores[0]) || 'diaconia_templo';
+        this.activeSectorId = targetSector;
+        
+        this.navigateTo('view-member');
+        this.switchMemberTab(tabName);
+    },
+
+    openMobileAnnouncements() {
+        this.handleMobileNavClick('avisos');
+    },
+
+    toggleMobileMenu() {
+        if (confirm("Deseja sair da sua conta?")) {
+            this.handleLogout();
+        }
+    },
+
+    toggleMuralMobile(show) {
+        const sidebar = document.getElementById('selector-mural-sidebar');
+        const backdrop = document.getElementById('mural-backdrop');
+        if (sidebar) {
+            if (show) {
+                sidebar.classList.add('open');
+            } else {
+                sidebar.classList.remove('open');
+            }
+        }
+        if (backdrop) {
+            if (show) {
+                backdrop.classList.add('active');
+            } else {
+                backdrop.classList.remove('active');
+            }
+        }
+
+        // When opening the mural, mark notices as read
+        if (show) {
+            this.markMuralAsRead();
+        }
+    },
+
+    async markMuralAsRead() {
+        try {
+            const avisos = await DbService.getAvisos();
+            const currentIds = avisos.map(a => a.id);
+            localStorage.setItem('diaconia_read_avisos', JSON.stringify(currentIds));
+            
+            // Refresh badges immediately
+            this.updateAvisosBadgesCount(avisos);
+        } catch (e) {
+            console.error("Error marking mural notices as read:", e);
+        }
+    },
+
+    async loadAndRenderMemberMural() {
+        const container = document.getElementById('member-mural-container');
+        const list = document.getElementById('member-mural-list');
+        if (!container || !list) return;
+
+        try {
+            const avisos = await DbService.getAvisos();
+            if (avisos.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+            list.innerHTML = '';
+
+            const readAvisosStr = localStorage.getItem('diaconia_read_mural_avisos');
+            const readIds = readAvisosStr ? JSON.parse(readAvisosStr) : [];
+            let hasNew = false;
+
+            avisos.forEach(a => {
+                const isNew = !readIds.includes(a.id);
+                if (isNew) hasNew = true;
+
+                const dt = a.data ? a.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+                const item = document.createElement('div');
+                item.style.cssText = `
+                    background: rgba(255, 255, 255, 0.02);
+                    border: 1px solid rgba(138, 166, 163, 0.1);
+                    border-radius: 10px;
+                    padding: 10px 12px;
+                    font-size: 0.85rem;
+                    color: #fff;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                    position: relative;
+                `;
+                
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: #8AA6A3;">
+                        <span style="font-weight: 700; color: var(--theme-color);"><i class="fa-solid fa-user-tie"></i> ${a.autorNome || 'Supervisor Geral'}</span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            ${isNew ? '<span style="background: #ef4444; color: #fff; font-size: 0.6rem; padding: 1px 4px; border-radius: 4px; font-weight: 800; text-transform: uppercase;">Novo</span>' : ''}
+                            <span>${dt}</span>
+                        </div>
+                    </div>
+                    <div style="font-weight: 700; color: #fff; margin-top: 2px;">${a.titulo}</div>
+                    <div style="color: #BFBFBF; font-size: 0.8rem; line-height: 1.3;">${a.conteudo}</div>
+                `;
+                list.appendChild(item);
+            });
+
+            // Mark all as read after display so they won't show "Novo" next time
+            const allIds = avisos.map(a => a.id);
+            localStorage.setItem('diaconia_read_mural_avisos', JSON.stringify(allIds));
+
+            const badge = document.getElementById('member-mural-badge');
+            if (badge) {
+                badge.style.display = hasNew ? 'inline-block' : 'none';
+            }
+        } catch (err) {
+            console.error("Error loading member mural:", err);
+            container.style.display = 'none';
+        }
+    },
+
+    async loadAndRenderMemberAvisos() {
+        const container = document.getElementById('member-notices-list');
+        if (!container) return;
+        container.innerHTML = '<div style="text-align: center; padding: 30px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--theme-color);"></i><p style="margin-top:10px;">Buscando avisos...</p></div>';
+        
+        try {
+            let noticesHtml = '';
+            
+            // 1. Fetch personal notifications
+            if (this.currentUser) {
+                const notificacoes = await DbService.getNotificacoesUsuario(this.currentUser.id);
+                
+                // Mark notifications as read since user is viewing them
+                if (notificacoes.some(n => !n.lida)) {
+                    await DbService.marcarNotificacoesComoLidas(this.currentUser.id);
+                }
+
+                if (notificacoes.length > 0) {
+                    notificacoes.forEach(n => {
+                        const dt = n.data ? n.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+                        const unreadStyle = !n.lida 
+                            ? 'border-left: 4px solid var(--theme-color); background: #FFFBEB;' 
+                            : 'border-left: 4px solid var(--slate-gray); background: #FAF5FF;';
+                        
+                        noticesHtml += `
+                            <div class="notice-item" style="${unreadStyle} margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 15px; border-radius: 8px;">
+                                <div class="notice-meta" style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.75rem; color:var(--slate-gray);">
+                                    <span style="font-weight:700; color:var(--theme-color);"><i class="fa-solid fa-bell"></i> Notificação Pessoal</span>
+                                    <span>${dt}</span>
+                                </div>
+                                <p style="font-size: 0.9rem; color: var(--navy-dark); font-weight: 500; margin: 0;">${n.mensagem}</p>
+                            </div>
+                        `;
+                    });
+                }
+            }
+
+            // 2. Fetch global notices
+            const avisos = await DbService.getAvisos();
+            if (avisos.length === 0 && noticesHtml === '') {
+                container.innerHTML = '<p style="text-align: center; color: var(--slate-gray); font-size: 0.9rem; padding: 20px;">Nenhum aviso ou notificação.</p>';
+                return;
+            }
+            
+            container.innerHTML = noticesHtml;
+            
+            avisos.forEach(a => {
+                const item = document.createElement('div');
+                item.className = 'notice-item';
+                
+                const dt = a.data ? a.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+                
+                item.innerHTML = `
+                    <div class="notice-meta">
+                        <span>${a.autorNome || 'Supervisor Geral'}</span>
+                        <span>${dt}</span>
+                    </div>
+                    <h4 style="font-weight: 700; margin-bottom: 5px; color:var(--navy-dark);">${a.titulo}</h4>
+                    <p style="font-size: 0.9rem; color: var(--navy-dark);">${a.conteudo}</p>
+                `;
+                container.appendChild(item);
+            });
+            
+            // Mark all as read since the user is viewing them
+            const currentIds = avisos.map(a => a.id);
+            localStorage.setItem('diaconia_read_avisos', JSON.stringify(currentIds));
+            
+            // Refresh badges
+            this.updateAvisosBadgesCount(avisos);
+        } catch (e) {
+            console.error("Error loading member notices:", e);
+            container.innerHTML = '<p style="color: red; text-align: center; padding: 20px;">Erro ao carregar avisos.</p>';
+        }
+    },
+
+    async updateAvisosBadgesCount(cachedAvisos = null) {
+        try {
+            const avisos = cachedAvisos || await DbService.getAvisos();
+            const readAvisosStr = localStorage.getItem('diaconia_read_avisos');
+            const readIds = readAvisosStr ? JSON.parse(readAvisosStr) : [];
+            let unreadCount = avisos.filter(a => !readIds.includes(a.id)).length;
+            
+            // Add unread personal notifications count
+            if (this.currentUser) {
+                const notificationsSnap = await db.collection('notificacoes')
+                    .where('paraUsuarioId', '==', this.currentUser.id)
+                    .where('lida', '==', false)
+                    .get();
+                unreadCount += notificationsSnap.size;
+            }
+            
+            const summaryBadge = document.getElementById('summary-unread-badge');
+            const mobileBadge = document.getElementById('mobile-bell-badge');
+            const selectorNavBadge = document.getElementById('selector-nav-avisos-badge');
+            const navAvisosBadge = document.getElementById('nav-avisos-badge');
+            const muralMobileBadge = document.getElementById('mural-mobile-badge');
+            
+            const unreadTextEl = document.getElementById('summary-unread-text');
+            const unreadSubEl = document.getElementById('summary-unread-sub');
+            
+            if (unreadCount > 0) {
+                if (summaryBadge) {
+                    summaryBadge.style.display = 'flex';
+                    summaryBadge.innerText = unreadCount;
+                }
+                if (mobileBadge) {
+                    mobileBadge.style.display = 'flex';
+                    mobileBadge.innerText = unreadCount;
+                }
+                if (selectorNavBadge) {
+                    selectorNavBadge.style.display = 'flex';
+                    selectorNavBadge.innerText = unreadCount;
+                }
+                if (navAvisosBadge) {
+                    navAvisosBadge.style.display = 'flex';
+                    navAvisosBadge.innerText = unreadCount;
+                }
+                if (muralMobileBadge) {
+                    muralMobileBadge.style.display = 'flex';
+                    muralMobileBadge.innerText = unreadCount;
+                }
+                
+                if (unreadTextEl) {
+                    unreadTextEl.innerText = `Você tem ${unreadCount} aviso${unreadCount > 1 ? 's' : ''}`;
+                }
+                if (unreadSubEl) {
+                    unreadSubEl.innerText = `não lido${unreadCount > 1 ? 's' : ''}`;
+                }
+            } else {
+                if (summaryBadge) summaryBadge.style.display = 'none';
+                if (mobileBadge) mobileBadge.style.display = 'none';
+                if (selectorNavBadge) selectorNavBadge.style.display = 'none';
+                if (navAvisosBadge) navAvisosBadge.style.display = 'none';
+                if (muralMobileBadge) muralMobileBadge.style.display = 'none';
+                
+                if (unreadTextEl) {
+                    unreadTextEl.innerText = 'Sem avisos';
+                }
+                if (unreadSubEl) {
+                    unreadSubEl.innerText = 'Tudo atualizado';
+                }
+            }
+        } catch (e) {
+            console.error("Error updating notices count:", e);
+        }
+    },
+
+    // ==========================================================================
+    // VIEW 3: MEMBER PORTAL
+    // ==========================================================================
+    loadAndRenderMemberPortal() {
+        console.log("DEBUG: loadAndRenderMemberPortal called, activeSectorId:", this.activeSectorId);
+        const sector = this.sectorsData[this.activeSectorId];
+        if (!sector) return;
+
+        // Apply dynamic sector theme
+        const appContainer = document.getElementById('member-app-container');
+        appContainer.className = "member-app-shell " + sector.themeClass;
+        
+        document.getElementById('member-sector-title').innerText = sector.nome;
+        
+        // Hide/Show Replenish Tab in bottom nav: only for buyers (eRepositor === true) or admins
+        const reposicaoTab = document.getElementById('bottom-nav-reposicao');
+        if (reposicaoTab) {
+            const isComprador = this.currentUser && (this.currentUser.eRepositor === true || this.currentUser.perfil === 'admin');
+            reposicaoTab.style.display = isComprador ? 'flex' : 'none';
+        }
+
+        // Init initials for profile
+        const names = this.currentUser.nome.split(' ');
+        const initials = names[0].charAt(0) + (names.length > 1 ? names[names.length - 1].charAt(0) : '');
+        document.getElementById('member-profile-initials').innerText = initials.toUpperCase();
+        document.getElementById('member-profile-name').innerText = this.currentUser.nome;
+        document.getElementById('member-profile-email').innerText = this.currentUser.email;
+        document.getElementById('member-profile-role').innerText = `Membro da equipe - ${sector.nome}`;
+
+        // Switch to the default Tab
+        this.switchMemberTab('escala');
+    },
+
+    switchMemberTab(tabName, el = null) {
+        console.log("DEBUG: switchMemberTab called with tabName:", tabName, "el:", el ? "not null" : "null", "showingMonthlyCalendar before:", this.showingMonthlyCalendar);
+        if (el) {
+            this.showingMonthlyCalendar = false;
+        } else if (tabName !== 'escala') {
+            this.showingMonthlyCalendar = false;
+        }
+        this.memberActiveTab = tabName;
+        
+        // Set nav item active
+        if (el) {
+            document.querySelectorAll('.bottom-nav-item').forEach(item => item.classList.remove('active'));
+            el.classList.add('active');
+        } else {
+            // Find manually
+            document.querySelectorAll('.bottom-nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (tabName === 'escala' && item.innerHTML.includes('Minha Escala')) item.classList.add('active');
+                if (tabName === 'reposicao' && (item.innerHTML.includes('Reposição') || item.innerHTML.includes('Serviços'))) item.classList.add('active');
+                if (tabName === 'avisos' && item.innerHTML.includes('Avisos')) item.classList.add('active');
+                if (tabName === 'perfil' && item.innerHTML.includes('Perfil')) item.classList.add('active');
+            });
+        }
+
+        // Hide all subviews, show selected
+        document.querySelectorAll('.member-subview').forEach(view => view.style.display = 'none');
+        document.getElementById(`member-sub-${tabName}`).style.display = 'block';
+
+        // Load tab data
+        if (tabName === 'escala') {
+            this.loadAndRenderMemberScales();
+        } else if (tabName === 'reposicao') {
+            this.loadAndRenderMemberReplenish();
+        } else if (tabName === 'avisos') {
+            this.loadAndRenderMemberAvisos();
+        } else if (tabName === 'perfil') {
+            this.loadMemberProfileStats();
+        }
+    },
+
+    switchMemberPeriod(period, el) {
+        this.memberPeriod = period;
+        document.querySelectorAll('.segment-item').forEach(item => item.classList.remove('active'));
+        el.classList.add('active');
+        this.loadAndRenderMemberScales();
+    },
+
+    adjustMemberWeek(offset) {
+        const days = this.memberPeriod === 'week' ? 7 : 30;
+        this.memberCurrentDate.setDate(this.memberCurrentDate.getDate() + (offset * days));
+        this.loadAndRenderMemberScales();
+    },
+
+    async loadAndRenderMemberScales() {
+        console.log("DEBUG: loadAndRenderMemberScales called, showingMonthlyCalendar:", this.showingMonthlyCalendar);
+        if (this.showingMonthlyCalendar) {
+            this.showMonthlyCalendar();
+            return;
+        }
+        const container = document.getElementById('member-scales-list');
+        container.innerHTML = `<div style="text-align: center; padding: 30px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--theme-color);"></i><p style="margin-top: 10px; font-size: 0.9rem;">Buscando escalas...</p></div>`;
+
+        // Hide segment control and slider since we are showing full month list (v3.6.5 - evite barra rotativa)
+        const segmentBar = document.querySelector('.segment-bar');
+        const dateSlider = document.querySelector('.date-slider');
+        if (segmentBar) segmentBar.style.display = 'none';
+        if (dateSlider) dateSlider.style.display = 'none';
+
+        // Always query the full month for all sectors to avoid sliders (v3.6.5)
+        let periodToUse = 'month';
+        const dateRange = this.getStartAndEndDates(this.memberCurrentDate, periodToUse);
+        
+        const dateRangeEl = document.getElementById('member-date-range');
+        if (dateRangeEl) {
+            dateRangeEl.innerText = dateRange.label;
+        }
+
+        try {
+            const sectorToFetch = this.activeSectorId === 'diaconia_templo' ? null : this.activeSectorId;
+            const escalas = await DbService.getEscalas(sectorToFetch, dateRange.start, dateRange.end);
+
+            // Smart check for non-scheduled members (v3.6.22)
+            const userSectorEscalas = escalas.filter(e => e.membroId === this.currentUser.id && e.statusPresenca !== 'Recusada');
+            if (userSectorEscalas.length === 0 && !this.forceShowFullScales) {
+                this.renderNoScalesActionCards(container);
+                return;
+            }
+            
+            let nextService = null;
+            const hojeStr = this.formatLocalISOString(new Date()).split('T')[0];
+
+            if (this.activeSectorId === 'diaconia_templo') {
+                await this.renderDiaconiaOrganograma(escalas, container);
+                
+                // Detect next service for highlight
+                escalas.forEach(escala => {
+                    const isOwnScale = escala.membroId === this.currentUser.id;
+                    if (isOwnScale && escala.data >= hojeStr && escala.statusServico !== 'Finalizado') {
+                        if (!nextService || escala.data < nextService.data) {
+                            nextService = escala;
+                        }
+                    }
+                });
+
+                // Check if calendar view is scheduled to be shown after reload
+                if (this.showCalendarAfterLoading) {
+                    this.showCalendarAfterLoading = false;
+                    this.showMonthlyCalendar();
+                }
+            } else {
+                container.innerHTML = '';
+                if (escalas.length === 0) {
+                    const emptyCard = document.createElement('div');
+                    emptyCard.style.cssText = 'text-align: center; padding: 30px var(--white); background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; margin-bottom: 20px;';
+                    emptyCard.innerHTML = `<i class="fa-solid fa-calendar-xmark" style="font-size: 2rem; color: #8AA6A3; opacity: 0.5;"></i><p style="margin-top: 10px; color: #8AA6A3; font-size: 0.9rem;">Você não está escalado para este período.</p>`;
+                    container.appendChild(emptyCard);
+                } else {
+                    escalas.forEach(escala => {
+                        const card = document.createElement('div');
+                        card.className = 'card-scale';
+                        
+                        // Formatar data pt-BR
+                        const dateParts = escala.data.split('-');
+                        const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                        const diaFormatado = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                        
+                        // Determinar badge do status da presença
+                        let statusBadge = '';
+                        if (escala.statusPresenca === 'Pendente') {
+                            statusBadge = `<span class="card-scale-status status-pendente">Pendente</span>`;
+                        } else if (escala.statusPresenca === 'Confirmada') {
+                            statusBadge = `<span class="card-scale-status status-confirmado">Confirmado</span>`;
+                        } else if (escala.statusPresenca === 'Recusada') {
+                            statusBadge = `<span class="card-scale-status status-recusado">Recusado</span>`;
+                        }
+
+                        // Determinar badge do status do serviço
+                        let servicoBadge = '';
+                        if (escala.statusServico === 'Em andamento') {
+                            servicoBadge = `<span class="card-scale-status status-andamento" style="margin-left: 5px;">Em andamento</span>`;
+                        } else if (escala.statusServico === 'Finalizado') {
+                            servicoBadge = `<span class="card-scale-status status-finalizado" style="margin-left: 5px;">Finalizado</span>`;
+                        }
+
+                        // Identificar se a escala é do próprio usuário logado
+                        const isOwnScale = escala.membroId === this.currentUser.id;
+                        
+                        if (isOwnScale) {
+                            card.classList.add('user-own-scale-card');
+                        }
+
+                        // Renderizar botões de aceitar ou recusar presença
+                        let actionButtonsHtml = '';
+                        if (isOwnScale && escala.statusPresenca === 'Pendente') {
+                            actionButtonsHtml = `
+                                <div class="card-scale-actions">
+                                    <button class="btn-scale-action btn-recusar-presenca" onclick="App.handleConfirmPresenca('${escala.id}', 'Recusada')">
+                                        <i class="fa-solid fa-xmark"></i> Recusar
+                                    </button>
+                                    <button class="btn-scale-action btn-confirm-presenca" onclick="App.handleConfirmPresenca('${escala.id}', 'Confirmada')">
+                                        <i class="fa-solid fa-check"></i> Confirmar Presença
+                                    </button>
+                                </div>
+                            `;
+                        }
+
+                        // Renderizar botões de serviço (Iniciar/Parar) para todos os setores
+                        let serviceControlHtml = '';
+                        if (isOwnScale && escala.statusPresenca === 'Confirmada') {
+                            if (escala.statusServico === 'Agendado') {
+                                serviceControlHtml = `
+                                    <button class="btn-service-control btn-start-work" onclick="App.handleStartService('${escala.id}', '${escala.funcao}', '${escala.data}', '${escala.horarioInicio}', '${escala.horarioFim}')">
+                                        <i class="fa-solid fa-play"></i> Iniciar Trabalho
+                                    </button>
+                                `;
+                            } else if (escala.statusServico === 'Em andamento') {
+                                serviceControlHtml = `
+                                    <button class="btn-service-control btn-finish-work" onclick="App.handleFinishServiceModal('${escala.id}')">
+                                        <i class="fa-solid fa-circle-stop"></i> Finalizar Trabalho
+                                    </button>
+                                `;
+                            }
+                        }
+
+                        card.innerHTML = `
+                            <div class="card-scale-header">
+                                <span class="card-scale-date-badge">${diaFormatado.toUpperCase()}</span>
+                                <div>
+                                    ${statusBadge}
+                                    ${servicoBadge}
+                                </div>
+                            </div>
+                            <div class="card-scale-time">
+                                <i class="fa-regular fa-clock"></i>
+                                <span>${escala.horarioInicio} - ${escala.horarioFim}</span>
+                            </div>
+                            <div class="card-scale-role">${escala.funcao}</div>
+                            <div class="card-scale-member">
+                                <i class="fa-solid fa-user-circle"></i>
+                                <span>${escala.membroNome} ${isOwnScale ? '<span class="own-scale-user-tag"><i class="fa-solid fa-circle-check"></i> Você</span>' : ''}</span>
+                            </div>
+                            ${escala.observacoes ? `<div class="card-scale-notes"><b>Instruções:</b> ${escala.observacoes}</div>` : ''}
+                            ${actionButtonsHtml}
+                            ${serviceControlHtml}
+                        `;
+                        
+                        container.appendChild(card);
+
+                        // Detect next service for highlight
+                        if (isOwnScale && escala.data >= hojeStr && escala.statusServico !== 'Finalizado') {
+                            if (!nextService || escala.data < nextService.data) {
+                                nextService = escala;
+                            }
+                        }
+                    });
+                }
+
+                // --- SEÇÃO DE VOLUNTARIADO (v3.2) ---
+                try {
+                    // Buscar todos os cultos no período
+                    const cultos = await DbService.getCultos(dateRange.start, dateRange.end);
+                    
+                    // Buscar todas as escalas do período
+                    const allEscalas = await DbService.getEscalas(null, dateRange.start, dateRange.end);
+                    
+                    // Identificar cultos onde o usuário já está escalado
+                    const userScaledCultoIds = new Set(
+                        allEscalas.filter(e => e.membroId === this.currentUser.id && e.statusPresenca !== 'Recusada').map(e => e.cultoId)
+                    );
+                    
+                    // Filtrar cultos onde o usuário NÃO está escalado
+                    const availableCultos = cultos.filter(c => !userScaledCultoIds.has(c.id));
+                    
+                    // Buscar candidaturas de voluntários atuais
+                    const standbys = await DbService.getStandbys();
+                    const myStandbys = standbys.filter(s => s.membroId === this.currentUser.id);
+                    
+                    const volHeader = document.createElement('div');
+                    volHeader.className = 'panel-title';
+                    volHeader.style.cssText = 'margin-top: 30px; margin-bottom: 15px; color: #fff; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;';
+                    volHeader.innerHTML = `<i class="fa-solid fa-hand-holding-hand" style="margin-right: 6px; color: var(--theme-color);"></i> Voluntariado e Backup`;
+                    container.appendChild(volHeader);
+                    
+                    if (availableCultos.length === 0) {
+                        const emptyVol = document.createElement('div');
+                        emptyVol.style.cssText = 'text-align: center; padding: 20px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.08); border-radius: 12px; color: #8AA6A3; font-size: 0.82rem;';
+                        emptyVol.innerText = 'Nenhum outro culto disponível para voluntariado neste período.';
+                        container.appendChild(emptyVol);
+                    } else {
+                        availableCultos.forEach(c => {
+                            const card = document.createElement('div');
+                            card.className = 'card-scale';
+                            card.style.cssText = 'border: 1px dashed rgba(18, 115, 105, 0.35); background: rgba(18, 115, 105, 0.03);';
+                            
+                            const dateParts = c.data.split('-');
+                            const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                            const diaFormatado = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                            
+                            const standbyDoc = myStandbys.find(s => s.cultoId === c.id);
+                            const hasVolunteered = !!standbyDoc;
+                            
+                            const statusBadge = hasVolunteered
+                                ? `<span class="card-scale-status status-confirmado" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Candidatura Enviada</span>`
+                                : `<span class="card-scale-status status-pendente" style="background: rgba(138, 166, 163, 0.1); color: #8AA6A3; border: 1px solid rgba(138, 166, 163, 0.2);">Disponível</span>`;
+                                
+                            card.innerHTML = `
+                                <div class="card-scale-header">
+                                    <span class="card-scale-date-badge">${diaFormatado.toUpperCase()}</span>
+                                    ${statusBadge}
+                                </div>
+                                <div class="card-scale-time">
+                                    <i class="fa-regular fa-clock"></i>
+                                    <span>${c.horarioInicio} - ${c.horarioFim}</span>
+                                </div>
+                                <div class="card-scale-role">${c.nome}</div>
+                                <div style="margin-top: 12px; text-align: left;">
+                                    ${hasVolunteered ? `
+                                        <button class="btn-secondary" onclick="App.handleCancelStandbyFromList('${standbyDoc.id}')" style="width: 100%; height: 36px; border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); color: #ef4444; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                            <i class="fa-solid fa-trash-can"></i> Cancelar Disponibilidade
+                                        </button>
+                                    ` : `
+                                        <button class="btn-primary" onclick="App.handleRegisterStandbyFromList('${c.id}', '${c.nome.replace(/'/g, "\\'")}', '${c.data}', '${c.horarioInicio} - ${c.horarioFim}')" style="width: 100%; height: 36px; border-radius: 10px; background: var(--theme-color); color: #fff; font-size: 0.78rem; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                            <i class="fa-solid fa-hand-holding-hand"></i> Quero ser Voluntário
+                                        </button>
+                                    `}
+                                </div>
+                            `;
+                            container.appendChild(card);
+                        });
+                    }
+                } catch (eVol) {
+                    console.error("Error loading volunteering options:", eVol);
+                }
+            }
+
+            // Next service highlight rendering
+            const highlightContainer = document.getElementById('next-service-highlight');
+            const nextInfoContainer = document.getElementById('next-service-info');
+            
+            if (nextService) {
+                highlightContainer.style.display = 'block';
+                const dateParts = nextService.data.split('-');
+                const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                const dayName = d.toLocaleDateString('pt-BR', { weekday: 'long' });
+                const dayFmt = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+                let actionBtn = '';
+                if (nextService.statusPresenca === 'Confirmada') {
+                    if (nextService.statusServico === 'Agendado') {
+                        actionBtn = `<span style="display:inline-block; font-size:0.8rem; padding: 4px 8px; background: rgba(56, 190, 201, 0.15); color: var(--theme-color); font-weight:700; border-radius:5px; margin-top:5px;">SERVIÇO CONFIRMADO</span>`;
+                    } else if (nextService.statusServico === 'Em andamento') {
+                        actionBtn = `<span style="display:inline-block; font-size:0.8rem; padding: 4px 8px; background: #DBEAFE; color: #2563EB; font-weight:700; border-radius:5px; margin-top:5px;">SERVIÇO EM EXECUÇÃO</span>`;
+                    }
+                } else {
+                    actionBtn = `<span style="display:inline-block; font-size:0.8rem; padding: 4px 8px; background: #FEF3C7; color: #D97706; font-weight:700; border-radius:5px; margin-top:5px;">CONFIRMAÇÃO PENDENTE</span>`;
+                }
+
+                nextInfoContainer.innerHTML = `
+                    <div style="font-weight: 700; font-size: 1rem; margin-bottom: 4px; text-transform: capitalize;">
+                        ${dayName} - ${dayFmt}
+                    </div>
+                    <div style="font-size: 1.1rem; font-weight: 800; color: var(--theme-color);">
+                        ${nextService.horarioInicio} às ${nextService.horarioFim}
+                    </div>
+                    <div style="font-size: 0.9rem; font-weight: 600; margin-top: 4px;">
+                        Função: ${nextService.funcao}
+                    </div>
+                    ${actionBtn}
+                `;
+            } else {
+                highlightContainer.style.display = 'none';
+            }
+
+        } catch (e) {
+            console.error("Error loading scales:", e);
+            container.innerHTML = `<div style="color: #ef4444; padding: 20px; text-align: center;">Erro de conexão ao carregar as escalas.</div>`;
+        }
+    },
+
+    // Render Organograma do Dia for Diaconia do Templo
+    // Render Organograma do Dia for Diaconia do Templo
+    async renderDiaconiaOrganograma(escalas, container) {
+        // Ensure cultosData is loaded (v3.2)
+        if (!this.cultosData || this.cultosData.length === 0) {
+            try {
+                this.cultosData = await DbService.getCultos();
+            } catch (err) {
+                this.cultosData = [];
+            }
+        }
+
+        // Fetch all members to map their photo URLs
+        let membrosMap = {};
+        this.membrosByNameMap = {};
+        try {
+            const membros = await DbService.getMembros();
+            membros.forEach(m => {
+                membrosMap[m.id] = m;
+                if (m.nome) {
+                    this.membrosByNameMap[m.nome.toLowerCase().trim()] = m;
+                }
+            });
+        } catch (e) {
+            console.error("Error loading members for organogram lookup:", e);
+        }
+
+        const eventsMap = {};
+        escalas.forEach(escala => {
+            const dateStr = escala.data;
+            const timeStr = escala.horarioInicio || "00:00";
+            const cultoId = escala.cultoId || "sem-culto";
+            const eventKey = `${dateStr}_${cultoId}_${timeStr}`;
+
+            if (!eventsMap[eventKey]) {
+                eventsMap[eventKey] = {
+                    key: eventKey,
+                    data: dateStr,
+                    cultoId: escala.cultoId || null,
+                    cultoNome: escala.cultoNome || (escala.cultoId ? "Culto" : "Escala Diária"),
+                    horarioInicio: escala.horarioInicio || "00:00",
+                    horarioFim: escala.horarioFim || "00:00",
+                    escalas: []
+                };
+            }
+            eventsMap[eventKey].escalas.push(escala);
+        });
+
+        const eventsList = Object.values(eventsMap);
+        eventsList.sort((a, b) => {
+            if (a.data !== b.data) return a.data.localeCompare(b.data);
+            return a.horarioInicio.localeCompare(b.horarioInicio);
+        });
+
+        // Cache the sorted events list
+        this.memberDiaconiaEventsList = eventsList;
+
+        const hojeStr = this.formatLocalISOString(new Date()).split('T')[0];
+        let activeEventKey = this.memberSelectedEventKey;
+        if (eventsList.length > 0) {
+            // Find events that are today or in the future
+            const upcomingEvents = eventsList.filter(e => e.data >= hojeStr);
+            if (upcomingEvents.length > 0) {
+                // If the selected key is not in upcoming events, auto-advance to the first upcoming one
+                if (!activeEventKey || !upcomingEvents.some(e => e.key === activeEventKey)) {
+                    activeEventKey = upcomingEvents[0].key;
+                    this.memberSelectedEventKey = activeEventKey;
+                }
+            } else {
+                // If all events are in the past, fall back to the last event of the month
+                if (!activeEventKey || !eventsMap[activeEventKey]) {
+                    activeEventKey = eventsList[eventsList.length - 1].key;
+                    this.memberSelectedEventKey = activeEventKey;
+                }
+            }
+        } else {
+            this.memberSelectedEventKey = null;
+        }
+
+        let evtActive = activeEventKey ? eventsMap[activeEventKey] : null;
+        if (!evtActive && activeEventKey) {
+            const [dateStr, cultoId, timeStr] = activeEventKey.split('_');
+            const cDetails = this.cultosData.find(c => c.id === cultoId);
+            if (cDetails) {
+                evtActive = {
+                    key: activeEventKey,
+                    data: dateStr,
+                    cultoId: cultoId,
+                    cultoNome: cDetails.nome,
+                    horarioInicio: cDetails.horarioInicio,
+                    horarioFim: cDetails.horarioFim,
+                    escalas: []
+                };
+            }
+        }
+
+        // Formatar datas para o banner
+        let bannerLabel = "";
+        let bannerSub = "";
+        if (evtActive) {
+            const dateParts = evtActive.data.split('-');
+            const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+            const diaSemanaFull = d.toLocaleDateString('pt-BR', { weekday: 'long' });
+            const diaSemanaShort = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+            const dataFmt = `${dateParts[2]}/${dateParts[1]}`;
+            bannerLabel = `${diaSemanaShort}, ${dataFmt} • ${evtActive.cultoNome}`;
+            bannerSub = `${evtActive.horarioInicio} – ${evtActive.horarioFim}`;
+        } else {
+            const monthName = this.memberCurrentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            bannerLabel = `${monthName.toUpperCase()}`;
+            bannerSub = '';
+        }
+
+        // Check if current user is scheduled for this event (for banner indicator)
+        const userInEvent = evtActive ? evtActive.escalas.some(e => e.membroId === this.currentUser.id && e.statusPresenca !== 'Recusada') : false;
+        const userEventScale = userInEvent ? evtActive.escalas.find(e => e.membroId === this.currentUser.id && e.statusPresenca !== 'Recusada') : null;
+
+        // Event index for navigation
+        const currentEventIdx = eventsList.findIndex(e => e.key === (evtActive ? evtActive.key : null));
+        const hasPrev = currentEventIdx > 0;
+        const hasNext = currentEventIdx < eventsList.length - 1;
+
+        // Interactive Date Header with left/right navigation
+        let userBadgeHtml = '';
+        if (userInEvent && userEventScale) {
+            const isPending = userEventScale.statusPresenca === 'Pendente';
+            const badgeColor = isPending ? '#D9A752' : '#10b981';
+            const badgeIcon = isPending ? 'fa-solid fa-clock' : 'fa-solid fa-circle-check';
+            const badgeText = isPending ? 'CONFIRMAR' : 'CONFIRMADO';
+            userBadgeHtml = `
+                <span class="org-user-event-badge" style="background: rgba(${isPending ? '217,167,82' : '16,185,129'},0.15); border: 1px solid rgba(${isPending ? '217,167,82' : '16,185,129'},0.35); color: ${badgeColor};">
+                    <i class="${badgeIcon}"></i> ${badgeText}
+                </span>
+            `;
+        }
+
+        let staticHeaderHtml = `
+            <div class="org-date-nav-banner">
+                <button class="org-date-nav-arrow" onclick="App.navigateOrgEvent(-1)" style="opacity: ${hasPrev ? '1' : '0.2'}; pointer-events: ${hasPrev ? 'auto' : 'none'}" title="Evento anterior">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div class="org-date-nav-center">
+                    <div class="org-date-nav-label">${bannerLabel}</div>
+                    ${bannerSub ? `<div class="org-date-nav-sub">${bannerSub}</div>` : ''}
+                    ${userBadgeHtml}
+                </div>
+                <button class="org-date-nav-arrow" onclick="App.navigateOrgEvent(1)" style="opacity: ${hasNext ? '1' : '0.2'}; pointer-events: ${hasNext ? 'auto' : 'none'}" title="Próximo evento">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        `;
+
+        if (!evtActive) {
+            container.innerHTML = `
+                ${staticHeaderHtml}
+                <div style="text-align: center; padding: 40px var(--white); background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; margin-top: 15px;">
+                    <i class="fa-solid fa-calendar-xmark" style="font-size: 2.5rem; color: #8AA6A3; opacity: 0.4; margin-bottom: 12px;"></i>
+                    <p style="color: #8AA6A3; font-size: 0.95rem;">Nenhuma escala agendada para este período.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const portariaScales = [];
+        const checkinScales = [];
+        const apoioDireitoScales = [];
+        const apoioEsquerdoScales = [];
+        const rondaDireitoScales = [];
+        const rondaEsquerdoScales = [];
+        const acolhimentoScales = [];
+
+        evtActive.escalas.forEach(escala => {
+            if (escala.statusPresenca === 'Recusada') {
+                return;
+            }
+
+            const membroId = escala.membroId;
+            const nomeKey = (escala.membroNome || '').toLowerCase().trim();
+            const membro = (membroId ? membrosMap[membroId] : null) || this.membrosByNameMap[nomeKey];
+            
+            if (!membro || membro.status === 'inativo') {
+                return;
+            }
+
+            const sectorId = escala.setorId;
+            const func = (escala.funcao || '').toLowerCase();
+            const obs = (escala.observacoes || '').toLowerCase();
+
+            if (sectorId === 'acolhimento_integracao') {
+                if (func.includes('acolhimento')) {
+                    acolhimentoScales.push(escala);
+                }
+            } else {
+                if (func.includes('portaria')) {
+                    portariaScales.push(escala);
+                } else if (func.includes('check-in') || func.includes('checkin')) {
+                    checkinScales.push(escala);
+                } else if (func.includes('apoio')) {
+                    if (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('left') || func.includes('esq')) {
+                        apoioEsquerdoScales.push(escala);
+                    } else if (func.includes('direito') || obs.includes('direito') || func.includes('right') || func.includes('dir')) {
+                        apoioDireitoScales.push(escala);
+                    }
+                } else if (func.includes('ronda')) {
+                    if (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('left') || func.includes('esq')) {
+                        rondaEsquerdoScales.push(escala);
+                    } else if (func.includes('direito') || obs.includes('direito') || func.includes('right') || func.includes('dir')) {
+                        rondaDireitoScales.push(escala);
+                    }
+                }
+            }
+        });
+
+        // Abbreviate card names to look aesthetic (v3.6.22 - Unified cards)
+        const recepcaoCardHtml = this.renderAreaCard([...portariaScales, ...checkinScales], 'Recepção', 'fa-solid fa-id-card', 'recepcao', 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=400&q=80', '#3B82F6', membrosMap);
+        const temploCardHtml = this.renderAreaCard([...apoioDireitoScales, ...apoioEsquerdoScales], 'Templo', 'fa-solid fa-place-of-worship', 'templo', 'https://images.unsplash.com/photo-1545232979-8bf34eb9757b?auto=format&fit=crop&w=400&q=80', '#14B8A6', membrosMap);
+        const rondaCardHtml = this.renderAreaCard([...rondaDireitoScales, ...rondaEsquerdoScales], 'Ronda', 'fa-solid fa-shield-halved', 'ronda', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=400&q=80', '#F59E0B', membrosMap);
+        const acolhimentoCardHtml = this.renderAreaCard(acolhimentoScales, 'Acolhimento', 'fa-solid fa-hands-holding-child', 'acolhimento', 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=800&q=80', '#EC4899', membrosMap);
+
+        // Next service calculation for bottom summary card
+        let nextServiceLabel = 'Nenhum serviço';
+        let nextServiceDetail = 'Sem escalas agendadas';
+        const hojeStr2 = this.formatLocalISOString(new Date()).split('T')[0];
+        const userScales = escalas.filter(e => e.membroId === this.currentUser.id && e.data >= hojeStr2);
+        userScales.sort((a, b) => a.data.localeCompare(b.data) || a.horarioInicio.localeCompare(b.horarioInicio));
+        if (userScales.length > 0) {
+            const next = userScales[0];
+            const [y, m, d] = next.data.split('-');
+            nextServiceLabel = `${d}/${m} - ${next.horarioInicio}`;
+            nextServiceDetail = `${next.funcao}`;
+        }
+
+        // Unread notices count
+        let unreadCount = 0;
+        try {
+            const readAvisosStr = localStorage.getItem('diaconia_read_avisos');
+            const readIds = readAvisosStr ? JSON.parse(readAvisosStr) : [];
+            const avisos = this.cachedAvisosList || [];
+            unreadCount = avisos.filter(a => !readIds.includes(a.id)).length;
+        } catch (err) {}        const unreadLabelHtml = unreadCount > 0 ? `<span class="summary-bell-badge" style="display: flex; position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700;">${unreadCount}</span>` : '';
+        const unreadText = unreadCount === 1 ? 'Você tem 1 aviso' : `Você tem ${unreadCount} avisos`;
+
+        let nextServiceOnClick = "";
+        let nextServiceCursor = "";
+        if (userScales.length > 0) {
+            const next = userScales[0];
+            const nextFuncaoEsc = (next.funcao || '').replace(/'/g, "\\'");
+            nextServiceOnClick = `onclick="App.navigateToNextService('${next.id}', '${next.data}', '${next.cultoId || 'sem-culto'}', '${next.horarioInicio || '00:00'}', '${next.setorId}', '${nextFuncaoEsc}')"`;
+            nextServiceCursor = "cursor: pointer;";
+        }
+
+        const summaryBlockHtml = `
+            <div class="selection-summary-container" style="margin-top: 15px; display: flex; align-items: center; gap: 10px; width: 100%;">
+                <div class="summary-col" style="flex: 1; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 16px; ${nextServiceCursor}" ${nextServiceOnClick}>
+                    <div class="summary-icon-wrap" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(18, 115, 105, 0.1); border: 1px solid rgba(18, 115, 105, 0.2); color: #127369; display: flex; align-items: center; justify-content: center; font-size: 0.95rem;">
+                        <i class="fa-regular fa-calendar-check"></i>
+                    </div>
+                    <div class="summary-text-wrap" style="text-align: left;">
+                        <span class="summary-label" style="display: block; font-size: 0.68rem; color: #8AA6A3; font-weight: 600; text-transform: uppercase;">Próximo serviço</span>
+                        <span class="summary-val-main" style="display: block; font-size: 0.8rem; font-weight: 700; color: #fff; margin-top: 1px;">${nextServiceLabel}</span>
+                        <span class="summary-val-sub" style="display: block; font-size: 0.68rem; color: #BFBFBF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${nextServiceDetail}</span>
+                    </div>
+                </div>
+                
+                <div class="summary-col" style="flex: 1; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 16px; cursor: pointer;" onclick="App.switchMemberTab('avisos')">
+                    <div class="summary-icon-wrap" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(18, 115, 105, 0.1); border: 1px solid rgba(18, 115, 105, 0.2); color: #127369; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; position: relative;">
+                        <i class="fa-regular fa-bell"></i>
+                        ${unreadLabelHtml}
+                    </div>
+                    <div class="summary-text-wrap" style="text-align: left;">
+                        <span class="summary-label" style="display: block; font-size: 0.68rem; color: #8AA6A3; font-weight: 600; text-transform: uppercase;">Avisos</span>
+                        <span class="summary-val-main" style="display: block; font-size: 0.8rem; font-weight: 700; color: #fff; margin-top: 1px;">Avisos não lidos</span>
+                        <span class="summary-val-sub" style="display: block; font-size: 0.68rem; color: #BFBFBF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${unreadText}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = `
+            ${staticHeaderHtml}
+            
+            <div class="org-daily-container" id="org-daily-swipe-area">
+                <div class="org-areas-grid">
+                    ${recepcaoCardHtml}
+                    ${temploCardHtml}
+                    ${rondaCardHtml}
+                    ${acolhimentoCardHtml}
+                </div>
+                
+                ${summaryBlockHtml}
+            </div>
+        `;
+
+        // Auto-open area detail if navigation was triggered from "Próximo Serviço"
+        if (this.pendingOpenAreaDetailNodeId) {
+            const nodeIdToOpen = this.pendingOpenAreaDetailNodeId;
+            this.pendingOpenAreaDetailNodeId = null;
+            setTimeout(() => {
+                this.openAreaDetail(nodeIdToOpen);
+            }, 200);
+        }
+    },
+
+    renderAreaCard(scales, title, iconClass, nodeId, bgImageUrl, accentColor, membrosMap = {}, isFullWidth = false) {
+        // Deduplicate scales by member
+        const uniqueScales = [];
+        const seenMembers = new Set();
+        scales.forEach(escala => {
+            const key = escala.membroId || escala.membroNome;
+            if (key && !seenMembers.has(key)) {
+                seenMembers.add(key);
+                uniqueScales.push(escala);
+            }
+        });
+
+        const count = uniqueScales.length;
+        const countText = count === 1 ? '1 escalado' : `${count} voluntários`;
+
+        const cardSpanClass = isFullWidth ? 'grid-column: span 2;' : '';
+        
+        // Static descriptions matching sectors
+        const descMap = {
+            'portaria': 'Controle de entrada e segurança',
+            'checkin': 'Cadastro e identificação',
+            'apoio-direito': 'Organização do lado direito',
+            'apoio-esquerdo': 'Organização do lado esquerdo',
+            'acolhimento': 'Receber e acolher com amor e excelência',
+            
+            // Unified mappings (v3.6.22)
+            'recepcao': 'Controle de portaria e check-in de membros',
+            'templo': 'Suporte, organização e acomodação no templo',
+            'ronda': 'Ronda periódica e segurança externa/interna'
+        };
+        const desc = descMap[nodeId] || '';
+
+        // Check if the current user is scheduled in this specific area card
+        const isUserAssigned = uniqueScales.some(escala => escala.membroId === this.currentUser.id);
+        const cardClass = `org-area-card card-${nodeId} ${isUserAssigned ? 'user-assigned-card' : ''}`;
+
+        if (isFullWidth) {
+            return `
+                <div class="org-area-card-wrapper" style="${cardSpanClass}">
+                    <div class="${cardClass} card-horizontal" onclick="App.openAreaDetail('${nodeId}')">
+                        <div class="org-area-pattern-overlay"></div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 1; width: 100%;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="org-area-icon-wrap-premium"><i class="${iconClass}"></i></span>
+                                <h4 class="org-area-title" style="margin: 0;">${title}</h4>
+                            </div>
+                            ${isUserAssigned ? `<span class="user-assigned-badge"><i class="fa-solid fa-star"></i> SUA ESCALA</span>` : ''}
+                        </div>
+                        <p class="org-area-desc" style="z-index: 1; margin-top: 4px; text-align: left;">${desc}</p>
+                        <div class="org-area-action">
+                            <button class="org-area-chevron-circle-premium">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="org-area-card-wrapper" style="${cardSpanClass}">
+                    <div class="${cardClass}" onclick="App.openAreaDetail('${nodeId}')">
+                        <div class="org-area-pattern-overlay"></div>
+                        <div style="display: flex; justify-content: space-between; width: 100%; align-items: flex-start; z-index: 1;">
+                            <span class="org-area-icon-wrap-premium"><i class="${iconClass}"></i></span>
+                            ${isUserAssigned ? `<span class="user-assigned-badge"><i class="fa-solid fa-star"></i> VOCÊ</span>` : ''}
+                        </div>
+                        <div class="org-area-text-section" style="margin-top: 10px; text-align: left; z-index: 1; width: 100%;">
+                            <h4 class="org-area-title">${title}</h4>
+                            <p class="org-area-desc" style="margin-top: 2px; line-height: 1.25;">${desc}</p>
+                        </div>
+                        <div class="org-area-action">
+                            <button class="org-area-chevron-circle-premium">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    },
+
+    // Static area goals and checklist configuration mapping
+    areaStaticData: {
+        'portaria': {
+            objetivo: 'Controlar entrada e saída, recepcionar membros e manter a organização da entrada principal.',
+            local: 'Entrada principal',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:30',
+            traje: 'Social',
+            checklist: [
+                'Organizar a entrada e saídas',
+                'Recepcionar membros e visitantes',
+                'Verificar fluxo de pessoas',
+                'Auxiliar pessoas com necessidades especiais',
+                'Manter comunicação com a equipe'
+            ],
+            instrucoes: 'Permaneça atento à entrada de pessoas sem identificação. Qualquer atitude suspeita, informe imediatamente ao Supervisor ou diáconos da ronda.'
+        },
+        'checkin': {
+            objetivo: 'Realizar o cadastro e identificação de obreiros, membros e visitantes na entrada.',
+            local: 'Balcão de check-in',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:30',
+            checklist: [
+                'Ligar pc de check-in e monitor de propaganda',
+                'Organizar envelopes, canetas e papéis de anotações',
+                'Fazer check-in das crianças que entram',
+                'Identificar e orientar visitantes',
+                'Organizar fila de atendimento'
+            ],
+            instrucoes: 'Mantenha um sorriso no rosto. Se houver falha no sistema do tablet, use a ficha de papel de contingência.'
+        },
+        'apoio-direito': {
+            objetivo: 'Dar suporte, orientação e acomodação aos membros e visitantes nas naves e assentos do lado direito.',
+            local: 'Templo Lado Direito',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:45',
+            traje: 'Social',
+            checklist: [
+                'Verificar a limpeza e organização das cadeiras',
+                'Orientar pessoas na ocupação dos assentos',
+                'Auxiliar na coleta de ofertas e dízimos',
+                'Manter postura discreta durante as orações',
+                'Prestar atenção a qualquer mal-estar físico'
+            ],
+            instrucoes: 'Sempre acomode as pessoas da frente para trás para evitar assentos vazios dispersos.'
+        },
+        'apoio-esquerdo': {
+            objetivo: 'Dar suporte, orientação e acomodação aos membros e visitantes nas naves e assentos do lado esquerdo.',
+            local: 'Templo Lado Esquerdo',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:45',
+            traje: 'Social',
+            checklist: [
+                'Verificar a limpeza e organização das cadeiras',
+                'Orientar pessoas na ocupação dos assentos',
+                'Auxiliar na coleta de ofertas e dízimos',
+                'Manter postura discreta durante as orações',
+                'Prestar atenção a qualquer mal-estar físico'
+            ],
+            instrucoes: 'Sempre acomode as pessoas da frente para trás para evitar assentos vazios dispersos.'
+        },
+        'ronda-direito': {
+            objetivo: 'Realizar rondas periódicas de segurança na área externa da entrada, sala pastoral e sala multiuso.',
+            local: 'Estacionamento Lado Direito',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:30',
+            traje: 'Esporte Fino',
+            checklist: [
+                'Rondar as vias laterais e estacionamento',
+                'Verificar fechamento de portões auxiliares',
+                'Relatar qualquer movimentação atípica'
+            ],
+            instrucoes: 'Permaneça em movimento constante. Não se isole em locais escuros.'
+        },
+        'ronda-esquerdo': {
+            objetivo: 'Realizar rondas periódicas de segurança na área externa (lado da cozinha), banheiros, salas de bebês e crianças, e garantia de que a porta do meio esteja sempre fechada.',
+            local: 'Estacionamento Lado Esquerdo',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:30',
+            traje: 'Esporte Fino',
+            checklist: [
+                'Rondar as vias laterais e estacionamento',
+                'Verificar fechamento de portões auxiliares',
+                'Relatar qualquer movimentação atípica'
+            ],
+            instrucoes: 'Permaneça em movimento constante. Não se isole em locais escuros.'
+        },
+        'acolhimento': {
+            objetivo: 'Receber, acolher e cuidar de pessoas com amor, empatia e excelência.',
+            local: 'Sala de Acolhimento',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:45',
+            traje: 'Social',
+            checklist: [
+                'Posicionar-se após o final do culto na sala de acolhimento',
+                'Recepcionar visitantes e servi-los com alegria',
+                'Deixá-los à vontade para receber o pastor',
+                'Entregar lembrancinhas'
+            ],
+            instrucoes: 'Seu sorriso é o primeiro contato das pessoas com a igreja. Sirva com amor!'
+        },
+        'recepcao': {
+            objetivo: 'Controlar entrada e saída de pessoas, realizar check-in, recepcionar membros e visitantes na entrada principal.',
+            local: 'Portaria e Balcão de Check-in',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:30',
+            traje: 'Social',
+            checklist: [
+                'Organizar a entrada e saídas',
+                'Recepcionar membros e visitantes',
+                'Ligar pc de check-in e monitor de propaganda',
+                'Fazer check-in das pessoas que entram',
+                'Auxiliar pessoas com necessidades especiais'
+            ],
+            instrucoes: 'Permaneça atento à entrada de pessoas e faça o registro com um sorriso no rosto. Use fichas de contingência em papel se houver problemas no tablet/computador.'
+        },
+        'templo': {
+            objetivo: 'Dar suporte, orientação e acomodação aos membros e visitantes nas naves e assentos do templo (lados direito e esquerdo).',
+            local: 'Nave do Templo',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:45',
+            traje: 'Social',
+            checklist: [
+                'Verificar a limpeza e organização das cadeiras',
+                'Orientar pessoas na ocupação dos assentos',
+                'Auxiliar na coleta de ofertas e dízimos',
+                'Manter postura discreta durante as orações',
+                'Prestar atenção a qualquer mal-estar físico'
+            ],
+            instrucoes: 'Sempre acomode as pessoas da frente para trás para evitar assentos vazios dispersos.'
+        },
+        'ronda': {
+            objetivo: 'Realizar rondas periódicas de segurança nas áreas externas, estacionamentos, laterais, banheiros e salas de apoio.',
+            local: 'Estacionamentos e Vias Laterais',
+            supervisor: 'Supervisor Wan',
+            chegada: '17:30',
+            traje: 'Esporte Fino',
+            checklist: [
+                'Rondar as vias laterais e estacionamentos',
+                'Verificar fechamento de portões auxiliares',
+                'Garantir fechamento de portas de segurança',
+                'Relatar qualquer movimentação atípica'
+            ],
+            instrucoes: 'Permaneça em movimento constante e mantenha contato com o Supervisor Geral.'
+        }
+    },
+
+    openAreaDetail(nodeId) {
+        // Hide the main scales view and the main header
+        document.getElementById('member-sub-escala').style.display = 'none';
+        const memberHeader = document.querySelector('.member-header');
+        if (memberHeader) memberHeader.style.display = 'none';
+
+        const detailContainer = document.getElementById('member-sub-area-detail');
+        detailContainer.style.display = 'flex';
+        detailContainer.style.flexDirection = 'column';
+        detailContainer.innerHTML = '<div style="text-align: center; padding: 50px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--theme-color);"></i></div>';
+
+        // Load details dynamically
+        setTimeout(async () => {
+            try {
+                // Ensure cultosData is loaded (v3.2)
+                if (!this.cultosData || this.cultosData.length === 0) {
+                    try {
+                        this.cultosData = await DbService.getCultos();
+                    } catch (err) {
+                        this.cultosData = [];
+                    }
+                }
+
+                const activeEventKey = this.memberSelectedEventKey;
+                if (!activeEventKey) {
+                    this.showToast('Selecione um culto primeiro.', 'warning');
+                    this.closeAreaDetail();
+                    return;
+                }
+
+                // Parse active event key
+                const [dateStr, cultoId, timeStr] = activeEventKey.split('_');
+                const escalas = await DbService.getEscalas(null, dateStr, dateStr);
+
+                // Filter escalas for this specific area
+                const areaScales = [];
+                escalas.forEach(escala => {
+                    const sectorId = escala.setorId;
+                    const func = (escala.funcao || '').toLowerCase();
+                    const obs = (escala.observacoes || '').toLowerCase();
+
+                    if (escala.statusPresenca === 'Recusada') return;
+
+                    if (nodeId === 'acolhimento' && sectorId === 'acolhimento_integracao' && func.includes('acolhimento')) {
+                        areaScales.push(escala);
+                    } else if (sectorId === 'diaconia_templo') {
+                        if (nodeId === 'portaria' && func.includes('portaria')) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'checkin' && (func.includes('check-in') || func.includes('checkin'))) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'apoio-direito' && func.includes('apoio') && (func.includes('direito') || obs.includes('direito') || func.includes('right') || func.includes('dir'))) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'apoio-esquerdo' && func.includes('apoio') && (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('left') || func.includes('esq'))) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'ronda-direito' && func.includes('ronda') && (func.includes('direito') || obs.includes('direito') || func.includes('right') || func.includes('dir'))) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'ronda-esquerdo' && func.includes('ronda') && (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('left') || func.includes('esq'))) {
+                            areaScales.push(escala);
+                        }
+                        // Unified mappings (v3.6.22)
+                        else if (nodeId === 'recepcao' && (func.includes('portaria') || func.includes('check-in') || func.includes('checkin'))) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'templo' && func.includes('apoio')) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'ronda' && func.includes('ronda')) {
+                            areaScales.push(escala);
+                        }
+                    }
+                });
+
+                const uniqueScales = [];
+                const seenMembers = new Set();
+                areaScales.forEach(escala => {
+                    const key = escala.membroId || escala.membroNome;
+                    if (key && !seenMembers.has(key)) {
+                        seenMembers.add(key);
+                        uniqueScales.push(escala);
+                    }
+                });
+
+                const staticData = this.areaStaticData[nodeId] || {
+                    objetivo: 'Atuar com excelência no culto.',
+                    local: 'Templo',
+                    supervisor: 'Supervisor Wan',
+                    chegada: '18:00',
+                    traje: 'Fino',
+                    checklist: ['Chegar no horário', 'Fazer oração com a equipe'],
+                    instrucoes: 'Sirva com alegria e excelência.'
+                };
+
+                const titleMap = {
+                    'portaria': 'Portaria',
+                    'checkin': 'Check-in',
+                    'apoio-direito': 'Templo L. Dir.',
+                    'apoio-esquerdo': 'Templo L. Esq.',
+                    'ronda-direito': 'Ronda L. Dir.',
+                    'ronda-esquerdo': 'Ronda L. Esq.',
+                    'acolhimento': 'Acolhimento',
+                    
+                    // Unified mappings (v3.6.22)
+                    'recepcao': 'Recepção',
+                    'templo': 'Templo',
+                    'ronda': 'Ronda'
+                };
+                const areaTitle = titleMap[nodeId] || nodeId;
+
+                const iconMap = {
+                    'portaria': 'fa-solid fa-door-open',
+                    'checkin': 'fa-solid fa-id-card',
+                    'apoio-direito': 'fa-solid fa-place-of-worship',
+                    'apoio-esquerdo': 'fa-solid fa-place-of-worship',
+                    'ronda-direito': 'fa-solid fa-shield-halved',
+                    'ronda-esquerdo': 'fa-solid fa-shield-halved',
+                    'acolhimento': 'fa-solid fa-heart',
+                    
+                    // Unified mappings (v3.6.22)
+                    'recepcao': 'fa-solid fa-id-card',
+                    'templo': 'fa-solid fa-place-of-worship',
+                    'ronda': 'fa-solid fa-shield-halved'
+                };
+                const iconClass = iconMap[nodeId] || 'fa-solid fa-circle';
+
+                // Fetch members map for photo URLs
+                let membrosMap = {};
+                try {
+                    const membros = await DbService.getMembros();
+                    membros.forEach(m => {
+                        membrosMap[m.id] = m;
+                    });
+                } catch (e) {}
+
+                // Active Event Info
+                const activeEvent = uniqueScales.length > 0 ? uniqueScales[0] : null;
+                const activeEventDetails = this.cultosData.find(c => c.data === dateStr);
+                const cultoNome = activeEvent ? activeEvent.cultoNome : (activeEventDetails ? activeEventDetails.nome : 'Culto');
+                const horarioInicio = activeEvent ? activeEvent.horarioInicio : (activeEventDetails ? activeEventDetails.horarioInicio : '18:00');
+                const horarioFim = activeEvent ? activeEvent.horarioFim : (activeEventDetails ? activeEventDetails.horarioFim : '22:00');
+
+                // Fetch standbys for this event/area (v3.2)
+                let standbys = [];
+                try {
+                    standbys = await DbService.getStandbys();
+                } catch (e) {
+                    console.error("Error loading standbys for organogram detail:", e);
+                }
+                const areaStandbys = standbys.filter(s => {
+                    if (s.cultoId !== cultoId) return false;
+                    if (this.activeSectorId === 'diaconia_templo') {
+                        if (nodeId === 'acolhimento' && s.setorId === 'acolhimento_integracao') return true;
+                        if (s.setorId !== 'diaconia_templo') return false;
+                        const funcLower = (s.funcao || '').toLowerCase();
+                        if (nodeId === 'portaria' && funcLower.includes('portaria')) return true;
+                        if (nodeId === 'checkin' && funcLower.includes('check')) return true;
+                        if (nodeId === 'apoio-direito' && funcLower.includes('apoio') && funcLower.includes('dir')) return true;
+                        if (nodeId === 'apoio-esquerdo' && funcLower.includes('apoio') && funcLower.includes('esq')) return true;
+                        if (nodeId === 'ronda-direito' && funcLower.includes('ronda') && funcLower.includes('dir')) return true;
+                        if (nodeId === 'ronda-esquerdo' && funcLower.includes('ronda') && funcLower.includes('esq')) return true;
+                        
+                        // Unified mappings (v3.6.22)
+                        if (nodeId === 'recepcao' && (funcLower.includes('portaria') || funcLower.includes('check') || funcLower.includes('recepção'))) return true;
+                        if (nodeId === 'templo' && funcLower.includes('apoio')) return true;
+                        if (nodeId === 'ronda' && funcLower.includes('ronda')) return true;
+                        return false;
+                    } else {
+                        return s.setorId === this.activeSectorId;
+                    }
+                });
+
+                let standbysHtml = '';
+                if (areaStandbys.length > 0) {
+                    standbysHtml = `
+                        <div class="panel-card" style="margin-bottom: 12px; text-align: left; padding: 15px; border: 1px dashed rgba(18, 115, 105, 0.4); background: rgba(18, 115, 105, 0.02);">
+                            <div style="font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 10px;">
+                                <i class="fa-solid fa-hand-holding-hand" style="color: var(--theme-color); margin-right: 5px;"></i> Obreiros Disponíveis (Backup)
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                    `;
+                    areaStandbys.forEach(s => {
+                        const isOwn = s.membroId === this.currentUser.id;
+                        const membroInfo = membrosMap[s.membroId];
+                        const fotoUrl = membroInfo ? membroInfo.fotoUrl : null;
+                        const avatarHtml = this.getCardAvatarHtml(s.membroNome, fotoUrl, 1);
+                        
+                        standbysHtml += `
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.01);">
+                                ${avatarHtml}
+                                <div style="flex: 1; text-align: left;">
+                                    <div style="font-size: 0.82rem; font-weight: 700; color: #fff;">${s.membroNome} ${isOwn ? '<span style="color:#8AA6A3; font-weight:500;">(Você)</span>' : ''}</div>
+                                    <div style="font-size: 0.68rem; color: #8AA6A3; margin-top: 1px;">Disponível como voluntário</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    standbysHtml += `
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Area status calculations
+                let statusTitle = 'Área pronta';
+                let statusDesc = 'Todos os membros confirmados';
+                let statusDotColor = '#127369';
+                let statusClassBox = 'status-ready';
+
+                if (uniqueScales.length === 0) {
+                    statusTitle = 'Aguardando escala';
+                    statusDesc = 'Nenhum voluntário escalado';
+                    statusDotColor = '#D9A752';
+                    statusClassBox = 'status-waiting';
+                } else {
+                    const hasPending = uniqueScales.some(e => e.statusPresenca === 'Pendente');
+                    if (hasPending) {
+                        statusTitle = 'Aguardando confirmações';
+                        statusDesc = 'Alguns membros ainda não confirmaram a presença';
+                        statusDotColor = '#D9A752';
+                        statusClassBox = 'status-waiting';
+                    }
+                }
+
+                // Render Team List
+                let teamListHtml = '';
+                uniqueScales.forEach(escala => {
+                    const isOwn = escala.membroId === this.currentUser.id;
+                    let statusClass = 'status-pendente';
+                    let statusLabel = 'Pendente';
+                    if (escala.statusPresenca === 'Confirmada') {
+                        statusClass = 'status-confirmado';
+                        statusLabel = 'Confirmado';
+                    } else if (escala.statusPresenca === 'Recusada') {
+                        statusClass = 'status-recusado';
+                        statusLabel = 'Recusado';
+                    }
+
+                    const membroInfo = membrosMap[escala.membroId];
+                    const fotoUrl = membroInfo ? membroInfo.fotoUrl : null;
+                    const avatarHtml = this.getCardAvatarHtml(escala.membroNome, fotoUrl, 1);
+
+                    teamListHtml += `
+                        <div style="display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.02); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                            ${avatarHtml}
+                            <div style="flex: 1; text-align: left;">
+                                <div style="font-size: 0.85rem; font-weight: 700; color: #fff;">${escala.membroNome} ${isOwn ? '<span style="color:#8AA6A3; font-weight:500;">(Você)</span>' : ''}</div>
+                                <div style="font-size: 0.7rem; color: #8AA6A3; margin-top: 1px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                                    <span style="font-weight: 700; color: var(--theme-color);"><i class="fa-solid fa-user-tag" style="font-size: 0.65rem; margin-right: 2px;"></i>${escala.funcao || 'Membro'}</span>
+                                    ${escala.observacoes ? `<span style="color: #8AA6A3;">•</span> <span style="color: #D9A752; font-weight: 600;"><i class="fa-solid fa-map-pin" style="font-size: 0.65rem; margin-right: 2px;"></i>${escala.observacoes}</span>` : ''}
+                                </div>
+                            </div>
+                            <span class="card-scale-status ${statusClass}" style="font-size: 0.68rem; padding: 3px 8px; border-radius: 6px;">${statusLabel}</span>
+                        </div>
+                    `;
+                });
+
+                if (uniqueScales.length === 0) {
+                    teamListHtml = '<div style="font-size: 0.8rem; color: #8AA6A3; padding: 10px; text-align: center;">Nenhum obreiro escalado ainda.</div>';
+                }
+
+                // Checkboxes setup
+                let checklistHtml = '';
+                const savedChecklistStr = localStorage.getItem(`diaconia_checklist_${activeEventKey}_${nodeId}`);
+                const savedChecklist = savedChecklistStr ? JSON.parse(savedChecklistStr) : {};
+
+                staticData.checklist.forEach((item, index) => {
+                    const isChecked = savedChecklist[index] === true;
+                    checklistHtml += `
+                        <label style="display: flex; align-items: center; gap: 10px; color: #BFBFBF; cursor: pointer; user-select: none; margin-bottom: 4px;">
+                            <input type="checkbox" class="checklist-item-checkbox" data-index="${index}" ${isChecked ? 'checked' : ''} onchange="App.handleChecklistItemChange('${nodeId}', ${index}, this)">
+                            <span style="font-size: 0.8rem; text-align: left;">${item}</span>
+                        </label>
+                    `;
+                });
+
+                // Determine confirm button presence or standby volunteer button
+                let confirmButtonHtml = '';
+                const ownScale = uniqueScales.find(e => e.membroId === this.currentUser.id);
+                if (ownScale) {
+                    if (ownScale.statusPresenca === 'Pendente') {
+                        confirmButtonHtml = `
+                            <div style="width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+                                <button class="btn-primary confirm-pulse-btn" onclick="App.handleConfirmPresencaFromDetail('${ownScale.id}', 'Confirmada')" style="width: 100%; height: 50px; border-radius: 14px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; font-weight: 800; font-size: 0.98rem; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    <i class="fa-solid fa-circle-check" style="font-size: 1.1rem;"></i> Confirmar Presença Agora
+                                </button>
+                                <button class="btn-secondary" onclick="App.handleConfirmPresencaFromDetail('${ownScale.id}', 'Recusada')" style="width: 100%; height: 38px; border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); color: #ef4444; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="fa-solid fa-circle-xmark"></i> Não poderei comparecer
+                                </button>
+                            </div>
+                        `;
+                    } else if (ownScale.statusPresenca === 'Confirmada') {
+                        confirmButtonHtml = `
+                            <div style="width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+                                <div style="width: 100%; height: 46px; border-radius: 14px; border: 1.5px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08); color: #10b981; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 8px; letter-spacing: 0.5px; text-transform: uppercase;">
+                                    <i class="fa-solid fa-check-double" style="font-size: 1rem;"></i> PRESENÇA CONFIRMADA
+                                </div>
+                                <button class="btn-secondary" onclick="App.handleConfirmPresencaFromDetail('${ownScale.id}', 'Recusada')" style="width: 100%; height: 38px; border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); color: #ef4444; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="fa-solid fa-circle-xmark"></i> Não poderei comparecer
+                                </button>
+                            </div>
+                        `;
+                    }
+                } else {
+                    const ownStandby = areaStandbys.find(s => s.membroId === this.currentUser.id);
+                    if (ownStandby) {
+                        confirmButtonHtml = `
+                            <div style="width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+                                <div style="width: 100%; height: 46px; border-radius: 14px; border: 1.5px dashed rgba(18, 115, 105, 0.4); background: rgba(18, 115, 105, 0.05); color: var(--theme-color); font-weight: 800; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 8px; letter-spacing: 0.5px; text-transform: uppercase;">
+                                    <i class="fa-solid fa-hand-holding-hand" style="font-size: 1rem;"></i> VOCÊ ESTÁ DISPONÍVEL COMO VOLUNTÁRIO
+                                </div>
+                                <button class="btn-secondary" onclick="App.handleCancelStandby('${ownStandby.id}', '${nodeId}')" style="width: 100%; height: 38px; border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); color: #ef4444; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+                                    <i class="fa-solid fa-trash-can"></i> Cancelar Disponibilidade
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        const isUserScaledInThisCulto = escalas.some(escala => escala.cultoId === cultoId && escala.membroId === this.currentUser.id && escala.statusPresenca !== 'Recusada');
+                        if (!isUserScaledInThisCulto) {
+                            let roleSelectorHtml = '';
+                            if (nodeId === 'recepcao') {
+                                roleSelectorHtml = `
+                                    <div style="margin-bottom: 12px; text-align: left; width: 100%;">
+                                        <label style="font-size: 0.72rem; color: #8aa6a3; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 5px;"><i class="fa-solid fa-list-check" style="margin-right: 4px;"></i>Escolha a Função (Opcional):</label>
+                                        <select id="standby-role-select" style="width: 100%; height: 38px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 0 10px; font-size: 0.82rem; outline: none; cursor: pointer;">
+                                            <option value="Recepção">Qualquer uma / Em aberto</option>
+                                            <option value="Portaria">Portaria</option>
+                                            <option value="Check-in">Check-in</option>
+                                        </select>
+                                    </div>
+                                `;
+                            } else if (nodeId === 'templo') {
+                                roleSelectorHtml = `
+                                    <div style="margin-bottom: 12px; text-align: left; width: 100%;">
+                                        <label style="font-size: 0.72rem; color: #8aa6a3; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 5px;"><i class="fa-solid fa-map-pin" style="margin-right: 4px;"></i>Escolha o Lado (Opcional):</label>
+                                        <select id="standby-role-select" style="width: 100%; height: 38px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 0 10px; font-size: 0.82rem; outline: none; cursor: pointer;">
+                                            <option value="Apoio Interno">Qualquer um / Em aberto</option>
+                                            <option value="Apoio Interno (L. Dir.)">Lado Direito</option>
+                                            <option value="Apoio Interno (L. Esq.)">Lado Esquerdo</option>
+                                        </select>
+                                    </div>
+                                `;
+                            } else if (nodeId === 'ronda') {
+                                roleSelectorHtml = `
+                                    <div style="margin-bottom: 12px; text-align: left; width: 100%;">
+                                        <label style="font-size: 0.72rem; color: #8aa6a3; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 5px;"><i class="fa-solid fa-shield-halved" style="margin-right: 4px;"></i>Escolha o Lado (Opcional):</label>
+                                        <select id="standby-role-select" style="width: 100%; height: 38px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 0 10px; font-size: 0.82rem; outline: none; cursor: pointer;">
+                                            <option value="Ronda">Qualquer um / Em aberto</option>
+                                            <option value="Ronda (L. Dir.)">Lado Direito</option>
+                                            <option value="Ronda (L. Esq.)">Lado Esquerdo</option>
+                                        </select>
+                                    </div>
+                                `;
+                            }
+
+                            confirmButtonHtml = `
+                                ${roleSelectorHtml}
+                                <button class="btn-primary" onclick="App.handleRegisterStandby('${cultoId}', '${cultoNome.replace(/'/g, "\\'")}', '${dateStr}', '${horarioInicio} - ${horarioFim}', '${nodeId}')" style="width: 100%; height: 50px; border-radius: 14px; background: linear-gradient(135deg, var(--theme-color) 0%, #0d5e56 100%); color: #fff; font-weight: 800; font-size: 0.95rem; border: none; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; text-transform: uppercase;">
+                                    <i class="fa-solid fa-hand-holding-hand" style="font-size: 1.1rem;"></i> Estou Disponível (Voluntário)
+                                </button>
+                            `;
+                        } else {
+                            confirmButtonHtml = `
+                                <div style="width: 100%; height: 46px; border-radius: 14px; border: 1.5px solid rgba(138, 166, 163, 0.3); background: rgba(255,255,255,0.02); color: #8AA6A3; font-weight: 700; font-size: 0.82rem; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase;">
+                                    <i class="fa-solid fa-user-check"></i> Já escalado em outro setor/função
+                                </div>
+                            `;
+                        }
+                    }
+                }
+
+                // Calculate arrival time dynamically
+                let arrivalTime = staticData.chegada;
+                if (horarioInicio) {
+                    try {
+                        const [h, m] = horarioInicio.split(':').map(Number);
+                        const offsetMinutes = staticData.chegada === '17:45' ? 15 : 30; // 15 mins before or 30 mins before
+                        const date = new Date();
+                        date.setHours(h);
+                        date.setMinutes(m - offsetMinutes);
+                        const arrivalH = String(date.getHours()).padStart(2, '0');
+                        const arrivalM = String(date.getMinutes()).padStart(2, '0');
+                        arrivalTime = `${arrivalH}:${arrivalM}`;
+                    } catch (err) {}
+                }
+
+                let trajeHtml = '';
+                if (staticData.traje) {
+                    trajeHtml = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 2px;">
+                            <span style="color: #8AA6A3; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-shirt" style="width: 14px;"></i> Traje</span>
+                            <span style="color: #fff; font-weight: 600;">${staticData.traje}</span>
+                        </div>
+                    `;
+                }
+
+                detailContainer.innerHTML = `
+                    <header class="detail-header">
+                        <button onclick="App.closeAreaDetail()" class="btn-icon" style="background: none; border: none; color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <span class="detail-header-title">${areaTitle}</span>
+                        <button class="btn-icon" style="background: none; border: none; color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
+                            <i class="fa-solid fa-ellipsis"></i>
+                        </button>
+                    </header>
+
+                    <div class="detail-area-banner card-${nodeId}">
+                        <div class="org-area-pattern-overlay"></div>
+                        <div style="display: flex; align-items: center; gap: 15px; z-index: 1; position: relative;">
+                            <div class="org-area-icon-wrap-premium" style="width: 50px; height: 50px; font-size: 1.4rem;">
+                                <i class="${iconClass}"></i>
+                            </div>
+                            <div style="text-align: left;">
+                                <h2 style="font-size: 1.3rem; font-weight: 800; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: -0.2px;">${areaTitle}</h2>
+                                <p style="font-size: 0.8rem; color: #BFBFBF; margin-top: 2px; font-weight: 500;">${cultoNome}</p>
+                                <p style="font-size: 0.75rem; color: #8AA6A3; margin-top: 1px; font-weight: 500;"><i class="fa-regular fa-clock" style="margin-right: 4px;"></i> ${horarioInicio} às ${horarioFim}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status-box ${statusClassBox}">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: ${statusDotColor}; display: inline-block; box-shadow: 0 0 8px ${statusDotColor};"></span>
+                        <div style="text-align: left;">
+                            <div style="font-weight: 700; color: #fff;">${statusTitle}</div>
+                            <div style="font-size: 0.72rem; color: #BFBFBF; font-weight: 500; margin-top: 1px;">${statusDesc}</div>
+                        </div>
+                    </div>
+
+                    <div class="panel-card" style="margin-bottom: 12px; text-align: left; padding: 15px;">
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 4px;">Objetivo da área</div>
+                                <div style="font-size: 0.75rem; color: #BFBFBF; line-height: 1.4;">${staticData.objetivo}</div>
+                            </div>
+                            <div style="font-size: 1rem; color: var(--theme-color); opacity: 0.8;">
+                                <i class="fa-solid fa-bullseye"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-card" style="margin-bottom: 12px; text-align: left; padding: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #fff;">Equipe escalada</span>
+                            <span style="font-size: 0.72rem; color: var(--theme-color); font-weight: 700; cursor: pointer;">Ver todos</span>
+                        </div>
+                        <div class="detail-team-list">
+                            ${teamListHtml}
+                        </div>
+                    </div>
+
+                    ${standbysHtml}
+
+                    ${confirmButtonHtml}
+
+                    <div class="panel-card" style="margin-bottom: 12px; text-align: left; padding: 15px;">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 10px;">Informações importantes</div>
+                        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.78rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                                <span style="color: #8AA6A3; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-location-dot" style="width: 14px;"></i> Local</span>
+                                <span style="color: #fff; font-weight: 600;">${staticData.local}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                                <span style="color: #8AA6A3; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-user-tie" style="width: 14px;"></i> Supervisor</span>
+                                <span style="color: #fff; font-weight: 600;">${staticData.supervisor}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; ${staticData.traje ? 'border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;' : 'padding-bottom: 2px;'}">
+                                <span style="color: #8AA6A3; display: flex; align-items: center; gap: 8px;"><i class="fa-regular fa-clock" style="width: 14px;"></i> Chegada</span>
+                                <span style="color: #fff; font-weight: 600;">${arrivalTime}</span>
+                            </div>
+                            ${trajeHtml}
+                        </div>
+                    </div>
+
+                    <div class="panel-card" style="margin-bottom: 15px; text-align: left; padding: 15px;">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 10px;">Checklist da área</div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            ${checklistHtml}
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button class="btn-secondary" onclick="App.showAreaInstructions('${nodeId}')" style="flex: 1; height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: #fff; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+                            <i class="fa-regular fa-file-lines"></i> Ver instruções
+                        </button>
+                        <button class="btn-secondary" onclick="App.requestAreaHelp('${nodeId}')" style="flex: 1; height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: #fff; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+                            <i class="fa-solid fa-headset"></i> Solicitar ajuda
+                        </button>
+                    </div>
+                `;
+            } catch (err) {
+                console.error(err);
+                this.showToast('Erro ao carregar detalhes.', 'danger');
+                this.closeAreaDetail();
+            }
+        }, 50);
+    },
+
+    closeAreaDetail() {
+        document.getElementById('member-sub-area-detail').style.display = 'none';
+        document.getElementById('member-sub-escala').style.display = 'block';
+        const memberHeader = document.querySelector('.member-header');
+        if (memberHeader) memberHeader.style.display = 'flex';
+    },
+
+    handleChecklistItemChange(nodeId, index, element) {
+        const activeEventKey = this.memberSelectedEventKey;
+        if (!activeEventKey) return;
+        const key = `diaconia_checklist_${activeEventKey}_${nodeId}`;
+        const savedChecklistStr = localStorage.getItem(key);
+        const savedChecklist = savedChecklistStr ? JSON.parse(savedChecklistStr) : {};
+        savedChecklist[index] = element.checked;
+        localStorage.setItem(key, JSON.stringify(savedChecklist));
+    },
+
+    async handleConfirmPresencaFromDetail(escalaId, status) {
+        try {
+            await DbService.updatePresenca(escalaId, status);
+            if (status === 'Confirmada') {
+                this.showToast(`Presença confirmada com sucesso!`, 'success');
+            } else if (status === 'Recusada') {
+                this.showToast(`Escala recusada. O supervisor foi notificado.`, 'info');
+                try {
+                    await DbService.addNotificacao({
+                        paraUsuarioId: 'admin_default',
+                        paraUsuarioNome: 'Supervisor Geral',
+                        titulo: 'Presença Recusada',
+                        mensagem: `${this.currentUser.nome} recusou a escala no detalhe do organograma.`,
+                        tipo: 'rejeicao'
+                    });
+                } catch (err) {}
+            } else {
+                this.showToast(`Presença atualizada com sucesso!`, 'success');
+            }
+            await this.loadAndRenderMemberScales();
+            this.closeAreaDetail();
+        } catch (e) {
+            this.showAlert('Erro ao atualizar presença no servidor.', 'Erro');
+        }
+    },
+
+    showAreaInstructions(nodeId) {
+        const staticData = this.areaStaticData[nodeId];
+        const instr = staticData ? staticData.instrucoes : 'Instruções padrão da área.';
+        this.showAlert(instr, 'Instruções da Área');
+    },
+
+    requestAreaHelp(nodeId) {
+        this.showToast('Solicitação de ajuda enviada ao supervisor!', 'success');
+    },
+
+    getCardAvatarHtml(name, fotoUrl, zIndex = 1) {
+        const directUrl = this.getDirectPhotoUrl(fotoUrl);
+        if (directUrl) {
+            return `
+                <div class="org-card-avatar" style="z-index: ${zIndex};">
+                    <img src="${directUrl}" alt="${name || ''}">
+                </div>
+            `;
+        }
+        if (!name) {
+            return `<div class="org-card-avatar vacant" style="z-index: ${zIndex};"><i class="fa-solid fa-user"></i></div>`;
+        }
+        const initials = name.split(' ').filter(n => n.length > 0).map(n => n[0]).slice(0, 2).join('').toUpperCase();
+        
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const colors = ['#127369', '#10403B', '#8AA6A3', '#4C5958', '#D9A752'];
+        const color = colors[Math.abs(hash) % colors.length];
+
+        return `
+            <div class="org-card-avatar" style="background-color: ${color}; z-index: ${zIndex};">
+                ${initials}
+            </div>
+        `;
+    },
+
+    getDirectPhotoUrl(url) {
+        if (!url) return null;
+        // Match Google Drive file sharing links
+        const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (driveMatch && driveMatch[1]) {
+            return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+        }
+        const driveOpenMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+        if (driveOpenMatch && driveOpenMatch[1]) {
+            return `https://lh3.googleusercontent.com/d/${driveOpenMatch[1]}`;
+        }
+        return url;
+    },
+
+    isFemale(fullName) {
+        if (!fullName) return false;
+        const firstName = fullName.trim().split(' ')[0].toLowerCase();
+        
+        // Explicit female names in the system or common
+        const femaleNames = ['debora', 'monica', 'maria', 'thaiza', 'ana', 'veronica', 'thainara', 'agda', 'verônica', 'mônica', 'débora', 'verônica', 'thaíza'];
+        if (femaleNames.includes(firstName)) return true;
+        
+        // Male exceptions ending in 'a'
+        const maleExceptions = ['luca', 'lucas', 'joshua', 'andrea', 'eneas', 'esdras', 'messias', 'matias', 'nataniel', 'gabriel'];
+        if (maleExceptions.includes(firstName)) return false;
+        
+        // If it ends with "a", it's likely female
+        return firstName.endsWith('a');
+    },
+
+    toggleOrgEventsList() {
+        const listEl = document.getElementById('org-events-list-scroll');
+        const chevronEl = document.getElementById('org-banner-chevron');
+        if (listEl && chevronEl) {
+            if (listEl.style.display === 'none') {
+                listEl.style.display = 'block';
+                chevronEl.className = 'fa-solid fa-chevron-up';
+            } else {
+                listEl.style.display = 'none';
+                chevronEl.className = 'fa-solid fa-chevron-down';
+            }
+        }
+    },
+
+    toggleNodeDetail(nodeId) {
+        const detailEl = document.getElementById(`org-detail-${nodeId}`);
+        const chevronEl = document.getElementById(`org-chevron-${nodeId}`);
+        if (detailEl && chevronEl) {
+            const isShow = detailEl.classList.toggle('show');
+            const parentCard = chevronEl.closest('.org-node-card-horizontal');
+            if (isShow) {
+                chevronEl.style.transform = 'rotate(90deg)';
+                if (parentCard) {
+                    parentCard.style.borderBottomLeftRadius = '0';
+                    parentCard.style.borderBottomRightRadius = '0';
+                }
+            } else {
+                chevronEl.style.transform = 'none';
+                if (parentCard) {
+                    // Restore border radius after transition or immediately
+                    parentCard.style.borderBottomLeftRadius = '16px';
+                    parentCard.style.borderBottomRightRadius = '16px';
+                }
+            }
+        }
+    },
+
+    showNodeLocationInfo(nodeId, side) {
+        let message = `Este posto de trabalho está posicionado no ${side} do templo.`;
+        if (nodeId.includes('apoio')) {
+            message = `O posto de Apoio ao Templo nesta escala fica localizado no ${side} (em relação ao altar/púlpito).`;
+        } else if (nodeId.includes('ronda')) {
+            message = `O posto de Ronda do Templo nesta escala é responsável por cobrir a área do ${side} do templo.`;
+        }
+        this.showAlert(message, 'Localização do Posto');
+    },
+
+    refreshActiveScaleView() {
+        console.log("DEBUG: refreshActiveScaleView called");
+        this.showingMonthlyCalendar = false;
+        const memberView = document.getElementById('view-member');
+        if (memberView && memberView.classList.contains('active')) {
+            this.loadAndRenderMemberScales();
+        } else {
+            this.renderSectorSelectionScreen();
+        }
+    },
+
+    selectMemberOrganogramEvent(eventKey) {
+        this.memberSelectedEventKey = eventKey;
+        this.refreshActiveScaleView();
+    },
+
+    navigateOrgEvent(direction) {
+        if (!this.memberDiaconiaEventsList || this.memberDiaconiaEventsList.length === 0) {
+            // Shift month if there are no events in current month
+            this.memberCurrentDate.setMonth(this.memberCurrentDate.getMonth() + direction);
+            this.memberSelectedEventKey = null;
+            this.refreshActiveScaleView();
+            return;
+        }
+        
+        let currentIndex = this.memberDiaconiaEventsList.findIndex(e => e.key === this.memberSelectedEventKey);
+        if (currentIndex === -1) currentIndex = 0;
+        
+        let newIndex = currentIndex + direction;
+        if (newIndex >= 0 && newIndex < this.memberDiaconiaEventsList.length) {
+            const newEvent = this.memberDiaconiaEventsList[newIndex];
+            this.memberSelectedEventKey = newEvent.key;
+            const dateParts = newEvent.data.split('-');
+            this.memberCurrentDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+            this.refreshActiveScaleView();
+        } else {
+            // Shift month and auto-select next month's events
+            this.memberCurrentDate.setMonth(this.memberCurrentDate.getMonth() + direction);
+            this.memberSelectedEventKey = null;
+            this.refreshActiveScaleView();
+        }
+    },
+
+    openMonthlyCalendar() {
+        console.log("DEBUG: openMonthlyCalendar called, setting showingMonthlyCalendar to true");
+        this.showingMonthlyCalendar = true;
+        // If active sector is not set, default to user's sector or first sector in the list
+        if (!this.activeSectorId && this.currentUser) {
+            const userSetores = this.currentUser.setores || [];
+            if (this.currentUser.setor) {
+                this.activeSectorId = this.currentUser.setor;
+            } else if (userSetores.length > 0) {
+                this.activeSectorId = userSetores[0];
+            } else {
+                // Get the first sector key in sectorsData
+                const keys = Object.keys(this.sectorsData || {});
+                if (keys.length > 0) {
+                    this.activeSectorId = keys[0];
+                }
+            }
+        }
+        this.navigateTo('view-member');
+    },
+
+    showMonthlyCalendar() {
+        console.log("DEBUG: showMonthlyCalendar called");
+        const nextHighlight = document.getElementById('next-service-highlight');
+        if (nextHighlight) {
+            nextHighlight.style.display = 'none';
+        }
+        this.renderPremiumCalendar(false);
+    },
+
+    changeMemberCalendarMonth(offset) {
+        this.memberCurrentDate.setMonth(this.memberCurrentDate.getMonth() + offset);
+        this.memberSelectedEventKey = null;
+        this.showMonthlyCalendar();
+    },
+
+    changeAdminCalendarMonth(offset) {
+        if (!this.adminCalendarDate) {
+            this.adminCalendarDate = new Date();
+        }
+        this.adminCalendarDate.setMonth(this.adminCalendarDate.getMonth() + offset);
+        this.renderPremiumCalendar(true);
+    },
+
+    showAdminCalendarOnly() {
+        const calContainer = document.getElementById('admin-calendar-view-container');
+        const detailContainer = document.getElementById('admin-selected-culto-section');
+        if (calContainer && detailContainer) {
+            calContainer.style.display = 'block';
+            detailContainer.style.display = 'none';
+        }
+        
+        // Remove selections from calendar event pills
+        document.querySelectorAll('.calendar-event-pill').forEach(pill => {
+            pill.style.boxShadow = '';
+            pill.style.fontWeight = '700';
+        });
+        
+        this.adminSelectedCultoId = null;
+    },
+
+    async renderPremiumCalendar(isAdminMode = false) {
+        console.log("DEBUG: renderPremiumCalendar called with isAdminMode:", isAdminMode);
+        let container = null;
+        let baseDate = null;
+        
+        if (isAdminMode) {
+            container = document.getElementById('admin-calendar-container');
+            if (!this.adminCalendarDate) {
+                this.adminCalendarDate = new Date();
+            }
+            baseDate = new Date(this.adminCalendarDate);
+        } else {
+            container = document.getElementById('member-scales-list');
+            baseDate = new Date(this.memberCurrentDate);
+        }
+        
+        if (!container) return;
+        
+        const year = baseDate.getFullYear();
+        const month = baseDate.getMonth();
+        const monthLabel = baseDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        
+        // Fetch all cultos for the calendar month (expanding range to avoid time zone cutting)
+        const firstDayOfMonth = new Date(year, month - 1, 1);
+        const lastDayOfMonth = new Date(year, month + 2, 0);
+        
+        const startStr = this.formatLocalISOString(firstDayOfMonth).split('T')[0];
+        const endStr = this.formatLocalISOString(lastDayOfMonth).split('T')[0];
+        
+        let cultos = [];
+        try {
+            cultos = await DbService.getCultos(startStr, endStr);
+        } catch (e) {
+            console.error("Error fetching cultos for calendar:", e);
+        }
+        
+        // Group cultos by day number (only if they belong to the currently viewed month and year)
+        const cultosByDay = {};
+        cultos.forEach(c => {
+            const dateParts = c.data.split('-');
+            const cYear = parseInt(dateParts[0], 10);
+            const cMonth = parseInt(dateParts[1], 10) - 1; // 0-indexed
+            const dayNum = parseInt(dateParts[2], 10);
+            
+            if (cYear === year && cMonth === month) {
+                if (!cultosByDay[dayNum]) {
+                    cultosByDay[dayNum] = [];
+                }
+                cultosByDay[dayNum].push(c);
+            }
+        });
+        
+        const firstDayIndex = firstDayOfMonth.getDay();
+        const totalDays = lastDayOfMonth.getDate();
+        
+        let gridHtml = '';
+        
+        // Empty cells before the first day
+        for (let i = 0; i < firstDayIndex; i++) {
+            gridHtml += `<div class="calendar-cell-full empty"></div>`;
+        }
+        
+        // Days of the month
+        for (let day = 1; day <= totalDays; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayOfWeek = new Date(year, month, day).getDay();
+            
+            // Map day of week to CSS classes
+            const dayClasses = ['day-dom', 'day-seg', 'day-ter', 'day-qua', 'day-qui', 'day-sex', 'day-sab'];
+            const dayClass = dayClasses[dayOfWeek];
+            
+            const dayCultos = cultosByDay[day] || [];
+            let cultosHtml = '';
+            
+            dayCultos.forEach(c => {
+                const formattedHour = (() => {
+                    if (!c.horarioInicio) return '';
+                    const parts = c.horarioInicio.split(':');
+                    const h = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10);
+                    return m === 0 ? `${h}H` : `${h}H${String(m).padStart(2, '0')}`;
+                })();
+                
+                let clickHandler = '';
+                if (isAdminMode) {
+                    clickHandler = `onclick="event.stopPropagation(); App.selectAdminCulto('${c.id}')"`;
+                } else {
+                    const eventKey = `${c.data}_${c.id}_${c.horarioInicio}`;
+                    clickHandler = `onclick="event.stopPropagation(); App.selectMemberOrganogramEvent('${eventKey}')"`;
+                }
+                
+                // Add active style if selected
+                let activeStyle = '';
+                if (isAdminMode && c.id === this.adminSelectedCultoId) {
+                    activeStyle = 'box-shadow: 0 0 0 2px var(--teal-primary) !important; font-weight: 800;';
+                }
+                
+                cultosHtml += `
+                    <div class="calendar-event-pill" ${clickHandler} style="${activeStyle}" title="${c.nome} - ${c.horarioInicio}">
+                        ${formattedHour}: ${c.nome}
+                    </div>
+                `;
+            });
+            
+            gridHtml += `
+                <div class="calendar-cell-full ${dayClass}">
+                    <span class="day-num">${day}</span>
+                    <div class="calendar-events-container">
+                        ${cultosHtml}
+                    </div>
+                </div>
+            `;
+        }
+        
+        const prevMonthClick = isAdminMode 
+            ? `onclick="App.changeAdminCalendarMonth(-1)"`
+            : `onclick="App.changeMemberCalendarMonth(-1)"`;
+            
+        const nextMonthClick = isAdminMode
+            ? `onclick="App.changeAdminCalendarMonth(1)"`
+            : `onclick="App.changeMemberCalendarMonth(1)"`;
+            
+        const backButtonHtml = isAdminMode ? '' : `
+            <div class="calendar-back-action-bar">
+                <button class="calendar-back-btn" onclick="App.refreshActiveScaleView()">
+                    <i class="fa-solid fa-arrow-left"></i> Voltar
+                </button>
+            </div>
+        `;
+        
+        const calendarHtml = `
+            <div class="premium-full-calendar animate-fade-in">
+                <div class="calendar-month-nav">
+                    <button ${prevMonthClick}><i class="fa-solid fa-chevron-left"></i></button>
+                    <h4>${monthLabel.toUpperCase()}</h4>
+                    <button ${nextMonthClick}><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                
+                <div class="calendar-grid-full">
+                    <div class="calendar-header-day">Dom</div>
+                    <div class="calendar-header-day">Seg</div>
+                    <div class="calendar-header-day">Ter</div>
+                    <div class="calendar-header-day">Qua</div>
+                    <div class="calendar-header-day">Qui</div>
+                    <div class="calendar-header-day">Sex</div>
+                    <div class="calendar-header-day">Sáb</div>
+                    
+                    ${gridHtml}
+                </div>
+                
+                ${backButtonHtml}
+            </div>
+        `;
+        
+        container.innerHTML = calendarHtml;
+    },
+
+    renderScaleActionsForNode(scales) {
+        const ownScale = scales.find(e => e.membroId === this.currentUser.id);
+        if (!ownScale) return '';
+
+        let actionButtonsHtml = '';
+        if (ownScale.statusPresenca === 'Pendente') {
+            actionButtonsHtml = `
+                <div class="card-scale-actions" style="margin-top: 10px; justify-content: center; width: 100%;">
+                    <button class="btn-scale-action btn-recusar-presenca" onclick="App.handleConfirmPresenca('${ownScale.id}', 'Recusada')">
+                        <i class="fa-solid fa-xmark"></i> Recusar
+                    </button>
+                    <button class="btn-scale-action btn-confirm-presenca" onclick="App.handleConfirmPresenca('${ownScale.id}', 'Confirmada')">
+                        <i class="fa-solid fa-check"></i> Confirmar
+                    </button>
+                </div>
+            `;
+        }
+
+        let serviceControlHtml = '';
+        if (ownScale.statusPresenca === 'Confirmada') {
+            if (ownScale.statusServico === 'Agendado') {
+                serviceControlHtml = `
+                    <div style="margin-top: 10px; width: 100%;">
+                        <button class="btn-service-control btn-start-work" style="width: 100%; justify-content: center;" onclick="App.handleStartService('${ownScale.id}', '${ownScale.funcao}', '${ownScale.data}', '${ownScale.horarioInicio}', '${ownScale.horarioFim}')">
+                            <i class="fa-solid fa-play"></i> Iniciar Trabalho
+                        </button>
+                    </div>
+                `;
+            } else if (ownScale.statusServico === 'Em andamento') {
+                serviceControlHtml = `
+                    <div style="margin-top: 10px; width: 100%;">
+                        <button class="btn-service-control btn-finish-work" style="width: 100%; justify-content: center;" onclick="App.handleFinishServiceModal('${ownScale.id}')">
+                            <i class="fa-solid fa-circle-stop"></i> Finalizar Trabalho
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        return actionButtonsHtml + serviceControlHtml;
+    },
+
+    async handleConfirmPresenca(escalaId, status) {
+        try {
+            await DbService.updatePresenca(escalaId, status);
+            if (status === 'Confirmada') {
+                this.showToast(`Presença confirmada com sucesso!`, 'success');
+            } else if (status === 'Recusada') {
+                this.showToast(`Escala recusada. O supervisor foi notificado.`, 'info');
+                try {
+                    await DbService.addNotificacao({
+                        paraUsuarioId: 'admin_default',
+                        paraUsuarioNome: 'Supervisor Geral',
+                        titulo: 'Presença Recusada',
+                        mensagem: `${this.currentUser.nome} recusou a escala.`,
+                        tipo: 'rejeicao'
+                    });
+                } catch (err) {}
+            } else {
+                this.showToast(`Presença atualizada com sucesso!`, 'success');
+            }
+            this.loadAndRenderMemberScales();
+            // Re-evaluate notification reminders (both pending and confirmed tomorrow)
+            setTimeout(() => this.runNotificationChecks(), 1000);
+        } catch (e) {
+            this.showAlert('Erro ao atualizar presença no servidor.', 'Erro');
+        }
+    },
+
+    async handleStartService(escalaId, funcao, data, horaIni, horaFim) {
+        try {
+            const servicoId = await DbService.iniciarServico(
+                escalaId,
+                this.currentUser.id,
+                this.currentUser.nome,
+                this.activeSectorId,
+                funcao,
+                data,
+                horaIni,
+                horaFim
+            );
+            // Save active service ID to local session
+            localStorage.setItem(`active_service_${escalaId}`, servicoId);
+            this.showToast('Serviço iniciado! Bom trabalho.', 'success');
+            this.loadAndRenderMemberScales();
+        } catch (e) {
+            this.showAlert('Erro ao iniciar o serviço no banco.', 'Erro');
+        }
+    },
+
+    handleFinishServiceModal(escalaId) {
+        const servicoId = localStorage.getItem(`active_service_${escalaId}`);
+        if (!servicoId) {
+            // Fallback: search Firestore active services
+            this.showAlert('Houve um problema de sincronização. Por favor, reinicie e tente novamente.');
+            return;
+        }
+
+        document.getElementById('fechamento-servico-id').value = servicoId;
+        document.getElementById('fechamento-escala-id').value = escalaId;
+        document.getElementById('fechamento-observacoes').value = '';
+        
+        document.getElementById('modal-servico-fechamento').classList.add('active');
+    },
+
+    closeServicoFechamentoModal() {
+        document.getElementById('modal-servico-fechamento').classList.remove('active');
+    },
+
+    async handleServicoFechamentoSubmit(event) {
+        event.preventDefault();
+        const servicoId = document.getElementById('fechamento-servico-id').value;
+        const escalaId = document.getElementById('fechamento-escala-id').value;
+        const obs = document.getElementById('fechamento-observacoes').value.trim();
+
+        try {
+            await DbService.finalizarServico(servicoId, escalaId, obs);
+            localStorage.removeItem(`active_service_${escalaId}`);
+            
+            this.closeServicoFechamentoModal();
+            this.showToast('Trabalho concluído e presença registrada!', 'success');
+            this.loadAndRenderMemberScales();
+        } catch (e) {
+            this.showAlert('Erro ao gravar encerramento de serviço.', 'Erro');
+        }
+    },
+
+    // --- REPOSIÇÃO (MEMBRO LIMPEZA) ---
+    async loadAndRenderMemberReplenish() {
+        // Load pre-registered products list
+        const select = document.getElementById('replenish-product-select');
+        if (select) {
+            select.innerHTML = '<option value="" disabled selected>Carregando produtos...</option>';
+        }
+        
+        try {
+            if (select) {
+                const produtos = await DbService.getProdutos();
+                const ativos = produtos.filter(p => p.status === 'ativo' && (p.setorId || 'limpeza') === this.activeSectorId);
+                
+                select.innerHTML = '<option value="" disabled selected>Selecione um produto</option>';
+                ativos.forEach(p => {
+                    select.innerHTML += `<option value="${p.nome}" data-id="${p.id}">${p.nome}</option>`;
+                });
+            }
+
+            // Check if member is a designated Repositor/Buyer
+            const repositorSection = document.getElementById('member-repositor-section');
+            const purchasesList = document.getElementById('member-designated-purchases-list');
+            
+            if (this.currentUser && this.currentUser.eRepositor && repositorSection && purchasesList) {
+                const reqs = await DbService.getReposicoes();
+                const myPurchases = reqs.filter(r => r.repositorId === this.currentUser.id && r.status === 'Aguardando Compra');
+                
+                if (myPurchases.length > 0) {
+                    repositorSection.style.display = 'block';
+                    purchasesList.innerHTML = '';
+                    myPurchases.forEach(p => {
+                        const item = document.createElement('div');
+                        item.style.cssText = "background: white; border-radius: 8px; padding: 12px; border: 1px solid #E2E8F0; box-shadow: 0 1px 2px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px;";
+                        item.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                                <span style="font-weight:700; font-size:0.95rem; color:var(--navy-dark);">${p.produtoNome}</span>
+                                <span class="badge" style="background:#FAF5FF; color:#5F388C; font-weight:700; border: 1px solid #E9D5FF;">Qtd: ${p.quantidade}</span>
+                            </div>
+                            <div style="font-size:0.8rem; color:var(--slate-gray);">
+                                <b>Solicitado por:</b> ${p.solicitadoPorNome} (Setor: ${p.setorNome || 'Limpeza'})<br>
+                                ${p.observacao ? `<b>Obs:</b> ${p.observacao}` : ''}
+                            </div>
+                            <div style="display:flex; gap:8px; margin-top:5px;">
+                                <button type="button" class="btn-primary" style="padding:6px 12px; font-size:0.75rem; background-color:#10B981; border-color:#10B981; flex: 1.5; color:white; border-radius:6px; cursor:pointer;" onclick="App.openRepositorCompraModal('${p.id}')">
+                                    <i class="fa-solid fa-cart-arrow-down"></i> Comprar / Dar Entrada
+                                </button>
+                                <button type="button" class="btn-secondary" style="padding:6px 12px; font-size:0.75rem; color:#EF4444; border-color:#FCA5A5; background:#FEF2F2; flex: 1; border-radius:6px; cursor:pointer;" onclick="App.declinePurchase('${p.id}')">
+                                    Recusar
+                                </button>
+                            </div>
+                        `;
+                        purchasesList.appendChild(item);
+                    });
+                } else {
+                    repositorSection.style.display = 'none';
+                }
+            } else if (repositorSection) {
+                repositorSection.style.display = 'none';
+            }
+
+            // Load Request History
+            this.renderMemberReplenishHistory();
+
+        } catch (e) {
+            console.error("Error loading products:", e);
+        }
+    },
+
+    async renderMemberReplenishHistory() {
+        const container = document.getElementById('member-reposicao-list');
+        if (!container) return;
+        container.innerHTML = '<div style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+
+        try {
+            const reqs = await DbService.getReposicoes();
+            const ownReqs = reqs.filter(r => r.solicitadoPorId === this.currentUser.id);
+
+            if (ownReqs.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--slate-gray); font-size: 0.9rem;">Nenhuma solicitação realizada.</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            ownReqs.forEach(r => {
+                const item = document.createElement('div');
+                item.className = 'notice-item';
+                
+                let badgeClass = 'status-pendente';
+                let statusLabel = r.status;
+                if (r.status === 'Em análise') {
+                    badgeClass = 'status-andamento';
+                } else if (r.status === 'Aguardando Compra') {
+                    badgeClass = 'status-andamento';
+                    statusLabel = 'Aprovada (Em Compra)';
+                } else if (r.status === 'Atendida') {
+                    badgeClass = 'status-confirmado';
+                } else if (r.status === 'Rejeitado') {
+                    badgeClass = 'status-recusado';
+                }
+
+                const dt = r.dataSolicitacao.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+                item.innerHTML = `
+                    <div class="notice-meta">
+                        <span>${dt}</span>
+                        <span class="badge ${badgeClass}">${statusLabel}</span>
+                    </div>
+                    <h4 style="font-weight: 700; margin-bottom: 5px; color:var(--navy-dark);">${r.produtoNome} (Qtd: ${r.quantidade})</h4>
+                    <p style="font-size: 0.85rem; color: var(--slate-gray); margin: 0;">
+                        ${r.observacao ? `<b>Sua obs:</b> ${r.observacao}<br>` : ''}
+                        ${r.repositorNome ? `<b>Comprador designado:</b> ${r.repositorNome}<br>` : ''}
+                        ${r.status === 'Atendida' && r.valorGasto ? `<b>Compra concluída em:</b> ${r.dataCompra ? new Date(r.dataCompra).toLocaleDateString('pt-BR') : dt} (Valor: R$ ${r.valorGasto.toFixed(2)})<br>` : ''}
+                        ${r.status === 'Rejeitado' && r.motivoRejeicao ? `<span style="color:#EF4444;"><b>Motivo rejeição:</b> ${r.motivoRejeicao}</span><br>` : ''}
+                    </p>
+                `;
+                container.appendChild(item);
+            });
+        } catch (e) {
+            container.innerHTML = '<p style="color: red;">Erro ao carregar histórico.</p>';
+        }
+    },
+
+    async declinePurchase(reposicaoId) {
+        if (!confirm('Deseja recusar a compra deste insumo? O pedido será arquivado como rejeitado.')) return;
+        
+        const motivo = prompt('Por favor, informe o motivo da recusa:');
+        if (motivo === null) return;
+
+        try {
+            const repDoc = await db.collection('reposicoes').doc(reposicaoId).get();
+            if (repDoc.exists) {
+                const repData = repDoc.data();
+                
+                await db.collection('reposicoes').doc(reposicaoId).update({
+                    status: 'Rejeitado',
+                    motivoRejeicao: motivo || 'Recusado pelo comprador designado',
+                    recusadoPorId: this.currentUser.id,
+                    recusadoPorNome: this.currentUser.nome,
+                    recusadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                await DbService.addNotificacao({
+                    paraUsuarioId: repData.solicitadoPorId,
+                    mensagem: `Seu pedido de "${repData.produtoNome}" foi recusado pelo comprador ${this.currentUser.nome}. Motivo: ${motivo || 'Recusado pelo comprador'}.`,
+                    reposicaoId: reposicaoId
+                });
+                
+                this.showToast('Compra recusada e pedido arquivado.', 'info');
+                this.loadAndRenderMemberReplenish();
+            }
+        } catch (e) {
+            console.error(e);
+            this.showAlert('Erro ao recusar compra.');
+        }
+    },
+
+    async openRepositorCompraModal(reposicaoId) {
+        try {
+            const repDoc = await db.collection('reposicoes').doc(reposicaoId).get();
+            if (!repDoc.exists) return;
+            const r = repDoc.data();
+
+            document.getElementById('repositor-compra-reposicao-id').value = reposicaoId;
+            document.getElementById('repositor-compra-produto-nome').textContent = `Produto: ${r.produtoNome.toUpperCase()} (Qtd solicitada: ${r.quantidade})`;
+            
+            document.getElementById('repositor-compra-data').value = this.formatLocalISOString(new Date()).slice(0, 16);
+            document.getElementById('repositor-compra-qtd').value = r.quantidade;
+            document.getElementById('repositor-compra-valor').value = '';
+            document.getElementById('repositor-compra-obs').value = '';
+
+            document.getElementById('modal-repositor-compra').style.display = 'flex';
+        } catch (e) {
+            console.error(e);
+            this.showAlert('Erro ao abrir o modal de compra.');
+        }
+    },
+
+    closeRepositorCompraModal() {
+        document.getElementById('modal-repositor-compra').style.display = 'none';
+    },
+
+    async handleRepositorCompraSubmit(event) {
+        event.preventDefault();
+        const reposicaoId = document.getElementById('repositor-compra-reposicao-id').value;
+        const dataCompraStr = document.getElementById('repositor-compra-data').value;
+        const qtdComprada = parseInt(document.getElementById('repositor-compra-qtd').value, 10);
+        const valorGasto = parseFloat(document.getElementById('repositor-compra-valor').value);
+        const compraObservacao = document.getElementById('repositor-compra-obs').value.trim();
+
+        if (!reposicaoId || isNaN(qtdComprada) || qtdComprada <= 0 || isNaN(valorGasto) || valorGasto < 0) {
+            this.showAlert('Por favor, informe valores válidos.');
+            return;
+        }
+
+        try {
+            const repDoc = await db.collection('reposicoes').doc(reposicaoId).get();
+            if (repDoc.exists) {
+                const r = repDoc.data();
+                
+                await db.collection('reposicoes').doc(reposicaoId).update({
+                    status: 'Atendida',
+                    dataCompra: new Date(dataCompraStr),
+                    quantidadeComprada: qtdComprada,
+                    valorGasto: valorGasto,
+                    compraObservacao: compraObservacao,
+                    concluidoEm: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                let prodId = r.produtoId;
+                if (!prodId) {
+                    const prodSnap = await db.collection('produtos')
+                        .where('nome', '==', r.produtoNome)
+                        .where('setorId', '==', r.setorId || 'limpeza')
+                        .limit(1)
+                        .get();
+                    if (!prodSnap.empty) {
+                        prodId = prodSnap.docs[0].id;
+                    }
+                }
+
+                if (prodId) {
+                    await DbService.registrarMovimentacaoEstoque(
+                        prodId, 
+                        'entrada', 
+                        qtdComprada, 
+                        `Compra efetuada pelo repositor (Valor: R$ ${valorGasto.toFixed(2)})`, 
+                        this.currentUser.nome
+                    );
+
+                    await DbService.registrarMovimentacaoEstoque(
+                        prodId, 
+                        'saida', 
+                        r.quantidade, 
+                        `Entrega de reposição solicitada (Ref: ${reposicaoId})`, 
+                        this.currentUser.nome
+                    );
+                }
+
+                await DbService.addNotificacao({
+                    paraUsuarioId: r.solicitadoPorId,
+                    mensagem: `Seu pedido de "${r.produtoNome}" foi comprado e entregue por ${this.currentUser.nome}.`,
+                    reposicaoId: reposicaoId
+                });
+
+                this.closeRepositorCompraModal();
+                this.showToast('Entrada de insumo registrada e estoque atualizado!', 'success');
+                this.loadAndRenderMemberReplenish();
+            }
+        } catch (e) {
+            console.error(e);
+            this.showAlert('Erro ao registrar a compra.');
+        }
+    },
+
+    async handleReplenishSubmit(event) {
+        event.preventDefault();
+        
+        // Enforce only compradores/admins can request products
+        if (this.currentUser && this.currentUser.eRepositor !== true && this.currentUser.perfil !== 'admin') {
+            this.showAlert('Apenas compradores podem solicitar reposição de produtos.', 'Acesso Negado');
+            return;
+        }
+        
+        const pSelect = document.getElementById('replenish-product-select');
+        const produtoNome = pSelect.value;
+        const selectedOption = pSelect.options[pSelect.selectedIndex];
+        const produtoId = selectedOption ? selectedOption.getAttribute('data-id') : null;
+        const quantidade = parseInt(document.getElementById('replenish-qty').value);
+        const observacao = document.getElementById('replenish-notes').value.trim();
+
+        if (!produtoNome) {
+            this.showAlert('Por favor, selecione um produto.');
+            return;
+        }
+
+        const sector = this.sectorsData[this.activeSectorId];
+        const sectorNome = sector ? sector.nome : this.activeSectorId;
+
+        try {
+            await DbService.addReposicao({
+                produtoId,
+                produtoNome,
+                quantidade,
+                observacao,
+                solicitadoPorId: this.currentUser.id,
+                solicitadoPorNome: this.currentUser.nome,
+                setorId: this.activeSectorId,
+                setorNome: sectorNome
+            });
+
+            document.getElementById('replenish-request-form').reset();
+            this.showToast('Solicitação de reposição enviada!', 'success');
+            this.renderMemberReplenishHistory();
+        } catch (e) {
+            this.showAlert('Erro ao enviar solicitação.', 'Erro');
+        }
+    },
+
+    // Load member stats on profile tab
+    async loadMemberProfileStats() {
+        try {
+            const escalas = await DbService.getEscalas(this.activeSectorId);
+            const userEscalas = escalas.filter(e => e.membroId === this.currentUser.id);
+            
+            const totalConfirmados = userEscalas.filter(e => e.statusPresenca === 'Confirmada').length;
+            const totalServidos = userEscalas.filter(e => e.statusServico === 'Finalizado').length;
+
+            document.getElementById('stat-confirmados').innerText = totalConfirmados;
+            document.getElementById('stat-serviu-mes').innerText = totalServidos;
+        } catch (e) {
+            console.error("Error loading stats:", e);
+        }
+    },
+
+    // ==========================================================================
+    // VIEW 4: ADMIN PORTAL
+    // ==========================================================================
+    loadAndRenderAdminPortal() {
+        // Toggle mobile drawer shut
+        document.getElementById('admin-drawer').classList.remove('mobile-open');
+
+        // Apply visual adjustments
+        const titleEl = document.getElementById('admin-view-title');
+        titleEl.innerText = this.getAdminTabTitle(this.adminActiveTab);
+
+        // Hide all views, show selected
+        document.querySelectorAll('.admin-tabview').forEach(view => view.style.display = 'none');
+        document.getElementById(`admin-sub-${this.adminActiveTab}`).style.display = 'block';
+
+        // Load data depending on view
+        if (this.adminActiveTab === 'dashboard') {
+            this.loadAdminDashboard();
+        } else if (this.adminActiveTab === 'setores') {
+            this.loadAdminSectors();
+        } else if (this.adminActiveTab === 'membros') {
+            this.loadAdminMembros();
+        } else if (this.adminActiveTab === 'escalas') {
+            this.loadAdminEscalas();
+        } else if (this.adminActiveTab === 'reposicoes') {
+            this.loadAdminReposicoes();
+        } else if (this.adminActiveTab === 'produtos') {
+            this.loadAdminProdutos();
+        } else if (this.adminActiveTab === 'relatorios') {
+            this.loadAdminRelatorios();
+        } else if (this.adminActiveTab === 'avisos') {
+            this.loadAdminAvisos();
+        }
+    },
+
+    switchAdminTab(tabName, el) {
+        this.adminActiveTab = tabName;
+        
+        document.querySelectorAll('.admin-menu-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        el.classList.add('active');
+
+        if (tabName === 'escalas') {
+            this.adminSelectedCultoId = null;
+        }
+
+        this.loadAndRenderAdminPortal();
+    },
+
+    getAdminTabTitle(tabName) {
+        switch (tabName) {
+            case 'dashboard': return 'Painel Geral';
+            case 'setores': return 'Estrutura de Setores';
+            case 'membros': return 'Membros da Equipe';
+            case 'escalas': return 'Controle de Escalas';
+            case 'reposicoes': return 'Solicitações de Reposição';
+            case 'produtos': return 'Produtos Cadastrados';
+            case 'relatorios': return 'Métricas e Relatórios';
+            case 'avisos': return 'Mural de Informativos';
+            default: return 'CES Diaconia';
+        }
+    },
+
+    toggleAdminSidebar() {
+        document.getElementById('admin-drawer').classList.toggle('mobile-open');
+    },
+
+    // --- TAB: DASHBOARD (ADMIN) ---
+    async loadAdminDashboard() {
+        try {
+            // 0. Fetch general counts & set welcome card details
+            const membros = await DbService.getMembros();
+            const cultos = await DbService.getCultos();
+            const adminName = this.currentUser ? this.currentUser.nome : 'Supervisor';
+            
+            const adminWelcomeNameEl = document.getElementById('admin-welcome-name');
+            if (adminWelcomeNameEl) adminWelcomeNameEl.innerText = adminName;
+            
+            const welcomeStatMembrosEl = document.getElementById('welcome-stat-membros');
+            if (welcomeStatMembrosEl) welcomeStatMembrosEl.innerText = membros.filter(m => m.status === 'ativo').length;
+            
+            const welcomeStatCultosEl = document.getElementById('welcome-stat-cultos');
+            if (welcomeStatCultosEl) welcomeStatCultosEl.innerText = cultos.length;
+            
+            // 1. Fetch counts for stats cards (escalas ativas por setor)
+            const escalas = await DbService.getEscalas();
+            
+            const sectorEscalas = {
+                diaconia_templo: 0,
+                acolhimento_integracao: 0,
+                limpeza: 0,
+                manutencao: 0
+            };
+
+            const sectorVoluntarios = {
+                diaconia_templo: 0,
+                acolhimento_integracao: 0,
+                limpeza: 0,
+                manutencao: 0
+            };
+
+            // Count active scheduled scales per sector
+            escalas.forEach(e => {
+                if (e.statusServico !== 'Finalizado') {
+                    if (sectorEscalas[e.setorId] !== undefined) {
+                        sectorEscalas[e.setorId]++;
+                    }
+                }
+            });
+
+            // Count active registered members per sector
+            membros.forEach(m => {
+                if (m.status === 'ativo') {
+                    if (Array.isArray(m.setores)) {
+                        m.setores.forEach(sId => {
+                            if (sectorVoluntarios[sId] !== undefined) {
+                                sectorVoluntarios[sId]++;
+                            }
+                        });
+                    } else if (m.setor && sectorVoluntarios[m.setor] !== undefined) {
+                        sectorVoluntarios[m.setor]++;
+                    }
+                }
+            });
+
+            // Update stats grid values
+            const updateStat = (sectorKey, elementEscalasId, elementMembrosId) => {
+                const escalasEl = document.getElementById(elementEscalasId);
+                const membrosEl = document.getElementById(elementMembrosId);
+                if (escalasEl) escalasEl.innerText = sectorEscalas[sectorKey];
+                if (membrosEl) {
+                    const totalVol = sectorVoluntarios[sectorKey];
+                    membrosEl.innerText = `${totalVol} voluntário${totalVol !== 1 ? 's' : ''}`;
+                }
+            };
+
+            updateStat('diaconia_templo', 'dash-stat-diaconia-escalas', 'dash-stat-diaconia-membros');
+            updateStat('acolhimento_integracao', 'dash-stat-acolhimento-escalas', 'dash-stat-acolhimento-membros');
+            updateStat('limpeza', 'dash-stat-limpeza-escalas', 'dash-stat-limpeza-membros');
+            updateStat('manutencao', 'dash-stat-manutencao-escalas', 'dash-stat-manutencao-membros');
+
+            // 2. Load Services in Progress
+            const activeServices = await DbService.getServicosEmAndamento();
+            const serviceContainer = document.getElementById('admin-dashboard-active-services');
+            document.getElementById('active-services-count').innerText = `${activeServices.length} Ativo(s)`;
+
+            if (activeServices.length === 0) {
+                serviceContainer.innerHTML = `<div style="text-align: center; color: var(--slate-gray); padding: 30px; font-size:0.9rem;">Não há serviços em andamento no momento.</div>`;
+            } else {
+                serviceContainer.innerHTML = '';
+                activeServices.forEach(s => {
+                    const secInfo = this.sectorsData[s.setorId];
+                    const row = document.createElement('div');
+                    row.className = 'active-service-item';
+                    row.style.borderLeftColor = secInfo ? secInfo.cor : 'var(--theme-color)';
+                    
+                    row.innerHTML = `
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.95rem;">${s.membroNome}</div>
+                            <div style="font-size: 0.8rem; color: var(--slate-gray);">${secInfo ? secInfo.nome : s.setorId} - ${s.funcao}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="badge badge-active" style="animation: pulse 1.5s infinite;"><i class="fa-solid fa-play"></i> Iniciou às ${s.horarioInicio}</span>
+                        </div>
+                    `;
+                    serviceContainer.appendChild(row);
+                });
+            }
+
+            // 3. Scale Summary Stats & Progress Bar
+            const summaryContainer = document.getElementById('admin-dashboard-scales-summary');
+            summaryContainer.innerHTML = '';
+            
+            const totalScales = escalas.length;
+            const confirmed = escalas.filter(e => e.statusPresenca === 'Confirmada').length;
+            const pending = escalas.filter(e => e.statusPresenca === 'Pendente').length;
+            const finished = escalas.filter(e => e.statusServico === 'Finalizado').length;
+            const other = totalScales - confirmed - pending;
+
+            const pctConfirmed = totalScales > 0 ? Math.round((confirmed / totalScales) * 100) : 0;
+            const pctPending = totalScales > 0 ? Math.round((pending / totalScales) * 100) : 0;
+            const pctOther = totalScales > 0 ? (100 - pctConfirmed - pctPending) : 0;
+
+            const confirmedEl = document.querySelector('#dashboard-scales-progress-bar .confirmed');
+            const pendingEl = document.querySelector('#dashboard-scales-progress-bar .pending');
+            const otherEl = document.querySelector('#dashboard-scales-progress-bar .other');
+
+            if (confirmedEl) confirmedEl.style.width = `${pctConfirmed}%`;
+            if (pendingEl) pendingEl.style.width = `${pctPending}%`;
+            if (otherEl) otherEl.style.width = `${pctOther}%`;
+
+            const pctConfirmedEl = document.getElementById('dash-progress-pct-confirmed');
+            const pctPendingEl = document.getElementById('dash-progress-pct-pending');
+            if (pctConfirmedEl) pctConfirmedEl.innerText = `${pctConfirmed}%`;
+            if (pctPendingEl) pctPendingEl.innerText = `${pctPending}%`;
+
+            summaryContainer.innerHTML = `
+                <div class="report-row"><span>Total Planejado:</span> <b>${totalScales}</b></div>
+                <div class="report-row"><span>Presenças Confirmadas:</span> <b style="color: #10B981;">${confirmed}</b></div>
+                <div class="report-row"><span>Presenças Pendentes:</span> <b style="color: #F59E0B;">${pending}</b></div>
+                <div class="report-row"><span>Serviços Finalizados:</span> <b style="color: var(--teal-primary);">${finished}</b></div>
+            `;
+
+            // 4. Pending Replenishments summary
+            const reposicoes = await DbService.getReposicoes();
+            const pendingReps = reposicoes.filter(r => r.status === 'Pendente');
+            const repContainer = document.getElementById('admin-dashboard-reposicoes');
+
+            if (pendingReps.length === 0) {
+                repContainer.innerHTML = `<div style="color:#059669; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Tudo abastecido. Sem solicitações.</div>`;
+            } else {
+                repContainer.innerHTML = `
+                    <div style="color: #DC2626; font-weight:700; font-size:1.1rem; margin-bottom:5px;">
+                        ${pendingReps.length} Solicitações Pendentes
+                    </div>
+                    <button class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem; width: auto; margin: 0 auto;" onclick="App.navigateToTabFromDashboard('reposicoes')">
+                        Ver e Atender
+                    </button>
+                `;
+            }
+
+        } catch (e) {
+            console.error("Dashboard load error:", e);
+        }
+    },
+
+    navigateToTabFromDashboard(tabName) {
+        const el = Array.from(document.querySelectorAll('.admin-menu-item')).find(item => item.innerHTML.includes(tabName === 'reposicoes' ? 'Reposição' : tabName));
+        if (el) {
+            this.switchAdminTab(tabName, el);
+        }
+    },
+
+    // --- TAB: SETORES (ADMIN) ---
+    async loadAdminSectors() {
+        const container = document.getElementById('admin-organogram-container');
+        if (!container) return;
+        container.innerHTML = '<div style="text-align:center; padding: 40px; background:white; border-radius:12px; border:1px solid #E2E8F0;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--navy-primary);"></i><p style="margin-top:15px; color:var(--slate-gray);">Carregando Organograma...</p></div>';
+
+        try {
+            const setores = await DbService.getSetores();
+            const membros = await DbService.getMembros();
+            
+            const supervisors = membros.filter(m => m.perfil === 'admin' && m.status === 'ativo');
+            const supervisorName = supervisors.length > 0 ? supervisors.map(s => s.nome).join(' / ') : 'Supervisor Geral';
+
+            let organogramHtml = `
+                <div class="organogram-container">
+                    <div class="organogram-top">
+                        <div class="organogram-card leadership-card">
+                            <div class="card-role">Coordenação Geral</div>
+                            <div class="card-name">${supervisorName}</div>
+                            <div class="card-desc">Administração Matricial</div>
+                        </div>
+                    </div>
+                    
+                    <div class="organogram-line-vertical"></div>
+                    
+                    <div class="organogram-grid">
+            `;
+
+            setores.forEach(s => {
+                const sectorMembers = membros.filter(m => {
+                    if (m.status !== 'ativo') return false;
+                    const mSetores = m.setores || (m.setor ? [m.setor] : []);
+                    return mSetores.includes(s.id);
+                });
+
+                const buyers = sectorMembers.filter(m => m.eRepositor === true);
+                const operationalMembers = sectorMembers.filter(m => !m.eRepositor);
+
+                const functionGroups = {};
+                s.funcoes.forEach(f => {
+                    functionGroups[f] = [];
+                });
+                
+                operationalMembers.forEach(m => {
+                    const matchedFun = s.funcoes.find(f => m.funcao && m.funcao.toLowerCase().includes(f.toLowerCase())) || s.funcoes[0];
+                    if (functionGroups[matchedFun]) {
+                        functionGroups[matchedFun].push(m);
+                    } else {
+                        functionGroups[matchedFun] = [m];
+                    }
+                });
+
+                let buyersHtml = '';
+                if (buyers.length > 0) {
+                    buyers.forEach(b => {
+                        buyersHtml += `
+                            <div class="org-member-badge repositor-badge">
+                                <i class="fa-solid fa-basket-shopping"></i>
+                                <span><b>${b.nome}</b></span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    buyersHtml = `<div style="font-size:0.8rem; color:#94A3B8; font-style:italic;">Nenhum repositor designado</div>`;
+                }
+
+                let operationalHtml = '';
+                for (const [func, list] of Object.entries(functionGroups)) {
+                    let listHtml = '';
+                    if (list.length > 0) {
+                        list.forEach(v => {
+                            listHtml += `
+                                <div class="org-member-badge">
+                                    <i class="fa-solid fa-user-tag"></i>
+                                    <span>${v.nome}</span>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        listHtml = `<div style="font-size:0.75rem; color:#94A3B8; font-style:italic; padding-left: 5px;">Sem obreiros escalados</div>`;
+                    }
+                    operationalHtml += `
+                        <div style="margin-bottom: 12px;">
+                            <div style="font-size:0.75rem; font-weight:700; color:var(--navy-dark); margin-bottom:5px;"><i class="fa-solid fa-chevron-right" style="font-size:0.6rem; color:${s.cor};"></i> ${func}</div>
+                            ${listHtml}
+                        </div>
+                    `;
+                }
+
+                organogramHtml += `
+                    <div class="sector-column">
+                        <div class="sector-header-card" style="background-color: ${s.cor};">
+                            ${s.nome}
+                        </div>
+                        
+                        <div class="org-group" style="border-color: #E9D5FF;">
+                            <div class="org-group-title" style="color: #5F388C;"><i class="fa-solid fa-cart-flatbed-suitcases"></i> Estoque & Compras</div>
+                            ${buyersHtml}
+                        </div>
+                        
+                        <div class="org-group">
+                            <div class="org-group-title"><i class="fa-solid fa-users"></i> Funções Operacionais</div>
+                            ${operationalHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            organogramHtml += `
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = organogramHtml;
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = '<div style="text-align:center; padding: 40px; color:red; background:white; border-radius:12px; border:1px solid #E2E8F0;">Erro ao gerar organograma matricial.</div>';
+        }
+    },
+
+    // --- TAB: MEMBROS (ADMIN) ---
+    async loadAdminMembros() {
+        this.renderMembrosTable();
+    },
+
+    async renderMembrosTable() {
+        const body = document.getElementById('admin-membros-table-body');
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
+
+        const filterSector = document.getElementById('member-filter-sector').value;
+        const filterStatus = document.getElementById('member-filter-status').value;
+
+        try {
+            let membros = await DbService.getMembros();
+
+            if (filterSector) {
+                membros = membros.filter(m => {
+                    if (Array.isArray(m.setores)) {
+                        return m.setores.includes(filterSector);
+                    }
+                    return m.setor === filterSector;
+                });
+            }
+            if (filterStatus) {
+                membros = membros.filter(m => m.status === filterStatus);
+            }
+
+            if (membros.length === 0) {
+                body.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--slate-gray);">Nenhum membro cadastrado com esses filtros.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = '';
+            membros.forEach(m => {
+                const statusBadge = m.status === 'ativo' ? '<span class="badge badge-active">Ativo</span>' : '<span class="badge badge-inactive">Inativo</span>';
+                const perfilBadge = m.perfil === 'admin' ? '<span class="badge badge-admin">Admin</span>' : '<span class="badge badge-membro">Membro</span>';
+                
+                let setorNome = '-';
+                if (m.perfil !== 'admin') {
+                    const mSetores = m.setores || (m.setor ? [m.setor] : []);
+                    if (mSetores.length > 0) {
+                        setorNome = mSetores.map(sId => this.sectorsData[sId]?.nome || sId).join(', ');
+                    } else {
+                        setorNome = 'Sem Setor';
+                    }
+                }
+
+                const repositorBadge = m.eRepositor ? ' <span class="badge" style="background:#5F388C; color:white; font-size:0.7rem; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:5px;">Comprador</span>' : '';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><b>${m.nome}</b></td>
+                    <td>${m.email}</td>
+                    <td>${perfilBadge}</td>
+                    <td>${setorNome}</td>
+                    <td>${m.funcao || '-'}${repositorBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-table-action" onclick="App.handleEditMembro('${m.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn-table-action delete" onclick="App.handleDeleteMembro('${m.id}', '${m.nome}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                body.appendChild(row);
+            });
+        } catch (e) {
+            body.innerHTML = '<tr><td colspan="7" style="color:red; text-align:center;">Erro ao carregar membros.</td></tr>';
+        }
+    },
+
+    // --- MEMBRO FORM MODAL ---
+    openMembroFormModal() {
+        document.getElementById('membro-modal-title').innerText = "Cadastrar Novo Membro";
+        document.getElementById('membro-form-id').value = '';
+        document.getElementById('membro-form').reset();
+        
+        // Reset birthdate field
+        const birthdateEl = document.getElementById('membro-data-nascimento');
+        if (birthdateEl) birthdateEl.value = '';
+        
+        // Reset checkbox explicitly
+        document.getElementById('membro-e-repositor').checked = false;
+        
+        // Reset password requirement
+        document.getElementById('membro-senha').required = true;
+        
+        // Render empty checkboxes
+        this.renderMembroSetoresCheckboxes([]);
+        
+        document.getElementById('membro-setor-funcao-fields').style.display = 'flex';
+        document.getElementById('modal-membro-form').classList.add('active');
+    },
+
+    closeMembroFormModal() {
+        document.getElementById('modal-membro-form').classList.remove('active');
+    },
+
+    handleMembroPerfilChange(perfil) {
+        const fields = document.getElementById('membro-setor-funcao-fields');
+        if (perfil === 'admin') {
+            fields.style.display = 'none';
+            document.getElementById('membro-funcao').required = false;
+        } else {
+            fields.style.display = 'flex';
+            document.getElementById('membro-funcao').required = true;
+        }
+    },
+
+    renderMembroSetoresCheckboxes(selectedSectors = []) {
+        const container = document.getElementById('membro-setores-checkboxes');
+        if (!container) return;
+        container.innerHTML = '';
+
+        for (const [key, sector] of Object.entries(this.sectorsData)) {
+            const isChecked = selectedSectors.includes(key);
+            const wrapper = document.createElement('label');
+            wrapper.className = 'checkbox-label';
+            wrapper.style.display = 'flex';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.gap = '8px';
+            wrapper.style.cursor = 'pointer';
+            wrapper.style.padding = '8px';
+            wrapper.style.borderRadius = '8px';
+            wrapper.style.background = isChecked ? `${sector.cor}15` : 'transparent';
+            wrapper.style.border = `1px solid ${isChecked ? sector.cor : 'rgba(0,0,0,0.05)'}`;
+            wrapper.style.transition = 'all 0.2s ease';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = key;
+            checkbox.checked = isChecked;
+            checkbox.style.accentColor = sector.cor;
+            
+            checkbox.onchange = (e) => {
+                if (checkbox.checked) {
+                    wrapper.style.background = `${sector.cor}15`;
+                    wrapper.style.border = `1px solid ${sector.cor}`;
+                } else {
+                    wrapper.style.background = 'transparent';
+                    wrapper.style.border = '1px solid rgba(0,0,0,0.05)';
+                }
+            };
+
+            const span = document.createElement('span');
+            span.innerText = sector.nome;
+            span.style.fontSize = '0.9rem';
+            span.style.color = 'var(--navy-dark)';
+            span.style.fontWeight = '500';
+
+            wrapper.appendChild(checkbox);
+            wrapper.appendChild(span);
+            container.appendChild(wrapper);
+        }
+    },
+
+    async handleEditMembro(id) {
+        try {
+            const membros = await DbService.getMembros();
+            const m = membros.find(item => item.id === id);
+            if (!m) return;
+
+            document.getElementById('membro-modal-title').innerText = "Editar Membro";
+            document.getElementById('membro-form-id').value = m.id;
+            document.getElementById('membro-nome').value = m.nome;
+            document.getElementById('membro-foto-url').value = m.fotoUrl || '';
+
+            const birthdateEl = document.getElementById('membro-data-nascimento');
+            if (birthdateEl) birthdateEl.value = m.dataNascimento || '';
+            document.getElementById('membro-email').value = m.email;
+            document.getElementById('membro-senha').value = m.senha || '';
+            document.getElementById('membro-senha').required = false; // not mandatory to change
+            document.getElementById('membro-perfil').value = m.perfil;
+            document.getElementById('membro-status').value = m.status;
+
+            this.handleMembroPerfilChange(m.perfil);
+
+            if (m.perfil !== 'admin') {
+                let selectedSectors = [];
+                if (Array.isArray(m.setores)) {
+                    selectedSectors = m.setores;
+                } else if (m.setor) {
+                    selectedSectors = [m.setor];
+                }
+                this.renderMembroSetoresCheckboxes(selectedSectors);
+                document.getElementById('membro-funcao').value = m.funcao || '';
+            }
+
+            document.getElementById('membro-e-repositor').checked = !!m.eRepositor;
+            document.getElementById('modal-membro-form').classList.add('active');
+        } catch (e) {
+            this.showAlert('Erro ao buscar dados do membro.');
+        }
+    },
+
+    async handleMembroSave(event) {
+        event.preventDefault();
+        const id = document.getElementById('membro-form-id').value;
+        const nome = document.getElementById('membro-nome').value.trim();
+        const fotoUrl = document.getElementById('membro-foto-url').value.trim();
+        const email = document.getElementById('membro-email').value.toLowerCase().trim();
+        const senha = document.getElementById('membro-senha').value;
+        const perfil = document.getElementById('membro-perfil').value;
+        const status = document.getElementById('membro-status').value;
+        
+        let setor = null;
+        let setores = [];
+        let funcao = 'Administrador';
+
+        if (perfil !== 'admin') {
+            const checkedBoxes = document.querySelectorAll('#membro-setores-checkboxes input[type="checkbox"]:checked');
+            checkedBoxes.forEach(cb => setores.push(cb.value));
+            
+            funcao = document.getElementById('membro-funcao').value.trim();
+            if (setores.length === 0) {
+                this.showAlert('Por favor, selecione pelo menos um setor de atuação.');
+                return;
+            }
+            if (!funcao) {
+                this.showAlert('Por favor, defina a função para o membro.');
+                return;
+            }
+            // Fallback for single sector field
+            setor = setores[0];
+        }
+
+        try {
+            const eRepositor = document.getElementById('membro-e-repositor').checked;
+            const birthdateEl = document.getElementById('membro-data-nascimento');
+            const dataNascimento = birthdateEl ? birthdateEl.value : '';
+
+            await DbService.saveMembro(id ? id : null, {
+                nome,
+                email,
+                senha,
+                perfil,
+                setor,
+                setores,
+                funcao,
+                status,
+                fotoUrl,
+                dataNascimento,
+                eRepositor: !!eRepositor
+            });
+
+            this.closeMembroFormModal();
+            this.showToast('Membro salvo com sucesso!', 'success');
+            this.renderMembrosTable();
+        } catch (e) {
+            this.showAlert('Erro ao gravar membro.');
+        }
+    },
+
+    async handleDeleteMembro(id, nome) {
+        if (confirm(`Tem certeza que deseja excluir permanentemente o membro "${nome}"?`)) {
+            try {
+                await DbService.deleteMembro(id);
+                this.showToast('Membro removido!', 'success');
+                this.renderMembrosTable();
+            } catch (e) {
+                this.showAlert('Erro ao remover membro.');
+            }
+        }
+    },
+
+    // --- AUTO-MIGRAÇÃO DE ESCALAS LEGADAS ---
+    async autoMigrateLegacyScales() {
+        try {
+            console.log("Checking for legacy scales to migrate...");
+            const escalas = await DbService.getEscalas();
+            const legacyScales = escalas.filter(e => !e.cultoId);
+            
+            if (legacyScales.length === 0) {
+                console.log("No legacy scales to migrate.");
+                return;
+            }
+            
+            console.log(`Found ${legacyScales.length} legacy scales. Migrating...`);
+            
+            // Agrupar por data + horarioInicio + horarioFim
+            const groups = {};
+            legacyScales.forEach(e => {
+                const key = `${e.data}_${e.horarioInicio}_${e.horarioFim}`;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(e);
+            });
+            
+            const cultosExistentes = await DbService.getCultos();
+            
+            for (const key in groups) {
+                const scalesInGroup = groups[key];
+                const [data, inicio, fim] = key.split('_');
+                
+                // Verificar se já existe um culto nesta data e horario
+                let culto = cultosExistentes.find(c => c.data === data && c.horarioInicio === inicio && c.horarioFim === fim);
+                let cultoId = culto ? culto.id : null;
+                let cultoNome = culto ? culto.nome : null;
+                
+                if (!cultoId) {
+                    // Criar um culto correspondente
+                    const dateParts = data.split('-');
+                    const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                    
+                    let deducedName = "Culto Especial";
+                    const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                    const dayOfWeek = dateObj.getDay();
+                    
+                    if (dayOfWeek === 0) {
+                        deducedName = inicio < "13:00" ? "Domingo Manhã" : "Domingo Noite";
+                    } else if (dayOfWeek === 3) {
+                        deducedName = "Quarta Ensino";
+                    } else if (dayOfWeek === 5) {
+                        deducedName = "Sexta Oração";
+                    } else {
+                        deducedName = "Evento Especial";
+                    }
+                    
+                    cultoNome = deducedName;
+                    cultoId = await DbService.saveCulto(null, {
+                        nome: cultoNome,
+                        data: data,
+                        horarioInicio: inicio,
+                        horarioFim: fim,
+                        status: "Confirmado",
+                        tipo: dayOfWeek === 0 || dayOfWeek === 3 || dayOfWeek === 5 ? "regular" : "especial"
+                    });
+                    console.log(`Created new automatic culto: ${cultoNome} on ${formattedDate}`);
+                }
+                
+                // Associar escalas ao culto
+                for (const escala of scalesInGroup) {
+                    await DbService.saveEscala(escala.id, {
+                        cultoId: cultoId,
+                        cultoNome: cultoNome
+                    });
+                }
+                console.log(`Associated ${scalesInGroup.length} scales to cultoId ${cultoId}`);
+            }
+            console.log("Migration complete!");
+        } catch (e) {
+            console.error("Error migrating legacy scales:", e);
+        }
+    },
+
+    // --- TAB: ESCALAS (ADMIN) ---
+    async loadAdminEscalas() {
+        // Executa migração de dados legados
+        await this.autoMigrateLegacyScales();
+        
+        // Carrega alertas e notificações da supervisão (v3.2)
+        await this.loadAndRenderSupervisorAlerts();
+        
+        try {
+            this.cultosData = await DbService.getCultos();
+            
+            // Render Admin Calendar (New Premium Calendar view)
+            await this.renderPremiumCalendar(true);
+            
+            const calContainer = document.getElementById('admin-calendar-view-container');
+            const detailContainer = document.getElementById('admin-selected-culto-section');
+            
+            if (this.adminSelectedCultoId) {
+                const exists = this.cultosData.some(c => c.id === this.adminSelectedCultoId);
+                if (exists) {
+                    if (calContainer) calContainer.style.display = 'none';
+                    if (detailContainer) detailContainer.style.display = 'block';
+                    this.selectAdminCulto(this.adminSelectedCultoId);
+                    return;
+                }
+            }
+            
+            // Se nenhum culto estiver selecionado ou o selecionado não existir, mostra apenas o calendário
+            if (calContainer) calContainer.style.display = 'block';
+            if (detailContainer) detailContainer.style.display = 'none';
+        } catch (e) {
+            console.error("Erro ao carregar cultos:", e);
+            const calContainer = document.getElementById('admin-calendar-container');
+            if (calContainer) calContainer.innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Erro ao carregar o calendário do banco.</div>';
+        }
+    },
+
+    renderAdminCultoCards() {
+        const cultosList = document.getElementById('admin-cultos-list');
+        cultosList.innerHTML = '';
+        
+        this.cultosData.forEach(c => {
+            const dateParts = c.data.split('-');
+            const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            
+            const card = document.createElement('div');
+            card.className = `culto-card ${c.id === this.adminSelectedCultoId ? 'active' : ''}`;
+            card.id = `culto-card-${c.id}`;
+            card.setAttribute('onclick', `App.selectAdminCulto('${c.id}')`);
+            
+            let statusClass = 'badge-inactive';
+            if (c.status === 'Confirmado') statusClass = 'badge-active';
+            if (c.tipo === 'especial') statusClass = 'badge-especial';
+            
+            const selectionCircle = c.id === this.adminSelectedCultoId 
+                ? '<span class="selection-circle active"><i class="fa-solid fa-circle-check"></i></span>'
+                : '<span class="selection-circle"></span>';
+            
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                    ${selectionCircle}
+                    <span class="badge-status ${statusClass}">${c.tipo === 'especial' ? 'Evento' : c.status}</span>
+                </div>
+                <h4 style="margin: 0 0 5px 0; font-size: 1rem; font-weight: 700; color: var(--navy-dark);">${c.nome}</h4>
+                <p style="margin: 0; font-size: 0.8rem; color: var(--slate-gray); font-weight: 500;">
+                    ${formattedDate} • ${c.horarioInicio}
+                </p>
+            `;
+            cultosList.appendChild(card);
+        });
+    },
+
+    async selectAdminCulto(cultoId) {
+        this.adminSelectedCultoId = cultoId;
+        
+        // Esconde o calendário e exibe a tela de escalas do culto selecionado
+        const calContainer = document.getElementById('admin-calendar-view-container');
+        const detailContainer = document.getElementById('admin-selected-culto-section');
+        if (calContainer && detailContainer) {
+            calContainer.style.display = 'none';
+            detailContainer.style.display = 'block';
+        }
+        
+        // Highlight selected event pill in calendar
+        document.querySelectorAll('.calendar-event-pill').forEach(pill => {
+            pill.style.boxShadow = '';
+            pill.style.fontWeight = '700';
+        });
+        const activePills = document.querySelectorAll(`[onclick*="selectAdminCulto('${cultoId}')"]`);
+        activePills.forEach(pill => {
+            pill.style.boxShadow = '0 0 0 2px var(--teal-primary) !important';
+            pill.style.fontWeight = '800';
+        });
+
+        // Atualizar classe ativa nos cards
+        document.querySelectorAll('.culto-card').forEach(card => {
+            card.classList.remove('active');
+            const circle = card.querySelector('.selection-circle');
+            if (circle) {
+                circle.classList.remove('active');
+                circle.innerHTML = '';
+            }
+        });
+        
+        const activeCard = document.getElementById(`culto-card-${cultoId}`);
+        if (activeCard) {
+            activeCard.classList.add('active');
+            const circle = activeCard.querySelector('.selection-circle');
+            if (circle) {
+                circle.classList.add('active');
+                circle.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            }
+        }
+        
+        // Buscar dados do culto ativo
+        const c = this.cultosData.find(item => item.id === cultoId);
+        if (!c) return;
+        
+        const dateParts = c.data.split('-');
+        const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+        
+        document.getElementById('admin-active-culto-name').innerText = c.nome;
+        document.getElementById('admin-active-culto-date').innerText = formattedDate;
+        document.getElementById('admin-active-culto-time').innerText = `${c.horarioInicio} às ${c.horarioFim}`;
+        
+        const statusBadge = document.getElementById('admin-active-culto-status-badge');
+        statusBadge.innerText = c.status;
+        statusBadge.className = '';
+        if (c.status === 'Confirmado') {
+            statusBadge.className = 'badge badge-active';
+        } else {
+            statusBadge.className = 'badge badge-inactive';
+        }
+        
+        // Fechar dropdown de ações do culto
+        document.getElementById('active-culto-actions-menu').style.display = 'none';
+        
+        // Atualizar textos do menu de ações dependendo do tipo
+        const actionEdit = document.getElementById('action-edit-culto');
+        const actionDelete = document.getElementById('action-delete-culto');
+        if (actionEdit && actionDelete) {
+            const isEspecial = c.tipo === 'especial';
+            actionEdit.innerHTML = `<i class="fa-solid fa-pen" style="margin-right: 5px;"></i> Editar ${isEspecial ? 'Evento' : 'Culto'}`;
+            actionDelete.innerHTML = `<i class="fa-solid fa-trash" style="margin-right: 5px;"></i> Excluir ${isEspecial ? 'Evento' : 'Culto'}`;
+        }
+        
+        // Carregar e renderizar escalas deste culto
+        this.loadAndRenderAdminEscalas();
+    },
+
+    toggleActiveCultoActionsDropdown(event) {
+        event.stopPropagation();
+        const menu = document.getElementById('active-culto-actions-menu');
+        const isVisible = menu.style.display === 'block';
+        
+        menu.style.display = isVisible ? 'none' : 'block';
+        
+        if (!isVisible) {
+            const closeMenu = (e) => {
+                menu.style.display = 'none';
+                document.removeEventListener('click', closeMenu);
+            };
+            setTimeout(() => document.addEventListener('click', closeMenu), 0);
+        }
+    },
+
+    async loadAndRenderAdminEscalas() {
+        const container = document.getElementById('admin-escalas-sectors-accordion');
+        container.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--teal-primary);"></i><p style="margin-top:10px; font-size:0.9rem;">Buscando escalas...</p></div>';
+        
+        if (!this.adminSelectedCultoId) return;
+        
+        try {
+            const escalas = await DbService.getEscalas(null, null, null, this.adminSelectedCultoId);
+            container.innerHTML = '';
+            
+            let totalFunctions = 0;
+            let totalScheduled = 0;
+            let totalPending = 0;
+            let totalConfirmed = 0;
+            
+            const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+            const cultoTipo = c ? c.tipo : 'regular';
+            
+            for (const sectorId in this.sectorsData) {
+                if (sectorId === 'limpeza' || sectorId === 'manutencao') continue;
+                const sector = this.sectorsData[sectorId];
+                const sectorEscalas = escalas.filter(e => e.setorId === sectorId);
+                
+                const funcoes = this.getSectorFunctions(sectorId, cultoTipo);
+                const totalSectorFuncs = funcoes.length;
+                
+                let preenchidas = 0;
+                funcoes.forEach(func => {
+                    if (sectorEscalas.some(e => e.funcao.toLowerCase().trim() === func.toLowerCase().trim())) {
+                        preenchidas++;
+                    }
+                });
+                
+                totalFunctions += totalSectorFuncs;
+                totalScheduled += sectorEscalas.length;
+                
+                sectorEscalas.forEach(e => {
+                    if (e.statusPresenca === 'Pendente') totalPending++;
+                    if (e.statusPresenca === 'Confirmada') totalConfirmed++;
+                });
+                
+                if (this.openAccordions[sectorId] === undefined) {
+                    this.openAccordions[sectorId] = sectorId === 'diaconia_templo';
+                }
+                
+                const isOpen = this.openAccordions[sectorId];
+                
+                const accordion = document.createElement('div');
+                accordion.className = 'sector-accordion';
+                accordion.style.borderLeft = `4px solid ${sector.cor}`;
+                
+                let progressBadgeClass = 'progress-incomplete';
+                if (preenchidas === totalSectorFuncs) progressBadgeClass = 'progress-complete';
+                
+                accordion.innerHTML = `
+                    <div class="sector-accordion-header" onclick="App.toggleSectorAccordion('${sectorId}')">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div class="sector-icon-circle" style="background:${sector.cor}1a; color:${sector.cor};">
+                                <i class="${this.getSectorIcon(sectorId)}"></i>
+                            </div>
+                            <div>
+                                <h4 style="margin:0; font-size:1rem; font-weight:700; color:var(--navy-dark);">${sector.nome}</h4>
+                                <span style="font-size:0.75rem; color:var(--slate-gray); font-weight:500;">${totalSectorFuncs} funções</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:15px;">
+                            <span class="sector-progress-badge ${progressBadgeClass}">${preenchidas}/${totalSectorFuncs}</span>
+                            <i class="fa-solid fa-chevron-down sector-accordion-chevron ${isOpen ? 'open' : ''}"></i>
+                        </div>
+                    </div>
+                    <div class="sector-accordion-body" style="display: ${isOpen ? 'block' : 'none'};">
+                        <div class="table-container" style="box-shadow:none; border-radius:0; border-top: 1px solid #E2E8F0; padding:0;">
+                            <table class="admin-table accordion-table">
+                                <thead>
+                                    <tr>
+                                        <th>Função</th>
+                                        <th>Membro Escalado</th>
+                                        <th>Presença</th>
+                                        <th>Observações</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- dynamic functions rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                
+                const tbody = accordion.querySelector('tbody');
+                
+                funcoes.forEach(func => {
+                    const escalasFunc = sectorEscalas.filter(e => e.funcao.toLowerCase().trim() === func.toLowerCase().trim());
+                    
+                    const isOutsideCulto = (
+                        (cultoTipo === 'especial' && (sectorId === 'manutencao' || func === 'Integração')) ||
+                        (cultoTipo !== 'especial' && (sectorId === 'limpeza' || sectorId === 'manutencao' || func === 'Integração'))
+                    );
+                    
+                    if (escalasFunc.length > 0) {
+                        escalasFunc.forEach((escalaFunc, idx) => {
+                            const tr = document.createElement('tr');
+                            
+                            let pBadge = `<span class="badge badge-inactive">${escalaFunc.statusPresenca}</span>`;
+                            if (escalaFunc.statusPresenca === 'Confirmada') pBadge = `<span class="badge badge-active">${escalaFunc.statusPresenca}</span>`;
+                            if (escalaFunc.statusPresenca === 'Recusada') pBadge = `<span class="badge" style="background:#FEE2E2; color:#B91C1C;">${escalaFunc.statusPresenca}</span>`;
+                            
+                            let timeDetails = '';
+                            if (isOutsideCulto) {
+                                const dateParts = escalaFunc.data.split('-');
+                                const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                                const diaFormatado = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                                timeDetails = `<div style="font-size:0.75rem; color:var(--slate-gray); font-weight:normal; margin-top:2px;">
+                                    <i class="fa-regular fa-calendar" style="margin-right:2px;"></i> ${diaFormatado} &nbsp;
+                                    <i class="fa-regular fa-clock" style="margin-right:2px;"></i> ${escalaFunc.horarioInicio}-${escalaFunc.horarioFim}
+                                </div>`;
+                            }
+                            
+                            let funcColHtml = `<div>${func}</div>`;
+                            if (idx === 0) {
+                                funcColHtml += `
+                                    ${timeDetails}
+                                    <span onclick="App.openEscalaFormModalParaFuncao('${sectorId}', '${func}')" style="cursor:pointer; font-size:0.72rem; color:var(--teal-primary); font-weight:600; display:inline-flex; align-items:center; gap:3px; margin-top:5px; background:var(--teal-primary)10; padding:2px 6px; border-radius:4px; transition:all 0.2s;" class="hover-btn-scale-more">
+                                        <i class="fa-solid fa-plus" style="font-size:0.65rem;"></i> Escalar outro
+                                    </span>
+                                `;
+                            } else {
+                                funcColHtml = `
+                                    <div style="color:var(--slate-gray); font-weight:500;">${func} (Auxiliar)</div>
+                                    ${timeDetails}
+                                `;
+                            }
+                            
+                            tr.innerHTML = `
+                                <td style="font-weight:600; vertical-align:middle;">${funcColHtml}</td>
+                                <td style="vertical-align:middle;"><b>${escalaFunc.membroNome}</b></td>
+                                <td style="vertical-align:middle;">${pBadge}</td>
+                                <td style="vertical-align:middle;"><div style="max-width:180px; font-size:0.8rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${escalaFunc.observacoes || ''}">${escalaFunc.observacoes || '-'}</div></td>
+                                <td style="vertical-align:middle;">
+                                    <div class="action-buttons">
+                                        <button class="btn-table-action" onclick="App.handleEditEscala('${escalaFunc.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                        <button class="btn-table-action delete" onclick="App.handleDeleteEscala('${escalaFunc.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        const tr = document.createElement('tr');
+                        tr.className = 'row-available';
+                        tr.innerHTML = `
+                            <td style="font-weight:600; color:var(--slate-gray); vertical-align:middle;">${func}</td>
+                            <td style="vertical-align:middle;"><span style="color:var(--mono-gray); font-style:italic;"><i class="fa-solid fa-circle-plus"></i> Disponível</span></td>
+                            <td style="vertical-align:middle;">-</td>
+                            <td style="vertical-align:middle;">-</td>
+                            <td style="vertical-align:middle;">
+                                <button class="btn-table-action add" onclick="App.openEscalaFormModalParaFuncao('${sectorId}', '${func}')" title="Escalar Voluntário" style="color:var(--teal-primary); font-weight:600; font-size:0.85rem; display:flex; align-items:center; gap:5px; background:none; border:none; cursor:pointer;">
+                                    <i class="fa-solid fa-plus"></i> Escalar
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    }
+                });
+                
+                // Render unmatched/legacy scales for this sector (if any)
+                const funcoesLCase = funcoes.map(f => f.toLowerCase().trim());
+                const unmatchedEscalas = sectorEscalas.filter(e => !funcoesLCase.includes(e.funcao.toLowerCase().trim()));
+                
+                unmatchedEscalas.forEach(escalaFunc => {
+                    const tr = document.createElement('tr');
+                    tr.style.background = '#FFFBEB'; // light amber highlight
+                    
+                    let pBadge = `<span class="badge badge-inactive">${escalaFunc.statusPresenca}</span>`;
+                    if (escalaFunc.statusPresenca === 'Confirmada') pBadge = `<span class="badge badge-active">${escalaFunc.statusPresenca}</span>`;
+                    if (escalaFunc.statusPresenca === 'Recusada') pBadge = `<span class="badge" style="background:#FEE2E2; color:#B91C1C;">${escalaFunc.statusPresenca}</span>`;
+                    
+                    tr.innerHTML = `
+                        <td style="font-weight:600; vertical-align:middle;">
+                            <div>${escalaFunc.funcao}</div>
+                            <span style="font-size:0.65rem; color:#B45309; background:#FEF3C7; padding:2px 4px; border-radius:3px; font-weight:700;">Legada / Não Cadastrada</span>
+                        </td>
+                        <td style="vertical-align:middle;"><b>${escalaFunc.membroNome}</b></td>
+                        <td style="vertical-align:middle;">${pBadge}</td>
+                        <td style="vertical-align:middle;"><div style="max-width:180px; font-size:0.8rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${escalaFunc.observacoes || ''}">${escalaFunc.observacoes || '-'}</div></td>
+                        <td style="vertical-align:middle;">
+                            <div class="action-buttons">
+                                <button class="btn-table-action" onclick="App.handleEditEscala('${escalaFunc.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn-table-action delete" onclick="App.handleDeleteEscala('${escalaFunc.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+                container.appendChild(accordion);
+            }
+            
+            document.getElementById('summary-total-functions').innerText = totalFunctions;
+            document.getElementById('summary-total-scheduled').innerText = totalScheduled;
+            document.getElementById('summary-total-pending').innerText = totalPending;
+            document.getElementById('summary-total-confirmed').innerText = totalConfirmed;
+            
+            const publishBtn = document.querySelector('.publish-scale-btn');
+            if (c && c.status === 'Confirmado') {
+                publishBtn.innerText = 'Escala Publicada';
+                publishBtn.disabled = true;
+                publishBtn.style.opacity = '0.6';
+                publishBtn.style.cursor = 'not-allowed';
+            } else {
+                publishBtn.innerText = 'Publicar Escala';
+                publishBtn.disabled = false;
+                publishBtn.style.opacity = '1';
+                publishBtn.style.cursor = 'pointer';
+            }
+        } catch (e) {
+            console.error("Erro ao carregar escalas do culto:", e);
+            container.innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Erro ao carregar as escalas do culto.</div>';
+        }
+    },
+    
+    toggleSectorAccordion(sectorId) {
+        this.openAccordions[sectorId] = !this.openAccordions[sectorId];
+        this.loadAndRenderAdminEscalas();
+    },
+    
+    getSectorIcon(sectorId) {
+        switch(sectorId) {
+            case 'diaconia_templo': return 'fa-solid fa-place-of-worship';
+            case 'acolhimento_integracao': return 'fa-solid fa-people-group';
+            case 'limpeza': return 'fa-solid fa-broom';
+            case 'manutencao': return 'fa-solid fa-screwdriver-wrench';
+            default: return 'fa-solid fa-calendar';
+        }
+    },
+
+    openEscalaFormModalParaFuncao(sectorId, funcao) {
+        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+        if (!c) return;
+        
+        document.getElementById('escala-modal-title').innerText = `Escalar para ${funcao}`;
+        document.getElementById('escala-form-id').value = '';
+        document.getElementById('escala-form').reset();
+        
+        document.getElementById('escala-cultoid').value = this.adminSelectedCultoId;
+        
+        const dataInput = document.getElementById('escala-data');
+        dataInput.value = c.data;
+        
+        const horaInInput = document.getElementById('escala-horainicio');
+        horaInInput.value = c.horarioInicio;
+        
+        const horaFimInput = document.getElementById('escala-horafim');
+        horaFimInput.value = c.horarioFim;
+        
+        document.getElementById('escala-setor').value = sectorId;
+        this.handleEscalaSetorChange(sectorId).then(() => {
+            document.getElementById('escala-funcao').value = funcao;
+            this.adjustEscalaFormFields();
+        });
+        
+        document.getElementById('modal-escala-form').classList.add('active');
+    },
+
+    // --- ESCALA FORM MODAL ---
+    async openEscalaFormModal() {
+        document.getElementById('escala-modal-title').innerText = "Montar Nova Escala";
+        document.getElementById('escala-form-id').value = '';
+        document.getElementById('escala-form').reset();
+        
+        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+        
+        const dataInput = document.getElementById('escala-data');
+        const horaInInput = document.getElementById('escala-horainicio');
+        const horaFimInput = document.getElementById('escala-horafim');
+        
+        if (c) {
+            document.getElementById('escala-cultoid').value = c.id;
+            dataInput.value = c.data;
+            horaInInput.value = c.horarioInicio;
+            horaFimInput.value = c.horarioFim;
+        } else {
+            document.getElementById('escala-cultoid').value = '';
+            dataInput.value = this.formatLocalISOString(new Date()).split('T')[0];
+            horaInInput.value = '08:00';
+            horaFimInput.value = '12:00';
+        }
+        
+        document.getElementById('escala-setor').value = 'diaconia_templo';
+        await this.handleEscalaSetorChange('diaconia_templo');
+        
+        document.getElementById('modal-escala-form').classList.add('active');
+    },
+
+    closeEscalaFormModal() {
+        document.getElementById('escala-data').disabled = false;
+        document.getElementById('escala-horainicio').disabled = false;
+        document.getElementById('escala-horafim').disabled = false;
+        
+        document.getElementById('modal-escala-form').classList.remove('active');
+    },
+
+    async handleEscalaSetorChange(sectorId) {
+        const fSelect = document.getElementById('escala-funcao');
+        fSelect.innerHTML = '<option value="" disabled selected>Escolha a função</option>';
+        
+        const mSelect = document.getElementById('escala-membro');
+        mSelect.innerHTML = '<option value="" disabled selected>Escolha o voluntário</option>';
+
+        const sector = this.sectorsData[sectorId];
+        if (!sector) return;
+
+        const funcoes = this.getSectorFunctions(sectorId);
+        funcoes.forEach(func => {
+            fSelect.innerHTML += `<option value="${func}">${func}</option>`;
+        });
+
+        try {
+            const membros = await DbService.getMembros();
+            const sectorMembers = membros.filter(m => {
+                if (m.status !== 'ativo') return false;
+                if (Array.isArray(m.setores)) {
+                    return m.setores.includes(sectorId);
+                }
+                return m.setor === sectorId;
+            });
+            
+            if (sectorMembers.length === 0) {
+                mSelect.innerHTML = '<option value="" disabled>Nenhum voluntário ativo no setor</option>';
+                this.adjustEscalaFormFields();
+                return;
+            }
+
+            sectorMembers.forEach(m => {
+                mSelect.innerHTML += `<option value="${m.id}" data-nome="${m.nome}">${m.nome}</option>`;
+            });
+        } catch (e) {
+            console.error("Error fetching members for scale select:", e);
+        }
+        
+        // Exibição condicional da repetição da escala
+        const repGroup = document.getElementById('escala-repeticao-group');
+        if (repGroup) {
+            const isNew = !document.getElementById('escala-form-id').value;
+            if (isNew && sectorId === 'limpeza') {
+                repGroup.style.display = 'block';
+            } else {
+                repGroup.style.display = 'none';
+            }
+        }
+
+        this.adjustEscalaFormFields();
+    },
+
+    async handleEditEscala(id) {
+        try {
+            const scales = await DbService.getEscalas();
+            const e = scales.find(item => item.id === id);
+            if (!e) return;
+
+            document.getElementById('escala-modal-title').innerText = "Editar Escala";
+            document.getElementById('escala-form-id').value = e.id;
+            document.getElementById('escala-cultoid').value = e.cultoId || '';
+            
+            document.getElementById('escala-setor').value = e.setorId;
+            await this.handleEscalaSetorChange(e.setorId);
+            
+            document.getElementById('escala-funcao').value = e.funcao;
+            document.getElementById('escala-membro').value = e.membroId;
+            
+            const dataInput = document.getElementById('escala-data');
+            dataInput.value = e.data;
+            
+            const horaInInput = document.getElementById('escala-horainicio');
+            horaInInput.value = e.horarioInicio;
+            
+            const horaFimInput = document.getElementById('escala-horafim');
+            horaFimInput.value = e.horarioFim;
+            
+            document.getElementById('escala-obs').value = e.observacoes || '';
+
+            this.adjustEscalaFormFields();
+
+            document.getElementById('modal-escala-form').classList.add('active');
+        } catch (e) {
+            this.showAlert('Erro ao carregar escala para edição.');
+        }
+    },
+
+    async handleEscalaSave(event) {
+        event.preventDefault();
+        const id = document.getElementById('escala-form-id').value;
+        const cultoId = document.getElementById('escala-cultoid').value;
+        const setorId = document.getElementById('escala-setor').value;
+        const funcao = document.getElementById('escala-funcao').value;
+        const scaleMembroSelect = document.getElementById('escala-membro');
+        const membroId = scaleMembroSelect.value;
+        const membroNome = scaleMembroSelect.options[scaleMembroSelect.selectedIndex].dataset.nome;
+        const data = document.getElementById('escala-data').value;
+        const horarioInicio = document.getElementById('escala-horainicio').value;
+        const horarioFim = document.getElementById('escala-horafim').value;
+        const observacoes = document.getElementById('escala-obs').value.trim();
+
+        if (!membroId) {
+            this.showAlert('Por favor, selecione um membro.');
+            return;
+        }
+
+        try {
+            const scalePayload = {
+                setorId,
+                funcao,
+                membroId,
+                membroNome,
+                data,
+                horarioInicio,
+                horarioFim,
+                observacoes,
+            };
+            
+            if (cultoId) {
+                scalePayload.cultoId = cultoId;
+                const c = this.cultosData.find(item => item.id === cultoId);
+                if (c) {
+                    scalePayload.cultoNome = c.nome;
+                }
+            }
+
+            if (!id) {
+                scalePayload.statusPresenca = 'Pendente';
+                scalePayload.statusServico = 'Agendado';
+            } else {
+                try {
+                    const docRef = await db.collection('escalas').doc(id).get();
+                    if (docRef.exists) {
+                        const existing = docRef.data();
+                        if (existing.membroId !== membroId || 
+                            existing.data !== data || 
+                            existing.horarioInicio !== horarioInicio || 
+                            existing.horarioFim !== horarioFim ||
+                            existing.statusPresenca === 'Recusada') {
+                            scalePayload.statusPresenca = 'Pendente';
+                            scalePayload.statusServico = 'Agendado';
+                            scalePayload.rejeicaoResolvida = false;
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error checking existing scale:", err);
+                }
+            }
+
+            const repSelect = document.getElementById('escala-repeticao');
+            const repValue = repSelect ? repSelect.value : 'unica';
+
+            if (!id && setorId === 'limpeza' && repValue !== 'unica') {
+                const baseDate = new Date(data + 'T12:00:00'); // Evita problemas de fuso horário
+                const occurrences = repValue === 'mensal' ? 12 : 5;
+                const promises = [];
+
+                for (let i = 0; i < occurrences; i++) {
+                    const occDate = new Date(baseDate);
+                    if (repValue === 'mensal') {
+                        occDate.setMonth(baseDate.getMonth() + i);
+                    } else if (repValue === 'anual') {
+                        occDate.setFullYear(baseDate.getFullYear() + i);
+                    }
+                    
+                    const occDataStr = this.formatLocalISOString(occDate).split('T')[0];
+                    
+                    const payload = {
+                        ...scalePayload,
+                        data: occDataStr,
+                        statusPresenca: 'Pendente',
+                        statusServico: 'Agendado'
+                    };
+                    promises.push(DbService.saveEscala(null, payload));
+                }
+                await Promise.all(promises);
+            } else {
+                await DbService.saveEscala(id ? id : null, scalePayload);
+            }
+
+            this.closeEscalaFormModal();
+            this.showToast('Escala gravada com sucesso!', 'success');
+            
+            if (this.pendingStandbyIdToResolve) {
+                try {
+                    await DbService.deleteStandby(this.pendingStandbyIdToResolve);
+                } catch (err) {
+                    console.error("Error resolving standby:", err);
+                }
+                this.pendingStandbyIdToResolve = null;
+            }
+
+            this.loadAndRenderAdminEscalas();
+        } catch (e) {
+            console.error("Error saving scales:", e);
+            this.showAlert('Erro ao gravar escala no banco de dados.');
+        }
+    },
+
+    async handleDeleteEscala(id) {
+        if (confirm('Deseja realmente remover esta escala?')) {
+            try {
+                await DbService.deleteEscala(id);
+                this.showToast('Escala removida!', 'success');
+                this.loadAndRenderAdminEscalas();
+            } catch (e) {
+                this.showAlert('Erro ao remover escala.');
+            }
+        }
+    },
+    
+    // --- CULTOS OPERATIONS ---
+    openCultoFormModal(cultoId = null) {
+        document.getElementById('culto-form').reset();
+        document.getElementById('culto-form-id').value = '';
+        
+        if (cultoId) {
+            const c = this.cultosData.find(item => item.id === cultoId);
+            if (c) {
+                document.getElementById('culto-form-id').value = c.id;
+                document.getElementById('culto-nome').value = c.nome;
+                document.getElementById('culto-data').value = c.data;
+                document.getElementById('culto-horainicio').value = c.horarioInicio;
+                document.getElementById('culto-horafim').value = c.horarioFim;
+                document.getElementById('culto-tipo').value = c.tipo;
+                document.getElementById('culto-status').value = c.status;
+                
+                document.getElementById('btn-culto-delete').style.display = 'block';
+            }
+        } else {
+            document.getElementById('culto-data').value = this.formatLocalISOString(new Date()).split('T')[0];
+            document.getElementById('btn-culto-delete').style.display = 'none';
+        }
+        
+        this.updateCultoFormLabels();
+        document.getElementById('modal-culto-form').classList.add('active');
+    },
+    
+    updateCultoFormLabels() {
+        const id = document.getElementById('culto-form-id').value;
+        const tipo = document.getElementById('culto-tipo').value;
+        const isEspecial = tipo === 'especial';
+        
+        const titleEl = document.getElementById('culto-modal-title');
+        const deleteEl = document.getElementById('btn-culto-delete');
+        const submitEl = document.getElementById('btn-culto-save-submit');
+        
+        if (id) {
+            if (titleEl) titleEl.innerText = isEspecial ? "Editar Evento Especial" : "Editar Culto Regular";
+            if (deleteEl) deleteEl.innerText = isEspecial ? "Excluir Evento" : "Excluir Culto";
+            if (submitEl) submitEl.innerText = isEspecial ? "Salvar Evento" : "Salvar Culto";
+        } else {
+            if (titleEl) titleEl.innerText = isEspecial ? "Novo Evento Especial" : "Novo Culto Regular";
+            if (submitEl) submitEl.innerText = isEspecial ? "Criar Evento" : "Criar Culto";
+        }
+    },
+    
+    closeCultoFormModal() {
+        document.getElementById('modal-culto-form').classList.remove('active');
+    },
+    
+    async handleCultoSave(event) {
+        event.preventDefault();
+        const id = document.getElementById('culto-form-id').value;
+        const nome = document.getElementById('culto-nome').value.trim();
+        const data = document.getElementById('culto-data').value;
+        const horarioInicio = document.getElementById('culto-horainicio').value;
+        const horarioFim = document.getElementById('culto-horafim').value;
+        const tipo = document.getElementById('culto-tipo').value;
+        const status = document.getElementById('culto-status').value;
+        
+        try {
+            const cultoPayload = {
+                nome,
+                data,
+                horarioInicio,
+                horarioFim,
+                tipo,
+                status
+            };
+            
+            const savedId = await DbService.saveCulto(id ? id : null, cultoPayload);
+            
+            if (!id) {
+                this.adminSelectedCultoId = savedId;
+            }
+            
+            this.closeCultoFormModal();
+            const term = tipo === 'especial' ? 'Evento' : 'Culto';
+            this.showToast(`${term} gravado com sucesso!`, 'success');
+            this.loadAdminEscalas();
+        } catch (e) {
+            const term = tipo === 'especial' ? 'Evento' : 'Culto';
+            this.showAlert(`Erro ao gravar ${term.toLowerCase()} no banco de dados.`);
+        }
+    },
+    
+    handleEditActiveCulto() {
+        if (this.adminSelectedCultoId) {
+            this.openCultoFormModal(this.adminSelectedCultoId);
+        }
+    },
+    
+    async handleDeleteActiveCulto() {
+        if (!this.adminSelectedCultoId) return;
+        
+        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+        if (!c) return;
+        
+        const term = c.tipo === 'especial' ? 'evento' : 'culto';
+        
+        if (confirm(`Deseja realmente excluir este ${term}? ATENÇÃO: Todas as escalas de voluntários associadas a ele também serão excluídas.`)) {
+            try {
+                await DbService.deleteCulto(this.adminSelectedCultoId);
+                this.showToast(`${term === 'evento' ? 'Evento' : 'Culto'} e escalas excluídos com sucesso!`, 'success');
+                this.adminSelectedCultoId = null;
+                this.loadAdminEscalas();
+            } catch (e) {
+                this.showAlert(`Erro ao excluir ${term}.`);
+            }
+        }
+    },
+    
+    async handleDeleteCultoDoModal() {
+        const id = document.getElementById('culto-form-id').value;
+        if (!id) return;
+        
+        const c = this.cultosData.find(item => item.id === id);
+        if (!c) return;
+        
+        const term = c.tipo === 'especial' ? 'evento' : 'culto';
+        
+        if (confirm(`Deseja realmente excluir este ${term}? ATENÇÃO: Todas as escalas de voluntários associadas a ele também serão excluídas.`)) {
+            try {
+                await DbService.deleteCulto(id);
+                this.showToast(`${term === 'evento' ? 'Evento' : 'Culto'} e escalas excluídos com sucesso!`, 'success');
+                this.closeCultoFormModal();
+                if (this.adminSelectedCultoId === id) {
+                    this.adminSelectedCultoId = null;
+                }
+                this.loadAdminEscalas();
+            } catch (e) {
+                this.showAlert(`Erro ao excluir ${term}.`);
+            }
+        }
+    },
+    
+    openDuplicarCultoModal() {
+        if (!this.adminSelectedCultoId) return;
+        
+        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+        if (!c) return;
+        
+        const actionsMenu = document.getElementById('active-culto-actions-menu');
+        if (actionsMenu) actionsMenu.style.display = 'none';
+        
+        document.getElementById('duplicar-source-cultoid').value = c.id;
+        document.getElementById('duplicar-source-nome').innerText = c.nome;
+        document.getElementById('duplicar-source-horario').innerText = `${c.horarioInicio} às ${c.horarioFim}`;
+        
+        document.getElementById('duplicar-nova-data').value = this.formatLocalISOString(new Date()).split('T')[0];
+        document.getElementById('duplicar-copiar-obreiros').checked = true;
+        
+        document.getElementById('modal-duplicar-culto').classList.add('active');
+    },
+    
+    closeDuplicarCultoModal() {
+        document.getElementById('modal-duplicar-culto').classList.remove('active');
+    },
+    
+    async handleDuplicarCultoSubmit(event) {
+        event.preventDefault();
+        
+        const sourceId = document.getElementById('duplicar-source-cultoid').value;
+        const novaData = document.getElementById('duplicar-nova-data').value;
+        const copiarObreiros = document.getElementById('duplicar-copiar-obreiros').checked;
+        
+        if (!sourceId || !novaData) {
+            this.showAlert("Por favor, preencha todos os campos.");
+            return;
+        }
+        
+        const submitBtn = document.getElementById('btn-duplicar-culto-submit');
+        const origBtnText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Duplicando...';
+        submitBtn.disabled = true;
+        
+        try {
+            const sourceCulto = this.cultosData.find(item => item.id === sourceId);
+            if (!sourceCulto) {
+                this.showAlert("Culto de origem não encontrado.");
+                submitBtn.innerHTML = origBtnText;
+                submitBtn.disabled = false;
+                return;
+            }
+            
+            const novoCultoPayload = {
+                nome: sourceCulto.nome,
+                data: novaData,
+                horarioInicio: sourceCulto.horarioInicio,
+                horarioFim: sourceCulto.horarioFim,
+                tipo: sourceCulto.tipo,
+                status: 'Planejado'
+            };
+            
+            const novoCultoId = await DbService.saveCulto(null, novoCultoPayload);
+            
+            const sourceEscalas = await DbService.getEscalas(null, null, null, sourceId);
+            
+            const promises = sourceEscalas.map(async (escala) => {
+                const novaEscalaPayload = {
+                    setorId: escala.setorId,
+                    funcao: escala.funcao,
+                    data: novaData,
+                    horarioInicio: escala.horarioInicio,
+                    horarioFim: escala.horarioFim,
+                    observacoes: escala.observacoes || '',
+                    cultoId: novoCultoId,
+                    cultoNome: sourceCulto.nome,
+                    statusPresenca: 'Pendente',
+                    statusServico: 'Agendado'
+                };
+                
+                if (copiarObreiros && escala.membroId) {
+                    novaEscalaPayload.membroId = escala.membroId;
+                    novaEscalaPayload.membroNome = escala.membroNome;
+                }
+                
+                return DbService.saveEscala(null, novaEscalaPayload);
+            });
+            
+            await Promise.all(promises);
+            
+            this.adminSelectedCultoId = novoCultoId;
+            this.closeDuplicarCultoModal();
+            this.showToast('Culto e escalas duplicados com sucesso!', 'success');
+            await this.loadAdminEscalas();
+        } catch (e) {
+            console.error("Error duplicating Culto:", e);
+            this.showAlert("Erro ao duplicar culto e escalas.");
+        } finally {
+            submitBtn.innerHTML = origBtnText;
+            submitBtn.disabled = false;
+        }
+    },
+    
+    async handlePublishActiveScale() {
+        if (!this.adminSelectedCultoId) return;
+        
+        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+        if (!c) return;
+        
+        try {
+            await DbService.saveCulto(c.id, { status: 'Confirmado' });
+            
+            const dateParts = c.data.split('-');
+            const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            
+            const term = c.tipo === 'especial' ? 'evento' : 'culto';
+            
+            await DbService.saveAviso({
+                titulo: `Escala Publicada - ${c.nome}`,
+                conteudo: `A escala de voluntários para o ${term} "${c.nome}" no dia ${formattedDate} (${c.horarioInicio} às ${c.horarioFim}) foi publicada. Por favor, acesse o painel e confirme sua presença!`,
+                autorNome: this.currentUser.nome
+            });
+            
+            this.showToast('Escala publicada e aviso enviado aos membros!', 'success');
+            this.loadAdminEscalas();
+        } catch (e) {
+            this.showAlert('Erro ao publicar escala.');
+        }
+    },
+
+    // --- TAB: REPOSIÇÕES (ADMIN) ---
+    async loadAdminReposicoes() {
+        const body = document.getElementById('admin-reposicoes-table-body');
+        body.innerHTML = '<tr><td colspan="8" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
+
+        try {
+            const reqs = await DbService.getReposicoes();
+
+            if (reqs.length === 0) {
+                body.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--slate-gray);">Nenhuma solicitação de reposição registrada.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = '';
+            reqs.forEach(r => {
+                let badgeStyle = '';
+                if (r.status === 'Pendente') {
+                    badgeStyle = 'background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;';
+                } else if (r.status === 'Aguardando Compra') {
+                    badgeStyle = 'background: #FEF3C7; color: #D97706; border: 1px solid #FCD34D;';
+                } else if (r.status === 'Atendida') {
+                    badgeStyle = 'background: #ECFDF5; color: #10B981; border: 1px solid #A7F3D0;';
+                } else if (r.status === 'Rejeitado') {
+                    badgeStyle = 'background: #FEE2E2; color: #EF4444; border: 1px solid #FCA5A5;';
+                }
+
+                const dt = r.dataSolicitacao.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const sectorColor = this.sectorsData[r.setorId]?.cor || '#1E4ED8';
+                const sectorNome = r.setorNome || 'Limpeza';
+
+                let actionBtn = '';
+                if (r.status === 'Pendente') {
+                    actionBtn = `<button class="btn-scale-action btn-confirm-presenca" style="padding:4px 8px; font-size:0.75rem; background-color:#6366F1; border-color:#6366F1; color:white; border-radius:6px; cursor:pointer;" onclick="App.openDesignarRepositorModal('${r.id}')"><i class="fa-solid fa-user-check"></i> Processar</button>`;
+                } else if (r.status === 'Aguardando Compra') {
+                    actionBtn = `
+                        <div style="font-size:0.75rem; color:#D97706; font-weight:600; margin-bottom:4px;">Comprador: ${r.repositorNome}</div>
+                        <button class="btn-scale-action btn-recusar-presenca" style="padding:2px 6px; font-size:0.7rem; background-color:#EF4444; border-color:#EF4444; color:white; border-radius:6px; cursor:pointer;" onclick="App.handleRejectReposicaoDeModal('${r.id}')"><i class="fa-solid fa-ban"></i> Rejeitar</button>
+                    `;
+                } else {
+                    actionBtn = `<button class="btn-scale-action btn-confirm-presenca" style="padding:4px 8px; font-size:0.75rem; background-color:#475569; border-color:#475569; color:white; border-radius:6px; cursor:pointer;" onclick="App.openReposicaoRelatorioModal('${r.id}')"><i class="fa-solid fa-file-invoice-dollar"></i> Relatório</button>`;
+                }
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${dt}</td>
+                    <td><b>${r.solicitadoPorNome}</b></td>
+                    <td><span class="badge" style="background:${sectorColor}; color:#fff; font-weight:700;">${sectorNome}</span></td>
+                    <td><b>${r.produtoNome}</b></td>
+                    <td><span class="badge" style="background:#F1F5F9; color:var(--navy-dark);">${r.quantidade}</span></td>
+                    <td><div style="max-width:180px; font-size:0.8rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${r.observacao || ''}">${r.observacao || '-'}</div></td>
+                    <td><span class="badge" style="${badgeStyle}">${r.status === 'Aguardando Compra' ? 'Em Compra' : r.status}</span></td>
+                    <td>${actionBtn}</td>
+                `;
+                body.appendChild(row);
+            });
+        } catch (e) {
+            body.innerHTML = '<tr><td colspan="8" style="color:red; text-align:center;">Erro ao carregar reposições.</td></tr>';
+        }
+    },
+
+    async openDesignarRepositorModal(reposicaoId) {
+        try {
+            const repDoc = await db.collection('reposicoes').doc(reposicaoId).get();
+            if (!repDoc.exists) return;
+            const r = repDoc.data();
+
+            document.getElementById('designar-reposicao-id').value = reposicaoId;
+            document.getElementById('designar-solicitante-nome').textContent = r.solicitadoPorNome;
+            document.getElementById('designar-produto-nome').textContent = r.produtoNome;
+            document.getElementById('designar-produto-qtd').textContent = r.quantidade;
+
+            const repositores = await DbService.getRepositores();
+            const select = document.getElementById('designar-repositor-select');
+            select.innerHTML = '<option value="" disabled selected>Selecione um repositor...</option>';
+            
+            if (repositores.length === 0) {
+                select.innerHTML = '<option value="" disabled>Nenhum repositor cadastrado</option>';
+            } else {
+                repositores.forEach(rep => {
+                    const opt = document.createElement('option');
+                    opt.value = rep.id;
+                    opt.textContent = `${rep.nome} (${(rep.setores || [rep.setor]).map(s => this.sectorsData[s]?.nome || s).join(', ')})`;
+                    select.appendChild(opt);
+                });
+            }
+
+            document.getElementById('modal-designar-repositor').style.display = 'flex';
+        } catch (e) {
+            console.error(e);
+            this.showAlert('Erro ao carregar dados de designação.');
+        }
+    },
+
+    closeDesignarRepositorModal() {
+        document.getElementById('modal-designar-repositor').style.display = 'none';
+    },
+
+    async handleDesignarRepositorSubmit(event) {
+        event.preventDefault();
+        const reposicaoId = document.getElementById('designar-reposicao-id').value;
+        const select = document.getElementById('designar-repositor-select');
+        const repositorId = select.value;
+        const repositorOption = select.options[select.selectedIndex];
+        const repositorNome = repositorOption ? repositorOption.textContent.split(' (')[0] : '';
+
+        if (!reposicaoId || !repositorId) {
+            this.showAlert('Por favor, selecione um repositor.');
+            return;
+        }
+
+        try {
+            await db.collection('reposicoes').doc(reposicaoId).update({
+                status: 'Aguardando Compra',
+                repositorId,
+                repositorNome,
+                designadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            const repDoc = await db.collection('reposicoes').doc(reposicaoId).get();
+            if (repDoc.exists) {
+                const repData = repDoc.data();
+                
+                await DbService.addNotificacao({
+                    paraUsuarioId: repData.solicitadoPorId,
+                    mensagem: `Seu pedido de "${repData.produtoNome}" (${repData.quantidade} unidades) foi aprovado pelo supervisor e designado para compra com ${repositorNome}.`,
+                    reposicaoId: reposicaoId
+                });
+            }
+
+            this.closeDesignarRepositorModal();
+            this.showToast('Solicitação aprovada e designada para o comprador!', 'success');
+            this.loadAdminReposicoes();
+        } catch (e) {
+            console.error(e);
+            this.showAlert('Erro ao designar repositor.');
+        }
+    },
+
+    async handleRejectReposicaoDeModal(reposicaoId) {
+        const id = reposicaoId || document.getElementById('designar-reposicao-id').value;
+        if (!id) return;
+
+        const motivo = prompt('Por favor, digite o motivo da rejeição do pedido:');
+        if (motivo === null) return;
+        
+        try {
+            await db.collection('reposicoes').doc(id).update({
+                status: 'Rejeitado',
+                motivoRejeicao: motivo || 'Sem motivo informado',
+                rejeitadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            const repDoc = await db.collection('reposicoes').doc(id).get();
+            if (repDoc.exists) {
+                const repData = repDoc.data();
+                
+                await DbService.addNotificacao({
+                    paraUsuarioId: repData.solicitadoPorId,
+                    mensagem: `Seu pedido de "${repData.produtoNome}" foi rejeitado. Motivo: ${motivo || 'Sem motivo informado'}.`,
+                    reposicaoId: id
+                });
+            }
+
+            this.closeDesignarRepositorModal();
+            this.showToast('Solicitação rejeitada e arquivada.', 'success');
+            this.loadAdminReposicoes();
+        } catch (e) {
+            console.error(e);
+            this.showAlert('Erro ao rejeitar solicitação.');
+        }
+    },
+
+    async openReposicaoRelatorioModal(reposicaoId) {
+        try {
+            const repDoc = await db.collection('reposicoes').doc(reposicaoId).get();
+            if (!repDoc.exists) return;
+            const r = repDoc.data();
+
+            const container = document.getElementById('reposicao-relatorio-conteudo');
+            
+            let statusBadgeStyle = '';
+            if (r.status === 'Atendida') statusBadgeStyle = 'background: #ECFDF5; color: #10B981; border: 1px solid #A7F3D0;';
+            else statusBadgeStyle = 'background: #FEE2E2; color: #EF4444; border: 1px solid #FCA5A5;';
+
+            const dataSolicitada = r.dataSolicitacao ? (r.dataSolicitacao.toDate ? r.dataSolicitacao.toDate() : new Date(r.dataSolicitacao)) : new Date();
+            const formattedDateSol = dataSolicitada.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            let detailsHtml = `
+                <div style="background: #F8FAFC; padding: 12px; border-radius: 8px; border: 1px solid #E2E8F0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                        <span style="font-size: 0.8rem; text-transform: uppercase; font-weight:700; color:var(--slate-gray);">Solicitação</span>
+                        <span class="badge" style="${statusBadgeStyle} font-weight:700;">${r.status}</span>
+                    </div>
+                    <b>Solicitante:</b> ${r.solicitadoPorNome}<br>
+                    <b>Setor:</b> ${r.setorNome || 'Limpeza'}<br>
+                    <b>Produto:</b> ${r.produtoNome}<br>
+                    <b>Qtd Solicitada:</b> ${r.quantidade}<br>
+                    <b>Data:</b> ${formattedDateSol}<br>
+                    <b>Observações:</b> ${r.observacao || '-'}<br>
+                </div>
+            `;
+
+            if (r.repositorNome) {
+                let compraHtml = '';
+                if (r.status === 'Atendida') {
+                    const dataCompra = r.dataCompra ? (r.dataCompra.toDate ? r.dataCompra.toDate() : new Date(r.dataCompra)) : new Date();
+                    const formattedDateCompra = dataCompra.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    
+                    compraHtml = `
+                        <b>Comprador Designado:</b> ${r.repositorNome}<br>
+                        <b>Data/Hora da Compra:</b> ${formattedDateCompra}<br>
+                        <b>Qtd Real Comprada:</b> ${r.quantidadeComprada || r.quantidade}<br>
+                        <b>Valor Total Gasto:</b> <span style="font-weight:700; color:#10B981;">R$ ${(r.valorGasto || 0).toFixed(2)}</span><br>
+                        <b>Observação do Comprador:</b> ${r.compraObservacao || '-'}<br>
+                    `;
+                } else if (r.status === 'Rejeitado') {
+                    compraHtml = `
+                        <b>Comprador Designado:</b> ${r.repositorNome}<br>
+                        <b>Motivo da Rejeição:</b> <span style="color:#EF4444;">${r.motivoRejeicao || 'Pedido recusado pelo comprador'}</span><br>
+                    `;
+                }
+                
+                detailsHtml += `
+                    <div style="background: #FAF5FF; padding: 12px; border-radius: 8px; border: 1px solid #F3E8FF; margin-top: 10px;">
+                        <div style="font-size: 0.8rem; text-transform: uppercase; font-weight:700; color:#5F388C; margin-bottom: 10px;">Processamento & Compra</div>
+                        ${compraHtml}
+                    </div>
+                `;
+            } else if (r.status === 'Rejeitado') {
+                detailsHtml += `
+                    <div style="background: #FEF2F2; padding: 12px; border-radius: 8px; border: 1px solid #FEE2E2; margin-top: 10px; color:#EF4444;">
+                        <b>Rejeitado pelo Supervisor</b><br>
+                        <b>Motivo:</b> ${r.motivoRejeicao || 'Sem justificativa'}
+                    </div>
+                `;
+            }
+
+            container.innerHTML = detailsHtml;
+            document.getElementById('modal-reposicao-relatorio').style.display = 'flex';
+        } catch (e) {
+            console.error(e);
+            this.showAlert('Erro ao abrir o relatório de reposição.');
+        }
+    },
+
+    closeReposicaoRelatorioModal() {
+        document.getElementById('modal-reposicao-relatorio').style.display = 'none';
+    },
+
+    // --- TAB: PRODUTOS (ADMIN) ---
+    async loadAdminProdutos() {
+        const body = document.getElementById('admin-produtos-table-body');
+        body.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
+
+        const filterSelect = document.getElementById('admin-products-sector-filter');
+        if (filterSelect && filterSelect.options.length === 0) {
+            filterSelect.innerHTML = '';
+            for (const [key, sector] of Object.entries(this.sectorsData)) {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = sector.nome;
+                filterSelect.appendChild(opt);
+            }
+        }
+        const selectedSectorId = filterSelect ? filterSelect.value : 'limpeza';
+
+        this.loadAdminStockHistory(selectedSectorId);
+
+        try {
+            const produtos = await DbService.getProdutos();
+            const sectorProducts = produtos.filter(p => (p.setorId || 'limpeza') === selectedSectorId);
+
+            if (sectorProducts.length === 0) {
+                body.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--slate-gray);">Nenhum produto cadastrado para este setor.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = '';
+            sectorProducts.forEach((p) => {
+                const statusBadge = p.status === 'ativo' ? '<span class="badge badge-active">Ativo</span>' : '<span class="badge badge-inactive">Inativo</span>';
+                
+                const qty = typeof p.quantidade === 'number' ? p.quantidade : 0;
+                let qtyBadge = '';
+                if (qty <= 5) {
+                    qtyBadge = `<span class="badge badge-inactive" style="background: #FEE2E2; color: #EF4444; border-color: #FCA5A5; font-size: 0.85rem; font-weight: 700; padding: 4px 10px;">${qty} (Baixo)</span>`;
+                } else if (qty <= 15) {
+                    qtyBadge = `<span class="badge badge-warn" style="background: #FEF3C7; color: #D97706; border-color: #FCD34D; font-size: 0.85rem; font-weight: 700; padding: 4px 10px;">${qty}</span>`;
+                } else {
+                    qtyBadge = `<span class="badge badge-active" style="background: #ECFDF5; color: #10B981; border-color: #A7F3D0; font-size: 0.85rem; font-weight: 700; padding: 4px 10px;">${qty}</span>`;
+                }
+
+                const actionBtn = p.status === 'ativo' 
+                    ? `<div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                           <button class="btn-scale-action btn-confirm-presenca" style="padding:4px 8px; font-size:0.75rem; background-color: #10B981; border-color: #10B981; color: white; flex: none; width: auto;" onclick="App.openStockMovementModal('${p.id}', 'entrada')"><i class="fa-solid fa-plus"></i> Entrada</button>
+                           <button class="btn-scale-action btn-recusar-presenca" style="padding:4px 8px; font-size:0.75rem; background-color: #EF4444; border-color: #EF4444; color: white; flex: none; width: auto;" onclick="App.openStockMovementModal('${p.id}', 'saida')"><i class="fa-solid fa-minus"></i> Saída</button>
+                           <button class="btn-scale-action btn-recusar-presenca" style="padding:4px 8px; font-size:0.75rem; flex: none; width: auto;" onclick="App.handleToggleProductStatus('${p.id}', 'inativo')">Desativar</button>
+                       </div>`
+                    : `<div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                           <button class="btn-scale-action btn-confirm-presenca" style="padding:4px 8px; font-size:0.75rem; flex: none; width: auto;" onclick="App.handleToggleProductStatus('${p.id}', 'ativo')">Ativar</button>
+                       </div>`;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><b>${p.nome}</b></td>
+                    <td style="text-align: center;">${qtyBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td style="text-align: right;">${actionBtn}</td>
+                `;
+                body.appendChild(row);
+            });
+        } catch (e) {
+            console.error(e);
+            body.innerHTML = '<tr><td colspan="4" style="color:red; text-align:center;">Erro ao carregar produtos.</td></tr>';
+        }
+    },
+
+    async loadAdminStockHistory(setorId) {
+        const listEl = document.getElementById('admin-stock-history-list');
+        if (!listEl) return;
+        listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--slate-gray);"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
+
+        try {
+            const movimentacoes = await DbService.getMovimentacoesEstoque(setorId);
+
+            if (movimentacoes.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--slate-gray); font-size: 0.9rem;">Nenhuma movimentação registrada.</div>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            movimentacoes.forEach(m => {
+                const isEntrada = m.tipo === 'entrada';
+                const typeIcon = isEntrada ? '<i class="fa-solid fa-circle-arrow-up" style="color: #10B981; font-size: 1.1rem;"></i>' : '<i class="fa-solid fa-circle-arrow-down" style="color: #EF4444; font-size: 1.1rem;"></i>';
+                const badgeStyle = isEntrada ? 'background: #ECFDF5; color: #10B981;' : 'background: #FEE2E2; color: #EF4444;';
+                const qtyPrefix = isEntrada ? '+' : '-';
+                
+                const dateOptions = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+                const formattedDate = new Date(m.dataMovimentacao).toLocaleDateString('pt-BR', dateOptions);
+
+                const item = document.createElement('div');
+                item.style.cssText = "display: flex; gap: 12px; padding: 12px; background: #F8FAFC; border-radius: 8px; border-left: 4px solid " + (isEntrada ? "#10B981" : "#EF4444") + "; box-shadow: 0 1px 2px rgba(0,0,0,0.02);";
+                item.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center;">
+                        ${typeIcon}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 5px;">
+                            <span style="font-weight: 600; font-size: 0.9rem; color: var(--navy-dark); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${m.produtoNome}</span>
+                            <span class="badge" style="font-weight: 700; font-size: 0.8rem; padding: 2px 6px; ${badgeStyle}">${qtyPrefix}${m.quantidade}</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--slate-gray); margin-top: 4px;">
+                            ${m.observacao ? `<b>Motivo:</b> ${m.observacao}<br>` : ''}
+                            <span style="font-size: 0.75rem; color: #94A3B8;">Por ${m.usuarioNome} • ${formattedDate}</span>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        } catch (e) {
+            console.error(e);
+            listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: #EF4444; font-size: 0.9rem;">Erro ao carregar histórico.</div>';
+        }
+    },
+
+    async handleProductAdd(event) {
+        event.preventDefault();
+        const input = document.getElementById('new-product-name');
+        const qtyInput = document.getElementById('new-product-qty');
+        
+        const filterSelect = document.getElementById('admin-products-sector-filter');
+        const sectorId = filterSelect ? filterSelect.value : 'limpeza';
+
+        const nome = input.value.trim();
+        const initialQty = qtyInput ? parseInt(qtyInput.value, 10) : 10;
+
+        if (!nome) return;
+
+        try {
+            const docRef = await db.collection('produtos').add({
+                nome: nome,
+                setorId: sectorId,
+                quantidade: isNaN(initialQty) ? 0 : initialQty,
+                status: 'ativo'
+            });
+
+            if (initialQty > 0) {
+                const usuarioNome = this.currentUser ? this.currentUser.nome : 'Supervisor';
+                await db.collection('historico_estoque').add({
+                    produtoId: docRef.id,
+                    produtoNome: nome,
+                    setorId: sectorId,
+                    tipo: 'entrada',
+                    quantidade: initialQty,
+                    observacao: 'Carga inicial de estoque',
+                    usuarioNome: usuarioNome,
+                    dataMovimentacao: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+
+            input.value = '';
+            if (qtyInput) qtyInput.value = '10';
+            this.showToast('Produto cadastrado com sucesso!', 'success');
+            this.loadAdminProdutos();
+        } catch (e) {
+            console.error(e);
+            this.showAlert('Erro ao adicionar produto.');
+        }
+    },
+
+    async handleToggleProductStatus(id, newStatus) {
+        try {
+            await DbService.saveProduto(id, { status: newStatus });
+            this.showToast(`Produto atualizado!`, 'success');
+            this.loadAdminProdutos();
+        } catch (e) {
+            this.showAlert('Erro ao alterar status do produto.');
+        }
+    },
+
+    async openStockMovementModal(produtoId, tipo) {
+        try {
+            const snap = await db.collection('produtos').doc(produtoId).get();
+            if (!snap.exists) return;
+            const p = snap.data();
+
+            document.getElementById('movimentacao-produto-id').value = produtoId;
+            document.getElementById('movimentacao-tipo').value = tipo;
+            document.getElementById('movimentacao-quantidade').value = '';
+            document.getElementById('movimentacao-observacao').value = '';
+
+            const title = document.getElementById('movimentacao-estoque-titulo');
+            const submitBtn = document.getElementById('btn-movimentacao-estoque-submit');
+            const prodNameEl = document.getElementById('movimentacao-estoque-produto-nome');
+
+            prodNameEl.textContent = `Produto: ${p.nome.toUpperCase()}`;
+
+            if (tipo === 'entrada') {
+                title.innerHTML = '<i class="fa-solid fa-circle-arrow-up" style="color: #10B981; margin-right: 5px;"></i> Registrar Entrada';
+                submitBtn.className = 'btn-primary';
+                submitBtn.style.backgroundColor = '#10B981';
+                submitBtn.style.borderColor = '#10B981';
+                submitBtn.textContent = 'Registrar Entrada';
+            } else {
+                title.innerHTML = '<i class="fa-solid fa-circle-arrow-down" style="color: #EF4444; margin-right: 5px;"></i> Registrar Saída';
+                submitBtn.className = 'btn-primary';
+                submitBtn.style.backgroundColor = '#EF4444';
+                submitBtn.style.borderColor = '#EF4444';
+                submitBtn.textContent = 'Registrar Saída';
+            }
+
+            document.getElementById('modal-movimentacao-estoque').style.display = 'flex';
+        } catch (e) {
+            console.error(e);
+            this.showAlert('Erro ao abrir o modal de movimentação.');
+        }
+    },
+
+    closeMovimentacaoEstoqueModal() {
+        document.getElementById('modal-movimentacao-estoque').style.display = 'none';
+    },
+
+    async handleStockMovementSubmit(event) {
+        event.preventDefault();
+        const produtoId = document.getElementById('movimentacao-produto-id').value;
+        const tipo = document.getElementById('movimentacao-tipo').value;
+        const quantidade = parseInt(document.getElementById('movimentacao-quantidade').value, 10);
+        const observacao = document.getElementById('movimentacao-observacao').value.trim();
+
+        if (!produtoId || !tipo || isNaN(quantidade) || quantidade <= 0) {
+            this.showAlert('Por favor, informe uma quantidade válida.');
+            return;
+        }
+
+        try {
+            const usuarioNome = this.currentUser ? this.currentUser.nome : 'Supervisor';
+            await DbService.registrarMovimentacaoEstoque(produtoId, tipo, quantidade, observacao, usuarioNome);
+
+            this.closeMovimentacaoEstoqueModal();
+            this.showToast('Estoque atualizado com sucesso!', 'success');
+            this.loadAdminProdutos();
+        } catch (e) {
+            console.error(e);
+            this.showAlert(e.message || 'Erro ao registrar movimentação.');
+        }
+    },
+
+    // --- TAB: RELATÓRIOS (ADMIN) ---
+    async loadAdminRelatorios() {
+        const select = document.getElementById('report-filter-month');
+        
+        // Populate Month options if empty
+        if (select.innerHTML.trim() === '') {
+            select.innerHTML = '';
+            
+            // Current month plus last 5 months
+            const date = new Date();
+            for (let i = 0; i < 6; i++) {
+                const optDate = new Date(date.getFullYear(), date.getMonth() - i, 1);
+                const val = this.formatLocalISOString(optDate).substring(0, 7); // YYYY-MM
+                const label = optDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.innerText = label.charAt(0).toUpperCase() + label.slice(1);
+                select.appendChild(opt);
+            }
+        }
+
+        this.loadAndRenderReports();
+    },
+
+    async loadAndRenderReports() {
+        const selectedMonth = document.getElementById('report-filter-month').value; // format "YYYY-MM"
+        
+        const servedList = document.getElementById('report-list-served');
+        const notServedList = document.getElementById('report-list-not-served');
+        const historyBody = document.getElementById('admin-history-table-body');
+
+        servedList.innerHTML = '<div style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+        notServedList.innerHTML = '<div style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+        historyBody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
+
+        try {
+            // Get all members and active history
+            const membros = await DbService.getMembros();
+            const voluntáriosAtivos = membros.filter(m => m.perfil === 'membro' && m.status === 'ativo');
+            
+            const historico = await DbService.getHistoricoServicos();
+            
+            // Filter history for selected month
+            const monthHistory = historico.filter(s => {
+                if (!s.finalizadoEm) return false;
+                const dateStr = this.formatLocalISOString(s.finalizadoEm).substring(0, 7); // YYYY-MM
+                return dateStr === selectedMonth;
+            });
+
+            // 1. Identify who served and who hasn't
+            const servedIds = new Set(monthHistory.map(s => s.membroId));
+            
+            const servedMembers = voluntáriosAtivos.filter(m => servedIds.has(m.id));
+            const notServedMembers = voluntáriosAtivos.filter(m => !servedIds.has(m.id));
+
+            // 2. Render Served List
+            if (servedMembers.length === 0) {
+                servedList.innerHTML = '<p style="text-align:center; color:var(--slate-gray); padding:20px; font-size:0.9rem;">Ninguém serviu ainda este mês.</p>';
+            } else {
+                servedList.innerHTML = '';
+                servedMembers.forEach(m => {
+                    const mSetores = m.setores || (m.setor ? [m.setor] : []);
+                    const setoresText = mSetores.map(sId => this.sectorsData[sId]?.nome || sId).join(', ') || 'Sem Setor';
+                    const div = document.createElement('div');
+                    div.className = 'report-row';
+                    div.innerHTML = `
+                        <div>
+                            <b>${m.nome}</b>
+                            <div style="font-size:0.75rem; color:var(--slate-gray);">${setoresText}</div>
+                        </div>
+                        <span class="badge badge-active" style="border:none;"><i class="fa-solid fa-circle-check"></i> Serviu</span>
+                    `;
+                    servedList.appendChild(div);
+                });
+            }
+
+            // 3. Render Not Served List
+            if (notServedMembers.length === 0) {
+                notServedList.innerHTML = '<p style="text-align:center; color:#10B981; padding:20px; font-size:0.9rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Todos os voluntários já serviram!</p>';
+            } else {
+                notServedList.innerHTML = '';
+                notServedMembers.forEach(m => {
+                    const mSetores = m.setores || (m.setor ? [m.setor] : []);
+                    const setoresText = mSetores.map(sId => this.sectorsData[sId]?.nome || sId).join(', ') || 'Sem Setor';
+                    const div = document.createElement('div');
+                    div.className = 'report-row';
+                    div.innerHTML = `
+                        <div>
+                            <b>${m.nome}</b>
+                            <div style="font-size:0.75rem; color:var(--slate-gray);">${setoresText}</div>
+                        </div>
+                        <span class="badge" style="background:#FEF3C7; color:#D97706;"><i class="fa-solid fa-circle-exmark"></i> Não Serviu</span>
+                    `;
+                    notServedList.appendChild(div);
+                });
+            }
+
+            // 4. Render general finalized history
+            if (historico.length === 0) {
+                historyBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--slate-gray);">Nenhum serviço finalizado no histórico.</td></tr>';
+                return;
+            }
+
+            historyBody.innerHTML = '';
+            historico.forEach(s => {
+                const dateParts = s.data.split('-');
+                const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                const sector = this.sectorsData[s.setorId];
+
+                // Compute service duration in minutes
+                let durationText = '-';
+                if (s.iniciadoEm && s.finalizadoEm) {
+                    const diffMs = s.finalizadoEm - s.iniciadoEm;
+                    const diffMins = Math.round(diffMs / 60000);
+                    if (diffMins < 60) {
+                        durationText = `${diffMins} min`;
+                    } else {
+                        const hrs = Math.floor(diffMins / 60);
+                        const mins = diffMins % 60;
+                        durationText = `${hrs}h ${mins}m`;
+                    }
+                }
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formattedDate}</td>
+                    <td><span class="badge" style="background:${sector ? sector.cor + '22' : '#f1f5f9'}; color:${sector ? sector.cor : 'var(--navy-dark)'};">${sector ? sector.nome : s.setorId}</span></td>
+                    <td><b>${s.membroNome}</b></td>
+                    <td>${s.funcao}</td>
+                    <td><span class="badge" style="background:#f1f5f9; color:var(--navy-dark); font-weight:600;"><i class="fa-regular fa-clock"></i> ${durationText}</span></td>
+                    <td><div style="max-width:200px; font-size:0.8rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${s.observacoes || ''}">${s.observacoes || '-'}</div></td>
+                `;
+                historyBody.appendChild(row);
+            });
+
+        } catch (e) {
+            console.error("Relatorios rendering error:", e);
+        }
+    },
+
+    // ==========================================================================
+    // UTILS & FLOATING NOTIFICATIONS
+    // ==========================================================================
+    
+    // Toggle Password Visibility helper
+    togglePasswordVisibility(fieldId, iconEl) {
+        const input = document.getElementById(fieldId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            iconEl.className = 'fa-solid fa-eye';
+        } else {
+            input.type = 'password';
+            iconEl.className = 'fa-solid fa-eye-slash';
+        }
+    },
+
+    formatLocalISOString(date = new Date()) {
+        const offsetMin = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - (offsetMin * 60 * 1000));
+        return localDate.toISOString();
+    },
+
+    // Helper date ranges generator (Week / Month)
+    getStartAndEndDates(baseDate, period) {
+        const date = new Date(baseDate);
+        if (period === 'week') {
+            // Find Monday of the current week
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+            const monday = new Date(date.setDate(diff));
+            const sunday = new Date(date.setDate(diff + 6));
+            
+            const startStr = this.formatLocalISOString(monday).split('T')[0];
+            const endStr = this.formatLocalISOString(sunday).split('T')[0];
+
+            const mondayLbl = monday.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            const sundayLbl = sunday.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+            return {
+                start: startStr,
+                end: endStr,
+                label: `${mondayLbl} a ${sundayLbl}`
+            };
+        } else {
+            // Monthly range: expanded to cover 3 months (previous month, current month, and next month)
+            // This ensures members have at least 3 months active/accessible in their calendar.
+            const firstDay = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+            const lastDay = new Date(date.getFullYear(), date.getMonth() + 2, 0);
+
+            const startStr = this.formatLocalISOString(firstDay).split('T')[0];
+            const endStr = this.formatLocalISOString(lastDay).split('T')[0];
+
+            const currentFirstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+            const monthLbl = currentFirstDay.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+            return {
+                start: startStr,
+                end: endStr,
+                label: monthLbl.charAt(0).toUpperCase() + monthLbl.slice(1)
+            };
+        }
+    },
+
+    // Custom alerts
+    showAlert(message, title = 'Aviso') {
+        document.getElementById('alert-title').innerText = title;
+        const msgEl = document.getElementById('alert-message');
+        if (message && (message.includes('<') || message.includes('\n'))) {
+            // Replace newlines with <br> if it's plain text, otherwise render as HTML
+            if (!message.includes('<div') && !message.includes('<p') && !message.includes('<span') && !message.includes('<br')) {
+                msgEl.innerHTML = message.replace(/\n/g, '<br>');
+            } else {
+                msgEl.innerHTML = message;
+            }
+        } else {
+            msgEl.innerText = message;
+        }
+        document.getElementById('custom-alert-modal').classList.add('active');
+    },
+
+    closeAlert() {
+        document.getElementById('custom-alert-modal').classList.remove('active');
+    },
+
+    showLoading() {
+        let loader = document.getElementById('global-app-loader');
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'global-app-loader';
+            loader.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(15, 23, 42, 0.6);
+                backdrop-filter: blur(4px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                opacity: 0;
+                transition: opacity 0.25s ease;
+            `;
+            loader.innerHTML = `
+                <div style="background: rgba(30, 41, 59, 0.9); padding: 24px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5);">
+                    <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--theme-color);"></i>
+                    <span style="color: #fff; font-size: 0.88rem; font-weight: 600; font-family: inherit;">Processando...</span>
+                </div>
+            `;
+            document.body.appendChild(loader);
+        }
+        loader.offsetHeight; // force reflow
+        loader.style.opacity = '1';
+    },
+
+    hideLoading() {
+        const loader = document.getElementById('global-app-loader');
+        if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                if (loader.parentNode) {
+                    loader.parentNode.removeChild(loader);
+                }
+            }, 250);
+        }
+    },
+
+    // Toast alerts wrapper
+    showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#10B981' : type === 'error' ? '#EF4444' : '#1E293B'};
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        `;
+        
+        let icon = '<i class="fa-solid fa-circle-check"></i>';
+        if (type === 'error') icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        if (type === 'info') icon = '<i class="fa-solid fa-info-circle"></i>';
+
+        toast.innerHTML = `${icon} <span>${message}</span>`;
+        document.body.appendChild(toast);
+        
+        // Anim in
+        setTimeout(() => {
+            toast.style.transform = 'translateY(0)';
+            toast.style.opacity = '1';
+        }, 100);
+
+        // Anim out
+        setTimeout(() => {
+            toast.style.transform = 'translateY(100px)';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 400);
+        }, 3000);
+    },
+
+    // --- CES Diaconia v3.2 - STANDBY & VOLUNTARIADO ---
+    async handleRegisterStandby(cultoId, cultoNome, dateStr, horario, nodeId) {
+        try {
+            App.showLoading();
+            const standbys = await DbService.getStandbys();
+            const alreadyRegistered = standbys.some(s => s.cultoId === cultoId && s.membroId === App.currentUser.id);
+            if (alreadyRegistered) {
+                App.hideLoading();
+                App.showToast('Você já se candidatou como voluntário para este culto.', 'info');
+                return;
+            }
+            
+            let sectorId = App.activeSectorId;
+            let funcao = App.currentUser.funcao || 'Voluntário';
+            
+            if (App.activeSectorId === 'diaconia_templo') {
+                const titleMap = {
+                    'portaria': 'Portaria',
+                    'checkin': 'Check-in',
+                    'apoio-direito': 'Apoio Interno (L. Dir.)',
+                    'apoio-esquerdo': 'Apoio Interno (L. Esq.)',
+                    'ronda-direito': 'Ronda (L. Dir.)',
+                    'ronda-esquerdo': 'Ronda (L. Esq.)',
+                    'acolhimento': 'Acolhimento',
+                    
+                    // Unified mappings (v3.6.22)
+                    'recepcao': 'Recepção',
+                    'templo': 'Apoio Interno',
+                    'ronda': 'Ronda'
+                };
+                funcao = titleMap[nodeId] || App.currentUser.funcao || 'Voluntário';
+                
+                // Read from dropdown if present
+                const selectEl = document.getElementById('standby-role-select');
+                if (selectEl) {
+                    funcao = selectEl.value;
+                }
+                
+                if (nodeId === 'acolhimento') {
+                    sectorId = 'acolhimento_integracao';
+                }
+            }
+            
+            const standbyData = {
+                cultoId,
+                cultoNome,
+                dataCulto: dateStr,
+                horario,
+                membroId: App.currentUser.id,
+                membroNome: App.currentUser.nome,
+                membroFotoUrl: App.currentUser.fotoUrl || null,
+                setorId: sectorId,
+                funcao: funcao
+            };
+            
+            await DbService.saveStandby(standbyData);
+            
+            await DbService.addNotificacao({
+                paraUsuarioId: 'admin_default',
+                paraUsuarioNome: 'Supervisor Geral',
+                titulo: 'Novo Voluntário Disponível',
+                mensagem: `${App.currentUser.nome} se colocou à disposição para trabalhar no culto ${cultoNome} (${dateStr}).`,
+                tipo: 'standby'
+            });
+            
+            App.hideLoading();
+            App.showToast('Candidatura de voluntário registrada com sucesso!', 'success');
+            
+            App.openAreaDetail(nodeId);
+        } catch (err) {
+            App.hideLoading();
+            console.error("Error registering standby:", err);
+            App.showToast('Erro ao registrar candidatura.', 'danger');
+        }
+    },
+
+    async handleCancelStandby(standbyId, nodeId) {
+        if (!confirm('Deseja realmente cancelar sua disponibilidade para este culto?')) return;
+        try {
+            App.showLoading();
+            await DbService.deleteStandby(standbyId);
+            App.hideLoading();
+            App.showToast('Disponibilidade cancelada.', 'success');
+            if (nodeId) {
+                App.openAreaDetail(nodeId);
+            } else {
+                App.loadAndRenderMemberScales();
+            }
+        } catch (err) {
+            App.hideLoading();
+            console.error("Error cancelling standby:", err);
+            App.showToast('Erro ao cancelar disponibilidade.', 'danger');
+        }
+    },
+
+    async handleCancelStandbyFromList(standbyId) {
+        await App.handleCancelStandby(standbyId, null);
+    },
+
+    async handleRegisterStandbyFromList(cultoId, cultoNome, dateStr, horario) {
+        try {
+            App.showLoading();
+            const standbys = await DbService.getStandbys();
+            const alreadyRegistered = standbys.some(s => s.cultoId === cultoId && s.membroId === App.currentUser.id);
+            if (alreadyRegistered) {
+                App.hideLoading();
+                App.showToast('Você já se candidatou como voluntário para este culto.', 'info');
+                return;
+            }
+            
+            const standbyData = {
+                cultoId,
+                cultoNome,
+                dataCulto: dateStr,
+                horario,
+                membroId: App.currentUser.id,
+                membroNome: App.currentUser.nome,
+                membroFotoUrl: App.currentUser.fotoUrl || null,
+                setorId: App.activeSectorId,
+                funcao: App.currentUser.funcao || 'Voluntário'
+            };
+            
+            await DbService.saveStandby(standbyData);
+            
+            await DbService.addNotificacao({
+                paraUsuarioId: 'admin_default',
+                paraUsuarioNome: 'Supervisor Geral',
+                titulo: 'Novo Voluntário Disponível',
+                mensagem: `${App.currentUser.nome} se colocou à disposição para trabalhar no culto ${cultoNome} (${dateStr}).`,
+                tipo: 'standby'
+            });
+            
+            App.hideLoading();
+            App.showToast('Candidatura de voluntário registrada com sucesso!', 'success');
+            
+            App.loadAndRenderMemberScales();
+        } catch (err) {
+            App.hideLoading();
+            console.error("Error registering standby:", err);
+            App.showToast('Erro ao registrar candidatura.', 'danger');
+        }
+    },
+
+    async handleSendSupervisionMessage(event) {
+        event.preventDefault();
+        const textarea = document.getElementById('supervision-msg-text');
+        if (!textarea) return;
+        
+        const content = textarea.value.trim();
+        if (!content) {
+            App.showToast('Digite uma mensagem primeiro.', 'warning');
+            return;
+        }
+        
+        try {
+            App.showLoading();
+            await DbService.saveSupervisionMessage(App.currentUser.id, App.currentUser.nome, content);
+            
+            await DbService.addNotificacao({
+                paraUsuarioId: 'admin_default',
+                paraUsuarioNome: 'Supervisor Geral',
+                titulo: 'Nova Mensagem para a Supervisão',
+                mensagem: `${App.currentUser.nome} enviou uma mensagem para a supervisão: "${content.substring(0, 50)}..."`,
+                tipo: 'mensagem'
+            });
+            
+            App.hideLoading();
+            textarea.value = '';
+            App.showToast('Mensagem enviada com sucesso para a supervisão!', 'success');
+        } catch (err) {
+            App.hideLoading();
+            console.error("Error sending supervision message:", err);
+            App.showToast('Erro ao enviar mensagem.', 'danger');
+        }
+    },
+
+    getSectorFriendlyName(sectorId) {
+        const map = {
+            'diaconia_templo': 'Diaconia do Templo',
+            'acolhimento_integracao': 'Acolhimento e Integração',
+            'limpeza': 'Limpeza',
+            'manutencao': 'Manutenção'
+        };
+        return map[sectorId] || sectorId || 'Sem Setor';
+    },
+
+    async loadAndRenderSupervisorAlerts() {
+        const container = document.getElementById('admin-supervisor-alerts-container');
+        const listContainer = document.getElementById('admin-supervisor-alerts-list');
+        const badgeEl = document.getElementById('admin-supervisor-alerts-badge');
+        
+        if (!container || !listContainer) return;
+        
+        try {
+            const standbys = await DbService.getStandbys();
+            const allEscalas = await DbService.getEscalas();
+            const rejections = allEscalas.filter(e => e.statusPresenca === 'Recusada' && e.rejeicaoResolvida !== true);
+            const messages = await DbService.getSupervisionMessages();
+            
+            const totalAlerts = standbys.length + rejections.length + messages.length;
+            
+            if (badgeEl) badgeEl.innerText = totalAlerts;
+            
+            if (totalAlerts === 0) {
+                container.style.display = 'none';
+                listContainer.innerHTML = '';
+                return;
+            }
+            
+            container.style.display = 'block';
+            listContainer.innerHTML = '';
+            
+            // Render Rejections
+            rejections.forEach(escala => {
+                const item = document.createElement('div');
+                item.className = 'alert-item';
+                item.id = `alert-rejection-${escala.id}`;
+                item.style.cssText = 'background: #fff; border-left: 4px solid #ef4444; border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);';
+                
+                const dateParts = escala.data.split('-');
+                const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                
+                item.innerHTML = `
+                    <div style="flex: 1; text-align: left;">
+                        <span style="font-weight: 700; color: #dc2626; font-size: 0.8rem; text-transform: uppercase; display: block; margin-bottom: 2px;"><i class="fa-solid fa-triangle-exclamation"></i> Presença Recusada</span>
+                        <span style="font-size: 0.88rem; color: var(--navy-dark); font-weight: 600;">${escala.membroNome}</span> recusou a escala para <span style="font-weight: 600;">${escala.cultoNome}</span> (${formattedDate} das ${escala.horarioInicio} às ${escala.horarioFim}) no setor <span style="font-weight: 600;">${App.getSectorFriendlyName(escala.setorId)}</span> (Função: ${escala.funcao}).
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn-primary" style="padding: 6px 12px; font-size: 0.78rem; width: auto; background: var(--teal-primary);" onclick="App.handleReplaceRejection('${escala.cultoId}', '${escala.id}')">
+                            <i class="fa-solid fa-user-pen"></i> Escalar Substitutos
+                        </button>
+                        <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.78rem; width: auto;" onclick="App.handleDismissRejection('${escala.id}')">
+                            <i class="fa-solid fa-check"></i> Dispensar Alerta
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+            
+            // Render Standbys
+            standbys.forEach(s => {
+                const item = document.createElement('div');
+                item.className = 'alert-item';
+                item.id = `alert-standby-${s.id}`;
+                item.style.cssText = 'background: #fff; border-left: 4px solid #10b981; border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);';
+                
+                const dateParts = s.dataCulto.split('-');
+                const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                
+                item.innerHTML = `
+                    <div style="flex: 1; text-align: left;">
+                        <span style="font-weight: 700; color: #059669; font-size: 0.8rem; text-transform: uppercase; display: block; margin-bottom: 2px;"><i class="fa-solid fa-hand-holding-hand"></i> Obreiro Disponível (Voluntário)</span>
+                        <span style="font-size: 0.88rem; color: var(--navy-dark); font-weight: 600;">${s.membroNome}</span> se voluntariou para o culto <span style="font-weight: 600;">${s.cultoNome}</span> (${formattedDate} - ${s.horario}) no setor <span style="font-weight: 600;">${App.getSectorFriendlyName(s.setorId)}</span>${s.funcao ? ` (Pref. Função: ${s.funcao})` : ''}.
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn-primary" style="padding: 6px 12px; font-size: 0.78rem; width: auto; background: var(--teal-primary);" onclick="App.handleEscalarStandby('${s.cultoId}', '${s.membroId}', '${s.membroNome.replace(/'/g, "\\'")}', '${s.setorId}', '${(s.funcao || '').replace(/'/g, "\\'")}', '${s.id}')">
+                            <i class="fa-solid fa-plus"></i> Escalar Obreiro
+                        </button>
+                        <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.78rem; width: auto;" onclick="App.handleDismissStandby('${s.id}')">
+                            <i class="fa-solid fa-check"></i> Dispensar Alerta
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+            
+            // Render Messages
+            messages.forEach(msg => {
+                const item = document.createElement('div');
+                item.className = 'alert-item';
+                item.id = `alert-message-${msg.id}`;
+                item.style.cssText = 'background: #fff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);';
+                
+                const timeStr = msg.criadoEm ? msg.criadoEm.toLocaleDateString('pt-BR') + ' às ' + msg.criadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+                
+                item.innerHTML = `
+                    <div style="flex: 1; text-align: left;">
+                        <span style="font-weight: 700; color: #2563eb; font-size: 0.8rem; text-transform: uppercase; display: block; margin-bottom: 2px;"><i class="fa-solid fa-comment"></i> Mensagem para Supervisão</span>
+                        <div style="font-size: 0.88rem; color: var(--navy-dark);"><span style="font-weight: 700;">${msg.membroNome}</span>: "${msg.conteudo}"</div>
+                        <span style="font-size: 0.7rem; color: var(--slate-gray); display: block; margin-top: 4px;">Enviado em ${timeStr}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-primary" style="padding: 6px 12px; font-size: 0.78rem; width: auto; background: #3b82f6;" onclick="App.handleMarkMessageRead('${msg.id}')">
+                            <i class="fa-solid fa-check"></i> Marcar como Lida
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        } catch (e) {
+            console.error("Error loading supervisor alerts:", e);
+        }
+    },
+
+    removeAlertFromDOM(alertId) {
+        const element = document.getElementById(alertId);
+        if (element) {
+            element.remove();
+        }
+        
+        const badgeEl = document.getElementById('admin-supervisor-alerts-badge');
+        if (badgeEl) {
+            const currentCount = parseInt(badgeEl.innerText) || 0;
+            const newCount = Math.max(0, currentCount - 1);
+            badgeEl.innerText = newCount;
+            if (newCount === 0) {
+                const container = document.getElementById('admin-supervisor-alerts-container');
+                if (container) container.style.display = 'none';
+            }
+        }
+    },
+
+    handleReplaceRejection(cultoId, escalaId) {
+        // Pre-select the culto so loadAdminEscalas will auto-navigate to it
+        this.adminSelectedCultoId = cultoId;
+        this.adminActiveTab = 'escalas';
+
+        // Navigate to the admin view (renders the escalas tab with the correct culto)
+        const views = document.querySelectorAll('.view-section');
+        views.forEach(v => v.style.display = 'none');
+        const adminView = document.getElementById('view-admin');
+        if (adminView) adminView.style.display = 'block';
+
+        // Apply correct menu highlight
+        document.querySelectorAll('.admin-menu-item').forEach(item => item.classList.remove('active'));
+        const escalasMenuItem = Array.from(document.querySelectorAll('.admin-menu-item')).find(item =>
+            item.textContent.toLowerCase().includes('escala')
+        );
+        if (escalasMenuItem) escalasMenuItem.classList.add('active');
+
+        this.loadAndRenderAdminPortal();
+        App.showToast('Substitua o obreiro que recusou na escala.', 'info');
+    },
+
+    async handleDismissRejection(escalaId) {
+        // Optimistically remove from DOM immediately
+        this.removeAlertFromDOM(`alert-rejection-${escalaId}`);
+        try {
+            await DbService.saveEscala(escalaId, { rejeicaoResolvida: true });
+            App.showToast('Alerta de recusa dispensado.', 'success');
+        } catch (err) {
+            console.error("Error dismissing rejection:", err);
+            App.showToast('Erro ao dispensar alerta no servidor.', 'danger');
+            // Restore original UI state if database write failed
+            await App.loadAndRenderSupervisorAlerts();
+        }
+    },
+
+    async handleDismissStandby(standbyId) {
+        // Optimistically remove from DOM immediately
+        this.removeAlertFromDOM(`alert-standby-${standbyId}`);
+        try {
+            await DbService.deleteStandby(standbyId);
+            App.showToast('Alerta de voluntário dispensado.', 'success');
+        } catch (err) {
+            console.error("Error dismissing standby:", err);
+            App.showToast('Erro ao dispensar voluntário no servidor.', 'danger');
+            // Restore original UI state if database write failed
+            await App.loadAndRenderSupervisorAlerts();
+        }
+    },
+
+    async handleMarkMessageRead(msgId) {
+        // Optimistically remove from DOM immediately
+        this.removeAlertFromDOM(`alert-message-${msgId}`);
+        try {
+            await DbService.marcarMensagemComoLida(msgId);
+            App.showToast('Mensagem marcada como lida.', 'success');
+        } catch (err) {
+            console.error("Error marking message as read:", err);
+            App.showToast('Erro ao marcar mensagem no servidor.', 'danger');
+            // Restore original UI state if database write failed
+            await App.loadAndRenderSupervisorAlerts();
+        }
+    },
+
+    async handleEscalarStandby(cultoId, membroId, membroNome, sectorId, funcao, standbyId) {
+        App.adminSelectedCultoId = cultoId;
+        const c = App.cultosData.find(item => item.id === cultoId);
+        if (!c) {
+            App.showToast('Culto não encontrado.', 'danger');
+            return;
+        }
+        
+        document.getElementById('escala-modal-title').innerText = `Escalar ${membroNome}`;
+        document.getElementById('escala-form-id').value = '';
+        document.getElementById('escala-form').reset();
+        
+        document.getElementById('escala-cultoid').value = cultoId;
+        document.getElementById('escala-data').value = c.data;
+        document.getElementById('escala-horainicio').value = c.horarioInicio;
+        document.getElementById('escala-horafim').value = c.horarioFim;
+        
+        document.getElementById('escala-setor').value = sectorId;
+        
+        await App.handleEscalaSetorChange(sectorId);
+        
+        const fSelect = document.getElementById('escala-funcao');
+        let matchedFuncao = '';
+        for (let option of fSelect.options) {
+            if (option.value.toLowerCase().includes((funcao || '').toLowerCase())) {
+                matchedFuncao = option.value;
+                break;
+            }
+        }
+        if (!matchedFuncao && fSelect.options.length > 1) {
+            matchedFuncao = fSelect.options[1].value;
+        }
+        if (matchedFuncao) {
+            fSelect.value = matchedFuncao;
+        }
+        
+        await App.adjustEscalaFormFields();
+        
+        const mSelect = document.getElementById('escala-membro');
+        mSelect.value = membroId;
+        
+        document.getElementById('modal-escala-form').classList.add('active');
+        
+        App.pendingStandbyIdToResolve = standbyId;
+    },
+
+    async loadAdminAvisos() {
+        const container = document.getElementById('admin-avisos-list');
+        if (!container) return;
+        container.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.2rem; color: var(--teal-primary);"></i><p style="margin-top:8px; font-size:0.8rem; color:var(--slate-gray);">Buscando informativos...</p></div>';
+
+        // Load Mural Configuration
+        App.loadMuralConfigAdmin();
+
+        try {
+            const avisos = await DbService.getAvisos();
+            if (avisos.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--slate-gray); font-size: 0.88rem;">Nenhum informativo publicado ainda.</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            avisos.forEach(a => {
+                const item = document.createElement('div');
+                item.style.cssText = `
+                    border: 1px solid #E2E8F0;
+                    border-radius: 12px;
+                    padding: 12px 15px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 15px;
+                    background: #FAF8F6;
+                `;
+                const dt = a.data ? a.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                const expStr = a.dataExpiracao ? ` (Expirando em: ${a.dataExpiracao.split('-').reverse().join('/')})` : '';
+                item.innerHTML = `
+                    <div style="flex: 1; text-align: left;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--teal-primary);"><i class="fa-solid fa-user-tie"></i> ${a.autorNome || 'Supervisor Geral'}</span>
+                            <span style="font-size: 0.7rem; color: var(--slate-gray);">${dt}${expStr}</span>
+                        </div>
+                        <h5 style="font-size: 0.9rem; font-weight: 700; color: var(--navy-dark); margin: 0 0 4px 0;">${a.titulo}</h5>
+                        <p style="font-size: 0.82rem; color: var(--navy-dark); margin: 0; line-height: 1.3;">${a.conteudo}</p>
+                    </div>
+                    <button class="btn-icon" style="color: #ef4444; background: rgba(239, 68, 68, 0.08); border-radius: 8px; width: 32px; height: 32px; flex-shrink: 0; border: none; cursor: pointer;" onclick="App.handleDeleteAvisoAdmin('${a.id}')" title="Excluir Informativo">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+        } catch (err) {
+            console.error("Error loading admin notices:", err);
+            container.innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Erro ao carregar informativos.</div>';
+        }
+    },
+
+    async handleSaveAvisoAdmin(event) {
+        event.preventDefault();
+        const titleInput = document.getElementById('aviso-titulo');
+        const contentInput = document.getElementById('aviso-conteudo');
+        const expInput = document.getElementById('aviso-expiracao');
+        if (!titleInput || !contentInput) return;
+
+        const titulo = titleInput.value.trim();
+        const conteudo = contentInput.value.trim();
+        const dataExpiracao = expInput ? expInput.value : '';
+
+        if (!titulo || !conteudo) {
+            App.showToast('Por favor, preencha todos os campos.', 'warning');
+            return;
+        }
+
+        try {
+            App.showLoading();
+            const payload = {
+                titulo,
+                conteudo,
+                autorNome: App.currentUser ? App.currentUser.nome : 'Supervisor Geral'
+            };
+            if (dataExpiracao) {
+                payload.dataExpiracao = dataExpiracao;
+            }
+            await DbService.saveAviso(payload);
+            App.hideLoading();
+            App.showToast('Informativo publicado com sucesso!', 'success');
+            
+            titleInput.value = '';
+            contentInput.value = '';
+            if (expInput) expInput.value = '';
+            
+            await App.loadAdminAvisos();
+        } catch (err) {
+            App.hideLoading();
+            console.error("Error publishing notice:", err);
+            App.showToast('Erro ao publicar informativo.', 'danger');
+        }
+    },
+
+    async handleDeleteAvisoAdmin(id) {
+        if (!confirm('Deseja realmente excluir este informativo? Todos os obreiros deixarão de vê-lo.')) return;
+
+        try {
+            App.showLoading();
+            await DbService.deleteAviso(id);
+            App.hideLoading();
+            App.showToast('Informativo excluído com sucesso!', 'success');
+            await App.loadAdminAvisos();
+        } catch (err) {
+            App.hideLoading();
+            console.error("Error deleting notice:", err);
+            App.showToast('Erro ao excluir informativo.', 'danger');
+        }
+    },
+
+    // --- MURAL INFORMATIVO FUNCTIONS (v3.4.9) ---
+    async loadAndRenderSectorSelectMural(escalas, avisos) {
+        const announcementDescEl = document.getElementById('mural-announcement-desc');
+        const eventsDescEl = document.getElementById('mural-events-desc');
+        const birthdaysDescEl = document.getElementById('mural-birthdays-desc');
+        const verseTextEl = document.getElementById('mural-verse-quote-text');
+        const verseRefEl = document.getElementById('mural-verse-quote-ref');
+        const reminderTextEl = document.getElementById('mural-footer-message');
+
+        // 1. Next Events (Render up to 2 future events)
+        const now = new Date();
+        const tzOffset = now.getTimezoneOffset() * 60000;
+        const hojeStr = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
+
+        try {
+            const cultos = await DbService.getCultos();
+            const futureCultos = cultos.filter(c => c.data >= hojeStr);
+            if (futureCultos.length > 0) {
+                const topEvents = futureCultos.slice(0, 2);
+                const eventsHtml = topEvents.map(event => {
+                    const parts = event.data.split('-');
+                    return `${parts[2]}/${parts[1]} • ${event.nome}`;
+                }).join('<br>');
+                if (eventsDescEl) eventsDescEl.innerHTML = eventsHtml;
+            } else {
+                if (eventsDescEl) eventsDescEl.innerText = 'Nenhum evento agendado';
+            }
+        } catch (e) {
+            console.error("Error loading next event for mural:", e);
+            if (eventsDescEl) eventsDescEl.innerText = 'Erro ao carregar eventos';
+        }
+
+        // 2. Announcements list (up to 3 recent notices)
+        if (avisos && avisos.length > 0) {
+            const topAvisos = avisos.slice(0, 3);
+            const htmlText = topAvisos.map(a => {
+                let dateStr = '';
+                if (a.criadoEm) {
+                    const d = a.criadoEm.toDate ? a.criadoEm.toDate() : new Date(a.criadoEm);
+                    dateStr = ` (${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')})`;
+                }
+                return `${a.titulo}${dateStr}`;
+            }).join('<br>');
+            if (announcementDescEl) announcementDescEl.innerHTML = htmlText;
+            this.cachedAvisosList = avisos;
+        } else {
+            if (announcementDescEl) announcementDescEl.innerText = 'Sem avisos no momento';
+            this.cachedAvisosList = [];
+        }
+
+        // 3. Verse of the Day & Lembrete
+        try {
+            const config = await DbService.getMuralConfig();
+            if (config) {
+                if (verseTextEl && config.versiculoTexto) verseTextEl.innerText = `"${config.versiculoTexto}"`;
+                if (verseRefEl && config.versiculoReferencia) verseRefEl.innerText = config.versiculoReferencia;
+                if (reminderTextEl && config.lembrete) reminderTextEl.innerText = config.lembrete;
+            } else {
+                if (verseTextEl) verseTextEl.innerText = `"Tudo o que fizerem, façam de todo o coração, como para o Senhor, e não para os homens."`;
+                if (verseRefEl) verseRefEl.innerText = "Colossenses 3:23";
+                if (reminderTextEl) reminderTextEl.innerText = "Sirvamos juntos com amor e dedicação!";
+            }
+        } catch (e) {
+            console.error("Error loading config for mural:", e);
+        }
+
+        // 4. Birthdays (Render text-based birthdays of the month)
+        if (birthdaysDescEl) {
+            try {
+                const members = await DbService.getMembros();
+                const currentMonth = new Date().getMonth();
+
+                const birthdayMembers = members.filter(m => {
+                    if (m.status !== 'ativo') return false;
+                    if (!m.dataNascimento || m.dataNascimento === 'N/A') return false;
+                    const parts = m.dataNascimento.split('-');
+                    if (parts.length < 3) return false;
+                    const month = parseInt(parts[1], 10) - 1;
+                    return month === currentMonth;
+                });
+
+                birthdayMembers.sort((a, b) => {
+                    return this.getMemberBirthDayLocal(a) - this.getMemberBirthDayLocal(b);
+                });
+
+                if (birthdayMembers.length > 0) {
+                    const currentMonthNumStr = (new Date().getMonth() + 1).toString().padStart(2, '0');
+                    const birthdayText = birthdayMembers.slice(0, 2).map(m => {
+                        const day = this.getMemberBirthDayLocal(m).toString().padStart(2, '0');
+                        return `${day}/${currentMonthNumStr} • ${m.nome}`;
+                    }).join('<br>');
+                    birthdaysDescEl.innerHTML = birthdayText;
+                    this.cachedBirthdayMembers = birthdayMembers;
+                } else {
+                    birthdaysDescEl.innerText = 'Nenhum aniversariante este mês';
+                    this.cachedBirthdayMembers = [];
+                }
+            } catch (e) {
+                console.error("Error loading birthday members for mural:", e);
+                birthdaysDescEl.innerText = 'Erro ao carregar aniversariantes';
+                this.cachedBirthdayMembers = [];
+            }
+        }
+    },
+
+    getMemberBirthDayLocal(m) {
+        if (m.dataNascimento && m.dataNascimento !== 'N/A') {
+            const parts = m.dataNascimento.split('-');
+            if (parts.length >= 3) {
+                return parseInt(parts[2], 10);
+            }
+        }
+        return 1;
+    },
+
+    showMuralAvisosDetail() {
+        const avisos = this.cachedAvisosList || [];
+        if (avisos.length === 0) {
+            this.showAlert('Nenhum aviso importante no momento.', 'Mural de Avisos');
+            return;
+        }
+        
+        let html = '<div style="text-align: left; display: flex; flex-direction: column; gap: 15px; max-height: 350px; overflow-y: auto; padding-right: 5px;">';
+        avisos.forEach(a => {
+            const dateStr = a.data ? a.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+            html += `
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 4px;">
+                    <h4 style="margin: 0 0 4px 0; color: #14b8a6; font-size: 0.95rem; font-weight: 750;">${a.titulo}</h4>
+                    <p style="margin: 0 0 6px 0; color: #f8fafc; font-size: 0.84rem; line-height: 1.4;">${a.conteudo || a.texto || ''}</p>
+                    <span style="color: #64748b; font-size: 0.72rem; font-weight: 600;"><i class="fa-regular fa-clock" style="margin-right: 4px;"></i>${dateStr}</span>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        this.showAlert(html, 'Mural de Avisos');
+    },
+
+    showMuralBirthdaysDetail() {
+        const members = this.cachedBirthdayMembers || [];
+        if (members.length === 0) {
+            this.showAlert('Nenhum aniversariante registrado para este mês.', 'Aniversariantes do Mês');
+            return;
+        }
+        
+        const currentMonthName = new Date().toLocaleDateString('pt-BR', { month: 'long' });
+        const currentMonthCapitalized = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
+        const currentMonthNumStr = (new Date().getMonth() + 1).toString().padStart(2, '0');
+        
+        let html = `<div style="text-align: left; display: flex; flex-direction: column; gap: 12px; max-height: 350px; overflow-y: auto; padding-right: 5px;">`;
+        html += `<p style="margin: 0 0 10px 0; color: #94a3b8; font-size: 0.85rem;">Lista de aniversariantes de <strong>${currentMonthCapitalized}</strong>:</p>`;
+        
+        members.forEach(m => {
+            const day = this.getMemberBirthDayLocal(m).toString().padStart(2, '0');
+            html += `
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #0f766e; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.72rem; overflow: hidden;">
+                            ${m.fotoUrl ? `<img src="${m.fotoUrl}" style="width:100%; height:100%; object-fit:cover;">` : m.nome.substring(0, 2).toUpperCase()}
+                        </div>
+                        <span style="color: #f8fafc; font-size: 0.88rem; font-weight: 600;">${m.nome}</span>
+                    </div>
+                    <span style="color: #14b8a6; font-size: 0.82rem; font-weight: 750;"><i class="fa-regular fa-calendar" style="margin-right: 4px;"></i>${day}/${currentMonthNumStr}</span>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        this.showAlert(html, 'Aniversariantes do Mês');
+    },
+
+    async loadMuralConfigAdmin() {
+        try {
+            const config = await DbService.getMuralConfig();
+            const txtVersiculo = document.getElementById('mural-config-versiculo');
+            const txtReferencia = document.getElementById('mural-config-referencia');
+            const txtLembrete = document.getElementById('mural-config-lembrete');
+            
+            if (txtVersiculo && txtReferencia && txtLembrete) {
+                if (config) {
+                    txtVersiculo.value = config.versiculoTexto || '';
+                    txtReferencia.value = config.versiculoReferencia || '';
+                    txtLembrete.value = config.lembrete || '';
+                } else {
+                    txtVersiculo.value = "Tudo posso naquele que me fortalece.";
+                    txtReferencia.value = "Filipenses 4:13";
+                    txtLembrete.value = "Cada serviço é uma oportunidade de amar e servir a Deus!";
+                }
+            }
+        } catch (e) {
+            console.error("Error loading mural config in admin:", e);
+        }
+    },
+
+    async handleSaveMuralConfig(event) {
+        event.preventDefault();
+        const txtVersiculo = document.getElementById('mural-config-versiculo');
+        const txtReferencia = document.getElementById('mural-config-referencia');
+        const txtLembrete = document.getElementById('mural-config-lembrete');
+        
+        if (!txtVersiculo || !txtReferencia || !txtLembrete) return;
+        
+        try {
+            App.showLoading();
+            await DbService.saveMuralConfig({
+                versiculoTexto: txtVersiculo.value.trim(),
+                versiculoReferencia: txtReferencia.value.trim(),
+                lembrete: txtLembrete.value.trim()
+            });
+            App.hideLoading();
+            App.showToast('Configurações do Mural salvas com sucesso!', 'success');
+            
+            // Reload select screen if loaded
+            if (document.getElementById('view-setor-select').classList.contains('active')) {
+                App.renderSectorSelectionScreen();
+            }
+        } catch (e) {
+            App.hideLoading();
+            console.error("Error saving mural config:", e);
+            App.showToast('Erro ao salvar configurações do Mural.', 'danger');
+        }
+    },
+
+    openSectorSelectorModal() {
+        const modal = document.getElementById('modal-sector-selector');
+        if (modal) modal.style.display = 'block';
+    },
+
+    closeSectorSelectorModal() {
+        const modal = document.getElementById('modal-sector-selector');
+        if (modal) modal.style.display = 'none';
+    },
+
+    openCommunicationModal() {
+        const modal = document.getElementById('modal-communication');
+        if (modal) modal.style.display = 'block';
+    },
+
+    closeCommunicationModal() {
+        const modal = document.getElementById('modal-communication');
+        if (modal) modal.style.display = 'none';
+    },
+
+    async handleSendSupervisionMessageModal(event) {
+        event.preventDefault();
+        const textarea = document.getElementById('modal-supervision-msg-text');
+        if (!textarea) return;
+        
+        const content = textarea.value.trim();
+        if (!content) return;
+        
+        try {
+            App.showLoading();
+            await DbService.saveSupervisionMessage(this.currentUser.id, this.currentUser.nome, content);
+            App.hideLoading();
+            App.showToast('Mensagem enviada com sucesso para a supervisão!', 'success');
+            textarea.value = '';
+            this.closeCommunicationModal();
+        } catch (e) {
+            App.hideLoading();
+            console.error("Error sending supervision message from modal:", e);
+            App.showToast('Erro ao enviar mensagem. Tente novamente.', 'danger');
+        }
+    },
+
+    renderNoScalesActionCards(container) {
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 15px; width: 100%; margin-top: 15px;">
+                <div class="panel-card" style="padding: 24px 20px; text-align: center; border: 1.5px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); border-radius: 20px; cursor: pointer; transition: all 0.2s ease;" onclick="App.handleShowAllScales()">
+                    <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(138, 166, 163, 0.1); border: 1px solid rgba(138, 166, 163, 0.2); color: #8AA6A3; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 12px;">
+                        <i class="fa-solid fa-calendar-xmark"></i>
+                    </div>
+                    <div style="font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 5px;">Você não está na escala nos próximos cultos</div>
+                    <div style="font-size: 0.78rem; color: #8AA6A3;">Clique para ver quem está escalado ou ver a escala geral do mês.</div>
+                </div>
+
+                <div class="panel-card" style="padding: 24px 20px; text-align: center; border: 1.5px solid rgba(18, 115, 105, 0.2); background: rgba(18, 115, 105, 0.05); border-radius: 20px; cursor: pointer; transition: all 0.2s ease;" onclick="App.openQuickStandbyModal()">
+                    <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(18, 115, 105, 0.15); border: 1px solid rgba(18, 115, 105, 0.3); color: var(--theme-color); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 12px;">
+                        <i class="fa-solid fa-hand-holding-hand"></i>
+                    </div>
+                    <div style="font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 5px;">Estou disponível no próximo culto</div>
+                    <div style="font-size: 0.78rem; color: #8AA6A3;">Se candidate como voluntário. Você pode escolher o setor ou deixar em aberto.</div>
+                </div>
+            </div>
+        `;
+    },
+
+    handleShowAllScales() {
+        this.forceShowFullScales = true;
+        this.loadAndRenderMemberScales();
+    },
+
+    async openQuickStandbyModal() {
+        const html = `
+            <div style="text-align: left; display: flex; flex-direction: column; gap: 15px;">
+                <p style="font-size: 0.82rem; color: #8aa6a3; margin: 0 0 10px 0;">Selecione o setor em que deseja trabalhar no próximo culto. Se preferir não escolher, selecione "Qualquer um / Deixar em aberto".</p>
+                
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <label style="font-size: 0.72rem; color: #8aa6a3; font-weight: 700; text-transform: uppercase;">Setor / Função:</label>
+                    <select id="quick-standby-sector" style="width: 100%; height: 42px; border-radius: 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.08); color: #fff; padding: 0 10px; font-size: 0.85rem; outline: none; cursor: pointer;">
+                        <option value="diaconia_templo:Qualquer">Qualquer um / Deixar em aberto</option>
+                        <option value="diaconia_templo:recepcao">Diaconia - Recepção (Portaria/Check-in)</option>
+                        <option value="diaconia_templo:templo">Diaconia - Templo (Apoio Interno)</option>
+                        <option value="diaconia_templo:ronda">Diaconia - Ronda</option>
+                        <option value="acolhimento_integracao:acolhimento">Acolhimento e Integração</option>
+                        <option value="limpeza:Limpeza">Limpeza</option>
+                        <option value="manutencao:Manutenção">Manutenção</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn-primary" onclick="App.handleQuickRegisterStandby()" style="flex: 1; height: 44px; border-radius: 12px; background: var(--theme-color); color: #fff; border: none; font-weight: 700; font-size: 0.88rem; cursor: pointer; text-transform: uppercase;">Confirmar</button>
+                    <button class="btn-secondary" onclick="App.closeAlert()" style="width: 90px; height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fff; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Cancelar</button>
+                </div>
+            </div>
+        `;
+        this.showAlert(html, 'Disponibilidade de Voluntário');
+    },
+
+    async handleQuickRegisterStandby() {
+        const selector = document.getElementById('quick-standby-sector');
+        if (!selector) return;
+        const value = selector.value;
+        const [setorId, func] = value.split(':');
+        
+        const now = new Date();
+        const tzOffset = now.getTimezoneOffset() * 60000;
+        const hojeStr = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
+        
+        try {
+            App.showLoading();
+            const cultos = await DbService.getCultos();
+            const futureCultos = cultos.filter(c => c.data >= hojeStr);
+            if (futureCultos.length === 0) {
+                App.hideLoading();
+                App.showToast('Nenhum culto futuro encontrado para se candidatar.', 'warning');
+                return;
+            }
+            const nextCulto = futureCultos[0];
+            
+            App.closeAlert();
+            
+            let nodeId = func === 'Qualquer' ? 'recepcao' : (func.toLowerCase().includes('apoio') ? 'templo' : (func.toLowerCase().includes('ronda') ? 'ronda' : func.toLowerCase()));
+            
+            if (nodeId === 'acolhimento') {
+                this.activeSectorId = 'diaconia_templo';
+            } else {
+                this.activeSectorId = setorId;
+            }
+            
+            await this.handleRegisterStandby(
+                nextCulto.id,
+                nextCulto.nome,
+                nextCulto.data,
+                `${nextCulto.horarioInicio} - ${nextCulto.horarioFim}`,
+                nodeId
+            );
+        } catch(err) {
+            App.hideLoading();
+            console.error(err);
+            App.showToast('Erro ao registrar voluntariado.', 'danger');
+        }
+    }
+};
+
+// Start application when page is ready
+window.addEventListener('DOMContentLoaded', () => {
+    App.init();
+});

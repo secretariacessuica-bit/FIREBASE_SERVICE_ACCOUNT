@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migração de Dados | Bulle -> Lausanne</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { background: #060608; font-family: 'Outfit', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; color: #fff; }
+        .setup-card { background: #111; padding: 40px; border-radius: 24px; border: 1px solid rgba(201,160,80,0.3); max-width: 500px; text-align: center; }
+        h1 { color: #C9A050; font-weight: 900; margin-bottom: 10px; }
+        p { color: #aaa; margin-bottom: 30px; line-height: 1.5; font-size: 0.9rem; }
+        .btn { background: #C9A050; color: #000; border: none; padding: 15px 30px; border-radius: 12px; font-weight: 800; cursor: pointer; width: 100%; font-size: 1rem; transition: 0.3s; margin-bottom: 15px; }
+        .btn:hover { background: #e0b86a; }
+        #status { margin-top: 20px; font-weight: 600; font-size: 0.9rem; text-align: left; max-height: 200px; overflow-y: auto; background: #000; padding: 15px; border-radius: 10px; border: 1px solid #333; }
+        .log-item { margin-bottom: 5px; border-bottom: 1px solid #222; padding-bottom: 5px; }
+        .success { color: #10b981; }
+        .warning { color: #f59e0b; }
+    </style>
+</head>
+<body>
+
+<div class="setup-card">
+    <h1>Migração de Cadastros</h1>
+    <p>Esta ferramenta copiará os registros do antigo banco de dados do <b>Bulle</b> para o novo banco de dados do <b>Lausanne</b>.</p>
+    
+    <div style="text-align: left; margin-bottom: 20px;">
+        <label style="color: #C9A050; font-weight: bold; font-size: 0.8rem; text-transform: uppercase;">Coleções a serem copiadas (separadas por vírgula):</label>
+        <input type="text" id="collections" value="people, kids, integracao, followup, attendance, pending, volunteers, events, event_registrations, membros, decisions" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; font-family: 'Outfit';">
+    </div>
+
+    <button class="btn" id="btn-migrar" onclick="iniciarMigracao()">INICIAR MIGRAÇÃO</button>
+    <div id="status"></div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    // 1. Configuração Antiga (BULLE)
+    const bulleConfig = {
+        apiKey: "AIzaSyB7XUcNMiPSO9IZd2hDB7bZcilXMD-nzpM",
+        authDomain: "catedral-connect-bf717.firebaseapp.com",
+        projectId: "catedral-connect-bf717",
+        storageBucket: "catedral-connect-bf717.firebasestorage.app",
+        messagingSenderId: "299301642892",
+        appId: "1:299301642892:web:dd23baf839ee737139d1a9"
+    };
+
+    // 2. Configuração Nova (LAUSANNE)
+    const lausanneConfig = {
+        apiKey: "AIzaSyDGBPn4_Sf3tZ7MC6RwnfJopyCY8LCfYas",
+        authDomain: "catedral-connect-6c55e.firebaseapp.com",
+        projectId: "catedral-connect-6c55e",
+        storageBucket: "catedral-connect-6c55e.firebasestorage.app",
+        messagingSenderId: "854523174149",
+        appId: "1:854523174149:web:4d7a98753417c036f8eb6c"
+    };
+
+    // Inicializando os dois apps
+    const bulleApp = firebase.initializeApp(bulleConfig, "BULLE");
+    const lausanneApp = firebase.initializeApp(lausanneConfig, "LAUSANNE");
+
+    const dbBulle = bulleApp.firestore();
+    const dbLausanne = lausanneApp.firestore();
+
+    function logStatus(msg, type = '') {
+        const div = document.getElementById('status');
+        div.innerHTML += `<div class="log-item ${type}">${msg}</div>`;
+        div.scrollTop = div.scrollHeight;
+    }
+
+    async function iniciarMigracao() {
+        document.getElementById('btn-migrar').disabled = true;
+        document.getElementById('btn-migrar').innerText = "COPIANDO...";
+        
+        const colString = document.getElementById('collections').value;
+        const colecoes = colString.split(',').map(c => c.trim()).filter(c => c);
+
+        logStatus("🚀 Iniciando migração de dados...", "warning");
+        logStatus("🔐 Autenticando nos bancos de dados para ter permissão de leitura...");
+        
+        try {
+            await bulleApp.auth().signInWithEmailAndPassword('pastor@catedral.ch', 'Lausanne25');
+            logStatus("✅ Autenticado no Bulle com sucesso!");
+        } catch(e) {
+            logStatus("⚠️ Erro de auth no Bulle (pode falhar a leitura): " + e.message, "warning");
+        }
+
+        try {
+            await lausanneApp.auth().signInWithEmailAndPassword('pastor@catedral.ch', 'Lausanne25');
+            logStatus("✅ Autenticado no Lausanne com sucesso!");
+        } catch(e) {
+            logStatus("⚠️ Erro de auth no Lausanne (pode falhar a escrita): " + e.message, "warning");
+        }
+
+        for (let col of colecoes) {
+            logStatus(`Lendo coleção: <b>${col}</b> do Bulle...`);
+            try {
+                const snap = await dbBulle.collection(col).get();
+                if (snap.empty) {
+                    logStatus(`Coleção ${col} está vazia. Ignorando.`, 'warning');
+                    continue;
+                }
+
+                logStatus(`Encontrados ${snap.size} documentos em ${col}. Copiando para Lausanne...`);
+                
+                let count = 0;
+                for (let doc of snap.docs) {
+                    await dbLausanne.collection(col).doc(doc.id).set(doc.data());
+                    count++;
+                }
+                
+                logStatus(`✅ ${count} documentos copiados com sucesso na coleção ${col}!`, "success");
+            } catch (err) {
+                logStatus(`❌ Erro ao copiar ${col}: ${err.message}`, "error");
+            }
+        }
+
+        logStatus("🎉 <b>MIGRAÇÃO CONCLUÍDA!</b> Todos os dados selecionados foram copiados para o Lausanne.", "success");
+        document.getElementById('btn-migrar').innerText = "CONCLUÍDO";
+    }
+</script>
+
+</body>
+</html>

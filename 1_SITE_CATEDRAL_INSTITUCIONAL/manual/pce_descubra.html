@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCE Nível 1: Descubra | CES Bulle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/site.css">
+    <style>
+        :root {
+            --primary-gold: #d4af37;
+            --deep-navy: #020617;
+            --spirit-accent: #0ea5e9;
+            --growth-teal: #2dd4bf;
+            --glass-bg: rgba(15, 23, 42, 0.6);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #0c4a6e, #020617);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* ── AURORA BACKGROUND EFFECTS ── */
+        .aurora {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            filter: blur(100px);
+            opacity: 0.4;
+        }
+        .aurora-1 { width: 50vw; height: 50vw; background: var(--spirit-accent); top: -20%; right: -10%; border-radius: 50%; }
+        .aurora-2 { width: 40vw; height: 40vw; background: var(--growth-teal); bottom: -10%; left: -5%; border-radius: 50%; }
+
+        .manual-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 80px 20px;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .header-section h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #fff, var(--spirit-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 10px 0;
+            letter-spacing: -1px;
+        }
+
+        /* ── MODERN LESSON NAV ── */
+        .lesson-nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            position: sticky;
+            top: 80px;
+            z-index: 100;
+            padding: 15px;
+            background: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nav-dot {
+            padding: 10px 25px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid transparent;
+            color: var(--text-muted);
+        }
+
+        .nav-dot.active {
+            background: var(--spirit-accent);
+            color: #fff;
+            box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3);
+            transform: scale(1.05);
+        }
+
+        /* ── GLASS CONTENT CARDS ── */
+        .lesson-card {
+            background: var(--glass-bg);
+            border-radius: 40px;
+            padding: 60px;
+            margin-bottom: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(30px);
+            display: none;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .lesson-card.active { display: block; animation: slideUp 0.8s ease forwards; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .lesson-card h2 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            margin-bottom: 40px;
+            color: #fff;
+            line-height: 1.2;
+        }
+
+        .concept-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--spirit-accent);
+            padding: 6px 18px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(14, 165, 233, 0.2);
+        }
+
+        /* ── VIDEO PLAYER ── */
+        .video-container {
+            margin: 40px 0;
+            border-radius: 25px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 */
+            height: 0;
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            border: none;
+        }
+
+        .yt-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: -20px;
+            margin-bottom: 30px;
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff4444;
+            text-decoration: none;
+            padding: 10px;
+            border-radius: 0 0 20px 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 0, 0, 0.2);
+            border-top: none;
+            transition: 0.3s;
+        }
+        .yt-fallback:hover { background: #ff4444; color: #fff; }
+
+        .question-box {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), transparent);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 30px;
+            border-radius: 25px;
+            margin: 40px 0;
+            position: relative;
+        }
+
+        .question-box i {
+            font-size: 1.5rem;
+            color: var(--primary-gold);
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .bible-verse {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 40px;
+            border-radius: 30px;
+            border-left: 4px solid var(--spirit-accent);
+            margin: 40px 0;
+            position: relative;
+        }
+
+        .bible-verse p { font-size: 1.2rem; font-style: italic; color: #e2e8f0; margin: 0; }
+        .bible-verse strong { display: block; margin-top: 20px; color: var(--spirit-accent); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
+
+        .btn-back {
+            position: fixed;
+            top: 30px; left: 30px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px 25px;
+            border-radius: 50px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 700;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: 0.3s;
+        }
+        .btn-back:hover { background: #fff; color: #000; }
+
+        .equation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 50px 0;
+            padding: 40px;
+            background: rgba(14, 165, 233, 0.05);
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-align: center;
+            border: 1px solid rgba(14, 165, 233, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .lesson-card { padding: 30px; }
+            .header-section h1 { font-size: 2.2rem; }
+            .equation { flex-direction: column; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="aurora aurora-1"></div>
+    <div class="aurora aurora-2"></div>
+
+    <a href="/manual" class="btn-back"><i class="fas fa-arrow-left"></i> VOLTAR</a>
+
+    <div class="manual-container">
+        
+        <header class="header-section">
+            <p style="text-transform: uppercase; letter-spacing: 4px; font-size: 0.8rem; color: var(--spirit-accent);">Plano de Crescimento Espiritual</p>
+            <h1>DESCUBRA</h1>
+        </header>
+
+        <nav class="lesson-nav">
+            <a href="javascript:void(0)" class="nav-dot active" onclick="switchLesson(1)">MÓDULO 1</a>
+            <a href="javascript:void(0)" class="nav-dot" onclick="switchLesson(2)">MÓDULO 2</a>
+        </nav>
+
+        <!-- AULA 1 -->
+        <section id="lesson-1" class="lesson-card active">
+            <div style="margin-bottom: 30px;">
+                <span class="concept-badge">Conversão</span>
+                <span class="concept-badge">Fé</span>
+                <span class="concept-badge">Arrependimento</span>
+            </div>
+
+            <h2>O Início da Nova Vida:<br><span style="color: var(--spirit-accent);">A Conversão a Cristo</span></h2>
+
+            <div class="question-box">
+                <i class="fas fa-road"></i>
+                <p>Você já vivenciou a experiência de, no trânsito, ter cometido um erro de percurso e necessitar fazer um retorno? <strong>Conte essa história para o grupo.</strong></p>
+            </div>
+
+            <p>A conversão é o "retorno" espiritual. É a mudança radical de direção guiada pelo Evangelho.</p>
+
+            <div class="equation">
+                <span>FÉ EM JESUS</span>
+                <i class="fas fa-plus" style="font-size: 0.8rem; opacity: 0.5;"></i>
+                <span>ARREPENDIMENTO</span>
+                <i class="fas fa-equals" style="font-size: 0.8rem; opacity: 0.5;"></i>
+                <span style="color: var(--spirit-accent);">CONVERSÃO</span>
+            </div>
+
+            <h3>A Fé que se Entrega</h3>
+            <p>Fé não é apenas acreditar intelectualmente, é <strong>confiar a ponto de se entregar</strong> nos braços do Senhor.</p>
+
+            <div class="video-container">
+                <iframe src="https://www.youtube.com/embed/YmTLY0ObIgY" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+            <a href="https://www.youtube.com/watch?v=YmTLY0ObIgY" target="_blank" class="yt-fallback"><i class="fab fa-youtube"></i> Ver no YouTube (Caso não carregue)</a>
+
+            <div class="bible-verse">
+                <p>"Ponha a sua vida nas mãos do Senhor, confie nele, e ele o ajudará."</p>
+                <strong>Salmo 37:5</strong>
+            </div>
+
+            <h3>O Valor do Arrependimento</h3>
+            <p>Diferente do remorso, o arrependimento (Metanoia) é uma <strong>mudança de mente</strong> que resulta em mudança de vida.</p>
+
+            <div class="video-container">
+                <iframe src="https://www.youtube.com/embed/wBVArDWFfBA" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+            <a href="https://www.youtube.com/watch?v=wBVArDWFfBA" target="_blank" class="yt-fallback"><i class="fab fa-youtube"></i> Ver no YouTube (Caso não carregue)</a>
+
+            <div class="question-box">
+                <i class="fas fa-clipboard-list"></i>
+                <p><strong>Reflexão:</strong> Quais as principais diferenças que você percebeu entre arrependimento e remorso após o vídeo?</p>
+            </div>
+        </section>
+
+        <!-- AULA 2 -->
+        <section id="lesson-2" class="lesson-card">
+            <div style="margin-bottom: 30px;">
+                <span class="concept-badge">Espírito Santo</span>
+                <span class="concept-badge">Consolador</span>
+                <span class="concept-badge">Amigo Fiel</span>
+            </div>
+
+            <h2>O Companheiro da Nova Vida:<br><span style="color: var(--spirit-accent);">O Espírito Santo</span></h2>
+
+            <div class="question-box">
+                <i class="fas fa-user-friends"></i>
+                <p>Você tem ou teve um bom amigo? Qual a experiência mais significativa que você vivenciou com ele?</p>
+            </div>
+
+            <div class="bible-verse">
+                <p>"Eu não chamo mais vocês de empregados... mas chamo vocês de amigos, pois tenho dito a vocês tudo o que ouvi de meu pai."</p>
+                <strong>João 15:15</strong>
+            </div>
+
+            <p>O Espírito Santo é o <strong>Outro Auxiliador</strong>. Ele é Deus em nós, nosso companheiro diário e guia fiel.</p>
+
+            <div class="video-container">
+                <iframe src="https://www.youtube.com/embed/1sAn88uBiAY" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+            <a href="https://www.youtube.com/watch?v=1sAn88uBiAY" target="_blank" class="yt-fallback"><i class="fab fa-youtube"></i> Ver no YouTube (Caso não carregue)</a>
+
+            <div class="bible-verse">
+                <p>"Será que vocês não sabem que o corpo de vocês é o templo do Espírito Santo, que vive em vocês e lhes foi dado por Deus?"</p>
+                <strong>1 Coríntios 6:19</strong>
+            </div>
+
+            <h3>Papel na Vida Cristã</h3>
+            <ul style="list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <li style="background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                    <i class="fas fa-sync" style="color: var(--spirit-accent); margin-bottom: 10px;"></i>
+                    <strong style="display: block;">Conversão</strong>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Ele abre nossos olhos para o Evangelho.</span>
+                </li>
+                <li style="background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                    <i class="fas fa-magic" style="color: var(--spirit-accent); margin-bottom: 10px;"></i>
+                    <strong style="display: block;">Transformação</strong>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Produz em nós o fruto do caráter de Cristo.</span>
+                </li>
+                <li style="background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                    <i class="fas fa-fire" style="color: var(--spirit-accent); margin-bottom: 10px;"></i>
+                    <strong style="display: block;">Capacitação</strong>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Dá poder para sermos testemunhas.</span>
+                </li>
+            </ul>
+
+            <div class="question-box">
+                <i class="fas fa-lightbulb"></i>
+                <p><strong>Dinâmica:</strong> Como você pode desenvolver um relacionamento mais íntimo com o Espírito Santo nesta semana?</p>
+            </div>
+        </section>
+
+        <footer style="text-align: center; margin-top: 50px; opacity: 0.3; font-size: 0.8rem;">
+            &copy; 2026 Catedral da Esperança Bulle | Plano de Crescimento Espiritual
+        </footer>
+    </div>
+
+    <script>
+        function switchLesson(num) {
+            document.querySelectorAll('.lesson-card').forEach(card => card.classList.remove('active'));
+            document.querySelectorAll('.nav-dot').forEach(dot => dot.classList.remove('active'));
+            
+            document.getElementById('lesson-' + num).classList.add('active');
+            event.target.classList.add('active');
+            window.scrollTo(0, 0);
+        }
+    </script>
+
+</body>
+</html>

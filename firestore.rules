@@ -29,10 +29,10 @@ service cloud.firestore {
 
   match /databases/{database}/documents {
     
-    // --- NUCLEAR THAW: BULLE DIRECT ACCESS ---
-    // Liberação total para qualquer coleção que comece com 'bulle_'
+    // --- NUCLEAR THAW: BULLE & DIACONIA DIRECT ACCESS ---
+    // Liberação total para qualquer coleção que comece com 'bulle_' ou 'diaconia_'
     match /{collection}/{document} {
-      allow read, write: if collection.split('_')[0] == 'bulle';
+      allow read, write: if collection.split('_')[0] == 'bulle' || collection.split('_')[0] == 'diaconia';
     }
 
     // --- DIAGNOSTIC COLLECTIONS (ROOT) ---

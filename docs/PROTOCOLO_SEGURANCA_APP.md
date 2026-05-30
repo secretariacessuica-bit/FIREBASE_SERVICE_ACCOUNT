@@ -2,11 +2,11 @@
 **Versão 1.0 - Bloqueio de Consolidação**
 
 ## 1. IDENTIDADE DO PROJETO
-Este diretório (`1_APP_BULLE_OPERACIONAL`) contém exclusivamente o **Ecossistema Operacional da Catedral Bulle**. Ele é destinado ao uso interno da equipe, voluntários e integração de novos membros.
+Este diretório (`2_APP_BULLE_OPERACIONAL`) contém exclusivamente o **Ecossistema Operacional da Catedral Bulle**. Ele é destinado ao uso interno da equipe, voluntários e integração de novos membros.
 
 ## 2. REGRA DE OURO: ISOLAMENTO TOTAL
 É terminantemente proibido:
-- **Mesclar** este código com o Site Institucional (`2_SITE_CATEDRAL_INSTITUCIONAL`).
+- **Mesclar** este código com o Site Institucional (`1_SITE_CATEDRAL_INSTITUCIONAL`).
 - **Importar** estilos ou scripts de projetos de Lausanne ou jogos.
 - **Deletar** arquivos deste diretório para "limpar" o site, pois este é um sistema autônomo.
 

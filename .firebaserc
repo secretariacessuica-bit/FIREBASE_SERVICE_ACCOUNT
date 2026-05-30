@@ -1,7 +1,8 @@
 {
   "projects": {
     "default": "catedral-connect-bf717",
-    "lausanne": "catedral-connect-6c55e"
+    "lausanne": "catedral-connect-6c55e",
+    "diaconia-project": "catedral-connect-267b2"
   },
   "targets": {
     "catedral-connect-bf717": {
@@ -18,6 +19,13 @@
       "hosting": {
         "admin-lausanne": [
           "catedral-connect-6c55e"
+        ]
+      }
+    },
+    "catedral-connect-267b2": {
+      "hosting": {
+        "diaconia": [
+          "catedral-connect-267b2"
         ]
       }
     }

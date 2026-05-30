@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Catedral Lausanne | Master Connect</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.72"></script>
+    <script src="js/auth-manager.js?v=70.3.72"></script>
+
+    <style>
+        :root {
+            --gold: #C9A050;
+            --gold-dim: rgba(201, 160, 80, 0.08);
+            --bg: #080809;
+            --text: #ffffff;
+            --border: rgba(201, 160, 80, 0.15);
+            --font: 'Outfit', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html, body { 
+            width: 100%; height: 100%; overflow: hidden;
+            background: var(--bg); color: var(--text); font-family: var(--font);
+        }
+
+        .watermark {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-20deg);
+            font-size: 12vw; font-weight: 800; color: rgba(255, 255, 255, 0.01); z-index: 0; pointer-events: none;
+            white-space: nowrap; text-transform: uppercase;
+        }
+
+        /* LOGIN SCREEN */
+        #view-login {
+            position: absolute; inset: 0; z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: var(--bg);
+            background-image: 
+                radial-gradient(circle at 50% 20%, rgba(201, 160, 80, 0.08) 0%, transparent 60%),
+                linear-gradient(135deg, rgba(201, 160, 80, 0.02) 0%, transparent 50%);
+            padding: 40px;
+        }
+
+        .logo-box { width: 120px; height: 120px; margin-bottom: 40px; }
+        .logo-box img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 15px rgba(201, 160, 80, 0.2)); }
+
+        .kiosk-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 20px; width: 100%; max-width: 500px;
+        }
+
+        .kiosk-card {
+            background: rgba(22, 21, 22, 0.45); border: 1px solid var(--border); border-radius: 20px;
+            padding: 30px 15px; display: flex; flex-direction: column; align-items: center;
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        }
+        .kiosk-card:hover { 
+            border-color: var(--gold); 
+            transform: translateY(-3px); 
+            box-shadow: 0 10px 30px rgba(201, 160, 80, 0.2); 
+            background: rgba(201, 160, 80, 0.05);
+        }
+        .kiosk-card strong { font-size: 0.95rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #fff; margin-top: 12px; }
+        .kiosk-card i { font-size: 1.8rem; color: var(--gold); }
+
+        /* PIN SCREEN */
+        .pin-container {
+            width: 100%; max-width: 360px; text-align: center;
+            background: rgba(22, 21, 22, 0.45); border: 1px solid var(--border); border-radius: 30px;
+            padding: 50px 35px; box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+
+        .pin-input {
+            width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+            border-radius: 16px; padding: 18px; font-size: 2.2rem; text-align: center;
+            letter-spacing: 12px; margin: 25px 0; outline: none; color: #fff;
+            transition: 0.3s;
+        }
+        .pin-input:focus { border-color: var(--gold); box-shadow: 0 0 15px rgba(201,160,80,0.15); }
+
+        .btn-confirm {
+            width: 100%; background: var(--gold); color: #000; border: none;
+            padding: 20px; border-radius: 16px; font-weight: 800; font-size: 1.1rem;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
+            transition: 0.3s;
+        }
+        .btn-confirm:hover { background: #e0b45c; transform: translateY(-1px); }
+
+        /* APP INTERFACE */
+        .app-header {
+            position: fixed; top: 0; left: 0; width: 100%; height: 80px;
+            background: #000; border-bottom: 1.5px solid var(--gold);
+            display: none; align-items: center; justify-content: space-between;
+            padding: 0 40px; z-index: 1000;
+        }
+        .app-container { position: absolute; top: 80px; left: 0; width: 100%; height: calc(100% - 80px); display: none; }
+        .app-view { display: none; width: 100%; height: 100%; }
+        .app-view.active { display: block; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        #bará-label { margin-top: 50px; font-size: 0.7rem; font-weight: 800; color: rgba(255,255,255,0.2); letter-spacing: 3px; }
+    </style>
+</head>
+
+<body>
+    <div class="watermark">CATEDRAL LAUSANNE</div>
+
+    <!-- LOGIN / ROLE SELECTION -->
+    <div id="view-login">
+        <div class="logo-box">
+            <img src="assets/logo_3.png?v=70.3.72" alt="Logo">
+        </div>
+        
+        <div id="role-selection" class="kiosk-grid">
+            <div onclick="selectRole('reception')" class="kiosk-card"><i class="fas fa-users-cog"></i><strong>Recepção</strong></div>
+            <div onclick="selectRole('integracao')" class="kiosk-card"><i class="fas fa-heart"></i><strong>Integração</strong></div>
+            <div onclick="selectRole('kids')" class="kiosk-card"><i class="fas fa-child"></i><strong>Crianças</strong></div>
+            <div onclick="selectRole('admin')" class="kiosk-card"><i class="fas fa-university"></i><strong>Secretaria</strong></div>
+        </div>
+
+        <div id="pin-screen" style="display:none;">
+            <div class="pin-container">
+                <h2 style="font-weight: 800; letter-spacing: 2px; color: var(--gold);">ACESSO</h2>
+                <input type="password" id="pin-input" class="pin-input" placeholder="••••">
+                <button class="btn-confirm" onclick="validatePin()">ENTRAR</button>
+                <p onclick="showRoles()" style="color: #A8A29E; margin-top: 25px; cursor: pointer; font-size: 0.8rem; font-weight: 700; text-decoration: underline;">VOLTAR</p>
+            </div>
+        </div>
+
+        <div id="bará-label">CATEDRAL LAUSANNE</div>
+    </div>
+
+    <!-- APP SHELL -->
+    <header class="app-header" id="app-header">
+        <div style="display:flex; align-items:center; gap:15px;">
+            <img src="assets/logo_3.png?v=70.3.72" style="height:45px;">
+            <span style="font-weight: 800; font-size: 1.2rem; letter-spacing: 2px; color: var(--gold);">MASTER CONNECT</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 25px;">
+            <span style="font-size: 0.7rem; color: #A8A29E; font-weight: 700; letter-spacing: 1px;">SESSÃO ATIVA</span>
+            <button onclick="logout()" style="background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.75rem; font-weight: 800; transition: 0.2s;">LOGOUT</button>
+        </div>
+    </header>
+
+    <div class="app-container" id="app-container">
+        <div id="view-reception" class="app-view"><iframe data-src="recepcao.html" id="iframe-reception"></iframe></div>
+        <div id="view-integracao" class="app-view"><iframe data-src="integracao_v2.html" id="iframe-integracao"></iframe></div>
+        <div id="view-kids" class="app-view"><iframe data-src="kids.html" id="iframe-kids"></iframe></div>
+        <div id="view-admin" class="app-view"><iframe data-src="admin.html" id="iframe-admin"></iframe></div>
+        <div id="view-altar" class="app-view"><iframe data-src="altar_final.html" id="iframe-altar"></iframe></div>
+    </div>
+
+    <script>
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'MASTER_LOGOUT') {
+                console.log("💎 MASTER_LOGOUT signal received. Cleaning up...");
+                logout();
+            }
+        });
+
+        let currentRole = null;
+        // [v70.3.1] Support URL role param for direct module access
+        const urlParams = new URLSearchParams(window.location.search);
+        const roleParam = urlParams.get('role');
+
+        function selectRole(role) {
+            currentRole = role;
+            document.getElementById('role-selection').style.display = 'none';
+            document.getElementById('pin-screen').style.display = 'block';
+            document.getElementById('pin-input').value = "";
+            document.getElementById('pin-input').focus();
+        }
+
+        function showRoles() {
+            document.getElementById('pin-screen').style.display = 'none';
+            document.getElementById('role-selection').style.display = 'grid';
+        }
+
+        async function validatePin() {
+            const pin = document.getElementById('pin-input').value.trim();
+            if(!pin) return;
+            const res = await AuthManager.login(currentRole, pin);
+            if(res.success){
+                localStorage.setItem('current_session_pin', pin);
+                enterApp(currentRole);
+            } else {
+                alert("PIN Inválido!");
+            }
+        }
+
+        function enterApp(role) {
+            if (role === 'lideres' || role === 'lider' || role === 'ministerio' || role === 'ministério') {
+                role = 'admin';
+            }
+            // [v70.3.1] Sync session role for Master flexibility
+            localStorage.setItem('session_role', role);
+            const pin = localStorage.getItem('current_session_pin');
+            
+            document.getElementById('view-login').style.display = 'none';
+            document.getElementById('app-header').style.display = 'flex';
+            document.getElementById('app-container').style.display = 'block';
+            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+            
+            const viewId = 'view-' + role;
+            const target = document.getElementById(viewId);
+            if (target) {
+                target.classList.add('active');
+                const f = document.getElementById('iframe-' + role);
+                if (f) {
+                    if (!f.src) f.src = f.dataset.src + "?v=70.3.72&role=" + role;
+                    
+                    // [v70.3.1] Force Master Bypass Signal to Iframe
+                    if(pin === 'Catedral@2025!') {
+                        setTimeout(() => {
+                            if(f.contentWindow) {
+                                f.contentWindow.postMessage({ type: 'MASTER_BYPASS_SIGNAL', pin: pin }, '*');
+                                console.log("💎 Master Signal Sent to:", role);
+                            }
+                        }, 1500);
+                    }
+                }
+            }
+            
+            // Special rule for Altar in Master Shell
+            if(role === 'altar') {
+                document.getElementById('app-header').style.display = 'none';
+            }
+        }
+
+        function logout() { AuthManager.logout(); }
+
+        // Clean, reactive auth synchronization for Master Shell
+        window.onAuthSuccess = (user, role) => {
+            console.log("💎 Master Shell Auth Success:", role);
+            const targetRole = roleParam || currentRole || role;
+            if (targetRole && targetRole !== 'guest') {
+                enterApp(targetRole);
+            } else {
+                showLoginView();
+            }
+        };
+
+        window.onAuthLogout = () => {
+            console.log("💎 Master Shell Auth Logout");
+            showLoginView();
+        };
+
+        function showLoginView() {
+            document.getElementById('view-login').style.display = 'flex';
+            document.getElementById('app-header').style.display = 'none';
+            document.getElementById('app-container').style.display = 'none';
+            if (roleParam) {
+                selectRole(roleParam);
+            } else {
+                showRoles();
+            }
+        }
+
+        // FORCE RESET CACHE/SESSION IF LOCKED
+        if (location.search.includes('reset=true')) {
+            localStorage.clear();
+            console.log("System Reset Performed.");
+        }
+
+        // Keep default layout hidden while detecting auth state to prevent flash of content
+        document.getElementById('view-login').style.display = 'none';
+        document.getElementById('app-header').style.display = 'none';
+        document.getElementById('app-container').style.display = 'none';
+
+        if (roleParam) {
+            currentRole = roleParam;
+        }
+        
+        // Safety timeout: If Firebase auth fails to respond in 2.5 seconds, show login view
+        setTimeout(() => {
+            const loginVisible = document.getElementById('view-login').style.display === 'flex';
+            const appVisible = document.getElementById('app-container').style.display === 'block';
+            if (!loginVisible && !appVisible) {
+                console.log("⏳ Auth Detection Timeout (Master). Falling back to login screen.");
+                showLoginView();
+            }
+        }, 2500);
+    </script>
+</body>
+</html>

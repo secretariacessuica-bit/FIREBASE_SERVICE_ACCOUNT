@@ -13,6 +13,34 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "diaconia_escala_historico_estoque",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "setorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dataMovimentacao",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "diaconia_escala_notificacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "paraUsuarioId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -2,7 +2,7 @@
   "hosting": [
     {
       "target": "site",
-      "public": "2_SITE_CATEDRAL_INSTITUCIONAL",
+      "public": "1_SITE_CATEDRAL_INSTITUCIONAL",
       "cleanUrls": true,
       "ignore": [
         "**/.*",
@@ -44,7 +44,7 @@
     },
     {
       "target": "app",
-      "public": "1_APP_BULLE_OPERACIONAL",
+      "public": "2_APP_BULLE_OPERACIONAL",
       "cleanUrls": true,
       "ignore": [
         "**/.*",
@@ -89,6 +89,26 @@
             }
           ]
         },
+        {
+          "source": "**/*.html",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "diaconia",
+      "public": "5_APP_ES_DIACONIA",
+      "cleanUrls": true,
+      "ignore": [
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "headers": [
         {
           "source": "**/*.html",
           "headers": [

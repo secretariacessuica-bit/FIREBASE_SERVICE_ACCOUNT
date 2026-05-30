@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Atualizar Senhas — CES Diaconia</title>
+    <style>
+        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+        h2 { color: #fff; }
+        #log { white-space: pre; font-size: 13px; line-height: 1.5; }
+        .ok { color: #0f0; }
+        .err { color: #f55; }
+        .done { color: #ff0; font-weight: bold; font-size: 1.2em; margin-top: 20px; }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body>
+<h2>Atualizar Senhas dos Membros</h2>
+<div id="log">Iniciando...</div>
+<script>
+    // Config do projeto CES Diaconia
+    const firebaseConfig = {
+        apiKey: "AIzaSyAtwHODax7kq0keaLuON1ZxbNfdaBP7yfo",
+        authDomain: "catedral-connect-267b2.firebaseapp.com",
+        projectId: "catedral-connect-267b2",
+        storageBucket: "catedral-connect-267b2.firebasestorage.app",
+        messagingSenderId: "524359049819",
+        appId: "1:524359049819:web:d4788e1c64767e0818557e"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // A coleção real tem o prefixo diaconia_escala_
+    const COLECAO = 'diaconia_escala_membros';
+
+    const logEl = document.getElementById('log');
+    function log(msg, cls = '') {
+        const span = document.createElement('span');
+        if (cls) span.className = cls;
+        span.textContent = msg + '\n';
+        logEl.appendChild(span);
+    }
+
+    function normalizeStr(str) {
+        return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    }
+
+    function getSenha(nome) {
+        const normalized = normalizeStr(nome);
+        const semEspacos = normalized.replace(/\s+/g, '');
+        const senha = semEspacos.substring(0, 3) + '1245';
+        return senha;
+    }
+
+    async function main() {
+        log('Buscando membros na coleção: ' + COLECAO + '\n');
+        
+        const snap = await db.collection(COLECAO).get();
+        log(`Total de membros encontrados: ${snap.size}\n`);
+
+        const updates = [];
+        const resumo = [];
+
+        snap.forEach(doc => {
+            const data = doc.data();
+            const nome = data.nome || '';
+            const perfil = data.perfil || 'membro';
+
+            if (!nome) {
+                log(`  [SKIP] id=${doc.id} sem nome`, 'err');
+                return;
+            }
+
+            let novaSenha;
+            if (perfil === 'admin') {
+                novaSenha = 'admin123';
+                log(`  [ADMIN]  ${nome.padEnd(35)} → ${novaSenha}`);
+            } else {
+                novaSenha = getSenha(nome);
+                log(`  [MEMBRO] ${nome.padEnd(35)} → ${novaSenha}`, 'ok');
+            }
+
+            resumo.push({ nome, senha: novaSenha });
+            updates.push(db.collection(COLECAO).doc(doc.id).update({ senha: novaSenha }));
+        });
+
+        await Promise.all(updates);
+
+        log('\n' + '='.repeat(60), 'done');
+        log('✅ TODAS AS SENHAS FORAM ATUALIZADAS!', 'done');
+        log('='.repeat(60), 'done');
+        log('\nTabela de login:');
+        log('Nome'.padEnd(35) + '  Senha');
+        log('-'.repeat(55));
+        resumo.forEach(r => {
+            log(r.nome.padEnd(35) + '  ' + r.senha);
+        });
+    }
+
+    logEl.textContent = '';
+    main().catch(e => {
+        log('\n❌ ERRO: ' + e.message, 'err');
+        console.error(e);
+    });
+</script>
+</body>
+</html>

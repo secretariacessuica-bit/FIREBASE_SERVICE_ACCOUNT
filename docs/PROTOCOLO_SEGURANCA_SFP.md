@@ -3,7 +3,7 @@
 Este protocolo governa todas as operações de cross-referência entre projetos neste workspace.
 
 ## 1. ACESSO EXTERNO
-* NUNCA acessar pastas externas (`ia_ces_bulle`, `2_SITE_CATEDRAL_INSTITUCIONAL`, etc) sem declarar explicitamente o motivo ao usuário.
+* NUNCA acessar pastas externas (`ia_ces_bulle`, `1_SITE_CATEDRAL_INSTITUCIONAL`, etc) sem declarar explicitamente o motivo ao usuário.
 * O foco padrão e absoluto é o projeto ativo: **LAUSANNE APP** (diretório `4_APP_LAUSANNE_ADMIN`).
 
 ## 2. FILTRAGEM DE CÓDIGO (PURGE)

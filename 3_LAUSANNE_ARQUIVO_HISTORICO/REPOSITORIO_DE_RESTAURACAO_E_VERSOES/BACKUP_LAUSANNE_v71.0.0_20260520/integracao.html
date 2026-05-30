@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JORNADA Connect Lausanne | v70.3.72</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js?v=70.3.72"></script>
+    <script src="js/auth-manager.js?v=70.3.72"></script>
+    
+    <script>
+        // SECURITY GUARD v70.3.30 - iframe-safe
+        (function() {
+            if (window.self === window.top && window.location.protocol !== 'file:') {
+                window.location.href = 'mobile_v2.html';
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="css/style-v2.css?v=70.3.72">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --gold: #C9A050;
+            --gold-dim: rgba(201, 160, 80, 0.08);
+            --bg-body: #0b0b0c; /* Deep rich dark background matching mockup */
+            --text-main: #1c1917; /* Soft dark charcoal for light cards */
+            --text-muted: #78716c;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            padding: 30px;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        /* Editorial Headers */
+        h1, h2, h3, h4, .serif-text {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin: 0;
+        }
+
+        .main-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -1.2px;
+            color: #ffffff;
+        }
+
+        /* Responsive Layout Grid matching Mockup */
+        .app-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        @media(min-width: 1024px) {
+            .app-layout {
+                display: grid;
+                grid-template-columns: 280px 1fr 300px;
+                gap: 30px;
+                max-width: 1440px;
+                margin: 0 auto;
+            }
+            .sidebar-fixed {
+                display: flex !important;
+                flex-direction: column;
+                justify-content: space-between;
+                height: calc(100vh - 70px);
+                position: sticky;
+                top: 35px;
+            }
+            .widgets-fixed {
+                display: flex !important;
+                flex-direction: column;
+                gap: 25px;
+                position: sticky;
+                top: 35px;
+            }
+            /* Hide the redundant mobile tab bar on desktop layout */
+            .tabs-container {
+                display: none !important;
+            }
+        }
+
+        /* Sidebar styling (Desktop only) */
+        .sidebar-fixed {
+            display: none;
+            background: #161516;
+            border-radius: 24px;
+            padding: 25px;
+            border: 1px solid rgba(201, 160, 80, 0.12);
+        }
+
+        .sidebar-btn {
+            background: none;
+            border: none;
+            padding: 14px 16px;
+            font-weight: 500;
+            color: #a8a29e;
+            cursor: pointer;
+            font-size: 0.95rem;
+            border-radius: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            text-align: left;
+            font-family: 'Inter', sans-serif;
+            margin-bottom: 8px;
+        }
+        .sidebar-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .sidebar-btn.active {
+            color: #ffffff;
+            background: rgba(201, 160, 80, 0.15);
+            font-weight: 700;
+            border-left: 3px solid var(--gold);
+        }
+        .sidebar-badge {
+            background: var(--gold);
+            color: white;
+            border-radius: 20px;
+            padding: 2px 7px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            display: none;
+        }
+
+        /* Right Widgets styling (Desktop only) */
+        .widgets-fixed {
+            display: none;
+        }
+
+        .widget-card {
+            background: #161516;
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid rgba(201, 160, 80, 0.1);
+            color: #ffffff;
+        }
+
+        /* High-contrast Main Content Area matching mockup */
+        .card-floating {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 35px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(201, 160, 80, 0.05);
+            margin-bottom: 25px;
+            position: relative;
+            color: var(--text-main);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        /* Mobile Tabs Bar */
+        .tabs-container {
+            display: flex;
+            gap: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            margin-bottom: 30px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding-bottom: 8px;
+        }
+        .tabs-container::-webkit-scrollbar { display: none; }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 0;
+            font-weight: 500;
+            color: #a8a29e;
+            cursor: pointer;
+            font-size: 0.95rem;
+            position: relative;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            white-space: nowrap;
+        }
+        .tab-btn:hover {
+            color: #ffffff;
+        }
+        .tab-btn.active {
+            color: var(--gold);
+            font-weight: 700;
+        }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -9px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--gold);
+            border-radius: 2px;
+        }
+
+        .tab-badge {
+            color: var(--gold);
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-left: 3px;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .list-card {
+            background: #ffffff;
+            border: 1px solid rgba(201, 160, 80, 0.08);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(28, 25, 23, 0.02);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .list-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 35px rgba(201, 160, 80, 0.08);
+            border-color: rgba(201, 160, 80, 0.15);
+        }
+
+        .list-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px dashed #f1f5f9;
+            padding-bottom: 14px;
+        }
+
+        .btn-action {
+            padding: 12px 24px;
+            font-size: 0.85rem;
+            border-radius: 30px;
+            cursor: pointer;
+            border: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            font-family: 'Inter', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .btn-whatsapp {
+            background: #1c1917;
+            color: white;
+            box-shadow: 0 4px 12px rgba(28, 25, 23, 0.06);
+        }
+        .btn-whatsapp:hover {
+            background: var(--gold);
+            box-shadow: 0 8px 20px rgba(201, 160, 80, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-gold {
+            background: transparent;
+            border: 1.5px solid var(--gold);
+            color: var(--gold);
+        }
+        .btn-outline-gold:hover {
+            background: var(--gold);
+            color: #ffffff;
+            box-shadow: 0 8px 20px rgba(201, 160, 80, 0.25);
+            transform: translateY(-1px);
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 11, 12, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            align-items: center; justify-content: center;
+            z-index: 99999; padding: 20px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-card {
+            background: #ffffff; padding: 35px; border-radius: 24px;
+            width: 100%; max-width: 500px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(201, 160, 80, 0.08);
+            color: var(--text-main);
+            animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-card input, .modal-card select, .modal-card textarea {
+            width: 100%; padding: 16px; border: 1.5px solid #e2e8f0;
+            border-radius: 14px; margin-bottom: 20px; font-family: inherit; font-size: 0.95rem;
+            outline: none; background: #fafaf9; transition: all 0.3s ease;
+            color: var(--text-main);
+        }
+        .modal-card input:focus, .modal-card select:focus, .modal-card textarea:focus {
+            border-color: var(--gold); background: #ffffff; box-shadow: 0 0 0 4px var(--gold-dim);
+        }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes modalIn {
+            from { transform: scale(0.97) translateY(15px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-layout">
+        
+        <!-- LEFT SIDEBAR (Desktop layout only) -->
+        <div class="sidebar-fixed">
+            <div>
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 35px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 20px;">
+                    <div style="background:var(--gold-dim); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--gold); border:1px solid rgba(201,160,80,0.15);">
+                        <span style="font-family:'Playfair Display', serif; font-weight:800; font-size:1.15rem; letter-spacing:-1px;">L</span>
+                    </div>
+                    <strong style="color:#ffffff; font-family:'Playfair Display', serif; font-size:1.15rem; letter-spacing:-0.5px;">Lausanne Connect</strong>
+                </div>
+                
+                <button class="sidebar-btn active" onclick="switchTab('contato', this)" data-stage="Novos Amigos (3m)">
+                    <span>Novos Amigos</span>
+                    <span id="sidebar-badge-contato" class="sidebar-badge">0</span>
+                </button>
+                <button class="sidebar-btn" onclick="switchTab('evento', this)" data-stage="Evento">
+                    <span>Evento</span>
+                    <span id="sidebar-badge-evento" class="sidebar-badge">0</span>
+                </button>
+                <button class="sidebar-btn" onclick="switchTab('curso', this)" data-stage="PCE">
+                    <span>PCE</span>
+                    <span id="sidebar-badge-curso" class="sidebar-badge">0</span>
+                </button>
+                <button class="sidebar-btn" onclick="switchTab('grupo', this)" data-stage="PG ou GG">
+                    <span>PG (Pequenos Grupos)</span>
+                    <span id="sidebar-badge-grupo" class="sidebar-badge">0</span>
+                </button>
+                <button class="sidebar-btn" onclick="switchTab('monitoramento', this)" data-stage="Monitoramento (3m)">
+                    <span>Monitoramento</span>
+                    <span id="sidebar-badge-monitor" class="sidebar-badge">0</span>
+                </button>
+                <button class="sidebar-btn" onclick="switchTab('finalizados', this)" data-stage="Concluído">
+                    <span>Concluído</span>
+                </button>
+            </div>
+            
+            <!-- General Progress Metrics -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px;">
+                <div style="font-size:0.75rem; color:#a8a29e; margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Progresso Geral</div>
+                <div id="general-progress-percent" style="font-size:0.95rem; color:#ffffff; font-weight:700; margin-bottom:8px;">0% concluído</div>
+                <div style="background: rgba(255,255,255,0.08); height: 6px; border-radius: 3px; overflow:hidden;">
+                    <div id="general-progress-bar" style="background:var(--gold); width:0%; height:100%; transition: width 0.6s ease;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CENTER AREA -->
+        <div style="flex:1;">
+            
+            <!-- Header Section -->
+            <div style="margin-bottom: 40px; animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);">
+                <h1 class="main-title">Equipe Integração</h1>
+                <p style="margin: 6px 0 0 0; color: #a8a29e; font-size: 0.85rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Jornada de Integração Lausanne</p>
+            </div>
+
+            <!-- TABS Container (Mobile view only) -->
+            <div class="tabs-container">
+                <button class="tab-btn active" onclick="switchTab('contato', this)" data-stage="Novos Amigos (3m)">
+                    Novos Amigos <span id="badge-contato" class="tab-badge"></span>
+                </button>
+                <button class="tab-btn" onclick="switchTab('evento', this)" data-stage="Evento">
+                    Evento <span id="badge-evento" class="tab-badge"></span>
+                </button>
+                <button class="tab-btn" onclick="switchTab('curso', this)" data-stage="PCE">
+                    PCE <span id="badge-curso" class="tab-badge"></span>
+                </button>
+                <button class="tab-btn" onclick="switchTab('grupo', this)" data-stage="PG ou GG">
+                    PG (Pequenos Grupos) <span id="badge-grupo" class="tab-badge"></span>
+                </button>
+                <button class="tab-btn" onclick="switchTab('monitoramento', this)" data-stage="Monitoramento (3m)">
+                    Monitoramento <span id="badge-monitor" class="tab-badge"></span>
+                </button>
+                <button class="tab-btn" onclick="switchTab('finalizados', this)" data-stage="Concluído">
+                    Concluído
+                </button>
+            </div>
+
+            <!-- Content Sections -->
+            <div id="tab-contato" class="tab-content active">
+                <div class="card-floating">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="color: var(--text-main); font-size: 1.5rem;">1. Novos Amigos (Boas-vindas)</h3>
+                        <button onclick="toggleGuide('contato')" class="btn-action" style="background: transparent; border: 1px solid rgba(28,25,23,0.15); color: #1c1917; padding: 8px 16px; font-size: 0.8rem; border-radius: 20px; text-transform: none; letter-spacing: 0;">
+                            Ver guia da etapa
+                        </button>
+                    </div>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 400;">Primeiro contato, diagnóstico de necessidades e acolhimento inicial.</p>
+                    
+                    <div id="guide-contato" style="display: none; background: #fafaf9; border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 1px solid rgba(201,160,80,0.1); animation: fadeIn 0.3s;">
+                        <h4 style="margin: 0 0 8px 0; font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--gold);">Guia da Etapa</h4>
+                        <p style="margin: 0; font-size: 0.88rem; color: #57534e; line-height: 1.5;">Objetivo: Realizar o primeiro contato acolhedor em até 24 horas. Pergunte como a pessoa se sentiu no culto, ofereça apoio em oração e certifique-se de preencher o nome do cuidador designado.</p>
+                    </div>
+                    
+                    <div id="list-contato">Sincronizando jornada...</div>
+                </div>
+            </div>
+
+            <div id="tab-evento" class="tab-content">
+                <div class="card-floating">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="color: var(--text-main); font-size: 1.5rem;">2. Evento de Integração</h3>
+                        <button onclick="toggleGuide('evento')" class="btn-action" style="background: transparent; border: 1px solid rgba(28,25,23,0.15); color: #1c1917; padding: 8px 16px; font-size: 0.8rem; border-radius: 20px; text-transform: none; letter-spacing: 0;">
+                            Ver guia da etapa
+                        </button>
+                    </div>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 400;">Pessoas aguardando ou participando do café/evento de recepção oficial.</p>
+                    
+                    <div id="guide-evento" style="display: none; background: #fafaf9; border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 1px solid rgba(201,160,80,0.1); animation: fadeIn 0.3s;">
+                        <h4 style="margin: 0 0 8px 0; font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--gold);">Guia da Etapa</h4>
+                        <p style="margin: 0; font-size: 0.88rem; color: #57534e; line-height: 1.5;">Objetivo: Estreitar relacionamento no Café de Recepção. Convide a pessoa pessoalmente para o próximo café de novos membros. Apresente os pastores e a visão da igreja.</p>
+                    </div>
+                    
+                    <div id="list-evento">Carregando...</div>
+                </div>
+            </div>
+
+            <div id="tab-curso" class="tab-content">
+                <div class="card-floating">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="color: var(--text-main); font-size: 1.5rem;">3. Ensino (PCE)</h3>
+                        <button onclick="toggleGuide('curso')" class="btn-action" style="background: transparent; border: 1px solid rgba(28,25,23,0.15); color: #1c1917; padding: 8px 16px; font-size: 0.8rem; border-radius: 20px; text-transform: none; letter-spacing: 0;">
+                            Ver guia da etapa
+                        </button>
+                    </div>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 400;">Crescimento espiritual através da Classe de Crescimento.</p>
+                    
+                    <div id="guide-curso" style="display: none; background: #fafaf9; border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 1px solid rgba(201,160,80,0.1); animation: fadeIn 0.3s;">
+                        <h4 style="margin: 0 0 8px 0; font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--gold);">Guia da Etapa</h4>
+                        <p style="margin: 0; font-size: 0.88rem; color: #57534e; line-height: 1.5;">Objetivo: Consolidação do ensino e discipulado básico. Acompanhe a participação nas classes de crescimento espiritual. Auxilie em dúvidas doutrinárias iniciais.</p>
+                    </div>
+                    
+                    <div id="list-curso">Carregando...</div>
+                </div>
+            </div>
+
+            <div id="tab-grupo" class="tab-content">
+                <div class="card-floating">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="color: var(--text-main); font-size: 1.5rem;">4. PG (Pequenos Grupos)</h3>
+                        <button onclick="toggleGuide('grupo')" class="btn-action" style="background: transparent; border: 1px solid rgba(28,25,23,0.15); color: #1c1917; padding: 8px 16px; font-size: 0.8rem; border-radius: 20px; text-transform: none; letter-spacing: 0;">
+                            Ver guia da etapa
+                        </button>
+                    </div>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 400;">Inserção plena na vida comunitária através dos grupos pequenos.</p>
+                    
+                    <div id="guide-grupo" style="display: none; background: #fafaf9; border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 1px solid rgba(201,160,80,0.1); animation: fadeIn 0.3s;">
+                        <h4 style="margin: 0 0 8px 0; font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--gold);">Guia da Etapa</h4>
+                        <p style="margin: 0; font-size: 0.88rem; color: #57534e; line-height: 1.5;">Objetivo: Inserção comunitária nos Pequenos Grupos. Identifique um PG próximo à residência da pessoa ou que faça sentido para o seu perfil e apresente-a ao líder do PG.</p>
+                    </div>
+                    
+                    <div id="list-grupo">Carregando...</div>
+                </div>
+            </div>
+
+            <div id="tab-monitoramento" class="tab-content">
+                <div class="card-floating">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="color: var(--text-main); font-size: 1.5rem;">5. Monitoramento Ativo</h3>
+                        <button onclick="toggleGuide('monitoramento')" class="btn-action" style="background: transparent; border: 1px solid rgba(28,25,23,0.15); color: #1c1917; padding: 8px 16px; font-size: 0.8rem; border-radius: 20px; text-transform: none; letter-spacing: 0;">
+                            Ver guia da etapa
+                        </button>
+                    </div>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 400;">Acompanhamento estratégico para garantir a permanência na igreja.</p>
+                    
+                    <div id="guide-monitoramento" style="display: none; background: #fafaf9; border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 1px solid rgba(201,160,80,0.1); animation: fadeIn 0.3s;">
+                        <h4 style="margin: 0 0 8px 0; font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--gold);">Guia da Etapa</h4>
+                        <p style="margin: 0; font-size: 0.88rem; color: #57534e; line-height: 1.5;">Objetivo: Acompanhamento preventivo durante os primeiros 3 meses. Realize contatos mensais informais para garantir que a pessoa está se sentindo acolhida e participando ativamente.</p>
+                    </div>
+                    
+                    <div id="list-monitoramento">Carregando...</div>
+                </div>
+            </div>
+
+            <div id="tab-finalizados" class="tab-content">
+                <div class="card-floating">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="color: var(--text-main); font-size: 1.5rem;">6. Concluído</h3>
+                        <button onclick="toggleGuide('finalizados')" class="btn-action" style="background: transparent; border: 1px solid rgba(28,25,23,0.15); color: #1c1917; padding: 8px 16px; font-size: 0.8rem; border-radius: 20px; text-transform: none; letter-spacing: 0;">
+                            Ver guia da etapa
+                        </button>
+                    </div>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; font-weight: 400;">Histórico de vidas integradas com sucesso à Família Lausanne.</p>
+                    
+                    <div id="guide-finalizados" style="display: none; background: #fafaf9; border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 1px solid rgba(201,160,80,0.1); animation: fadeIn 0.3s;">
+                        <h4 style="margin: 0 0 8px 0; font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--gold);">Guia da Etapa</h4>
+                        <p style="margin: 0; font-size: 0.88rem; color: #57534e; line-height: 1.5;">Objetivo: Integração completa na igreja. O processo de acolhimento foi finalizado com sucesso e a vida agora faz parte ativa da comunidade.</p>
+                    </div>
+                    
+                    <div id="list-finalizados">Carregando...</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT SIDEBAR WIDGETS (Desktop layout only) -->
+        <div class="widgets-fixed">
+            
+            <div class="widget-card">
+                <h4 style="margin: 0 0 12px 0; font-size: 1.25rem; color: var(--gold);">Resumo da Jornada</h4>
+                <div id="summary-progress-percent" style="font-size: 0.9rem; color: #a8a29e; font-weight: 500; margin-bottom: 10px;">Calculando dados...</div>
+                <div style="background: rgba(255,255,255,0.08); height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div id="summary-progress-bar" style="background: var(--gold); width: 0%; height: 100%; transition: width 0.6s ease;"></div>
+                </div>
+            </div>
+
+            <div class="widget-card">
+                <h4 style="margin: 0 0 16px 0; font-size: 1.25rem; color: var(--gold);">Próximas Etapas</h4>
+                <div style="display: flex; flex-direction: column; gap: 15px; font-size: 0.88rem;">
+                    <div style="border-left: 2px solid var(--gold); padding-left: 12px; color: #a8a29e;">
+                        <div style="font-weight: 600; color: #ffffff; margin-bottom: 2px;">1. Novos Amigos</div>
+                        Triagem e designação inicial
+                    </div>
+                    <div style="border-left: 2px solid rgba(255,255,255,0.1); padding-left: 12px; color: #a8a29e;">
+                        <div style="font-weight: 600; color: #ffffff; margin-bottom: 2px;">2. Evento</div>
+                        Café oficial de recepção
+                    </div>
+                    <div style="border-left: 2px solid rgba(255,255,255,0.1); padding-left: 12px; color: #a8a29e;">
+                        <div style="font-weight: 600; color: #ffffff; margin-bottom: 2px;">3. Ensino (PCE)</div>
+                        Classe de Crescimento
+                    </div>
+                    <div style="border-left: 2px solid rgba(255,255,255,0.1); padding-left: 12px; color: #a8a29e;">
+                        <div style="font-weight: 600; color: #ffffff; margin-bottom: 2px;">4. PG</div>
+                        Inserção em Pequenos Grupos
+                    </div>
+                    <div style="border-left: 2px solid rgba(255,255,255,0.1); padding-left: 12px; color: #a8a29e;">
+                        <div style="font-weight: 600; color: #ffffff; margin-bottom: 2px;">5. Monitoramento</div>
+                        Acompanhamento 3 meses
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget-card">
+                <h4 style="margin: 0 0 10px 0; font-size: 1.25rem; color: var(--gold);">Dicas Rápidas</h4>
+                <p style="margin: 0; font-size: 0.88rem; color: #a8a29e; line-height: 1.5;">
+                    Mantenha os cuidadores e necessidades sempre atualizados. Pequenos detalhes no histórico fazem a diferença no acolhimento de longo prazo.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- REGISTRATION / FOLLOWUP MODAL -->
+    <div id="followup-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h3 style="color: var(--text-main); font-size: 1.5rem;">Registrar Acolhimento</h3>
+                <button onclick="closeModal()" style="background: none; border: none; font-size: 1.1rem; color: var(--text-muted); cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: 0.5px; transition: 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
+            </div>
+            
+            <input type="hidden" id="fu-id">
+            
+            <label style="font-size: 0.75rem; color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block;">Ação Realizada</label>
+            <select id="fu-action">
+                <option value="Ligação Realizada">Ligação Realizada</option>
+                <option value="Agendou Visita">Agendou Visita</option>
+                <option value="Mensagem Enviada">WhatsApp de Acompanhamento</option>
+                <option value="Mudança de Etapa">Apenas Mudar de Etapa</option>
+                <option value="Cancelado/Arquivado">Interromper Processo</option>
+            </select>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.5px;">Cuidador (Acomp)</label>
+                    <input type="text" id="fu-helper" placeholder="Quem cuidou?">
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.5px;">Líder Supervisor</label>
+                    <input type="text" id="fu-leader" placeholder="Líder do setor">
+                </div>
+            </div>
+
+            <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.5px;">Necessidade / Motivo de Oração</label>
+            <input type="text" id="fu-need" placeholder="Ex: Cura, Família, Emprego...">
+
+            <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.5px;">Resumo da Conversa</label>
+            <textarea id="fu-notes" rows="3" placeholder="Detalhes do acolhimento..."></textarea>
+
+            <label style="font-size: 0.75rem; color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block;">Próxima Estação</label>
+            <select id="fu-status-stage" style="border-color: var(--gold); font-weight: 700;">
+                <option value="Novos Amigos (3m)">1. Novos Amigos (3m)</option>
+                <option value="Evento">2. Evento</option>
+                <option value="PCE">3. PCE</option>
+                <option value="PG ou GG">4. PG (Pequenos Grupos)</option>
+                <option value="Monitoramento (3m)">5. Monitoramento (3m)</option>
+                <option value="Concluído">6. Concluído</option>
+                <option value="Arquivado">Arquivar Desistência</option>
+            </select>
+
+            <button onclick="saveFollowUp()" class="btn-action" style="width: 100%; background: var(--gold); color: white; font-size: 0.95rem; margin-top: 10px; box-shadow: 0 10px 25px rgba(201, 160, 80, 0.2);">
+                Salvar e Consolidar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+        window._stageCounts = {};
+
+        function switchTab(tabId, btn) {
+            // Synchronize active classes between sidebar and mobile tabs
+            document.querySelectorAll('.tab-btn, .sidebar-btn').forEach(b => {
+                b.classList.remove('active');
+                if (b.getAttribute('data-stage') === btn.getAttribute('data-stage')) {
+                    b.classList.add('active');
+                }
+            });
+
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+
+        function toggleGuide(id) {
+            const box = document.getElementById('guide-' + id);
+            if (box) {
+                box.style.display = box.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        // [v70.3.1] Listen for parent shell postMessages (Master bypass)
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'MASTER_BYPASS_SIGNAL') {
+                if (firebase.auth().currentUser || window._isAutoLoggingIn) return;
+                console.log("💎 Integração: Master Bypass Received. Authenticating...");
+                window._isAutoLoggingIn = true;
+                AuthManager.login('integracao', event.data.pin).then(res => {
+                    window._isAutoLoggingIn = false;
+                    if(res.success) {
+                        const overlay = document.getElementById('login-overlay');
+                        if (overlay) overlay.style.display = 'none';
+                        initData();
+                    }
+                }).catch(() => { window._isAutoLoggingIn = false; });
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            firebase.auth().onAuthStateChanged(user => {
+                const overlay = document.getElementById('login-overlay');
+                if (user) {
+                    if (overlay) overlay.style.display = 'none';
+                    initData();
+                } else {
+                    // Check if inside an iframe and have a stored pin
+                    const storedPin = localStorage.getItem('current_session_pin');
+                    if (storedPin && storedPin !== 'undefined' && storedPin.trim() !== '') {
+                        window._isAutoLoggingIn = true;
+                        AuthManager.login('integracao', storedPin).then(res => {
+                            window._isAutoLoggingIn = false;
+                            if(res.success) {
+                                if (overlay) overlay.style.display = 'none';
+                                initData();
+                            }
+                        }).catch(() => { window._isAutoLoggingIn = false; });
+                        return;
+                    }
+
+                    const isInsideIframe = window.self !== window.top;
+                    if (!isInsideIframe && overlay) {
+                        overlay.style.display = 'flex';
+                    }
+                }
+            });
+        });
+
+        function logout() { firebase.auth().signOut().then(() => location.reload()); }
+
+        function initData() {
+            const stages = [
+                { stage: 'Novos Amigos (3m)', cont: 'list-contato', badge: 'badge-contato' },
+                { stage: 'Evento', cont: 'list-evento', badge: 'badge-evento' },
+                { stage: 'PCE', cont: 'list-curso', badge: 'badge-curso' },
+                { stage: 'PG ou GG', cont: 'list-grupo', badge: 'badge-grupo' },
+                { stage: 'Monitoramento (3m)', cont: 'list-monitoramento', badge: 'badge-monitor' },
+                { stage: 'Concluído', cont: 'list-finalizados', badge: null }
+            ];
+
+            stages.forEach(s => {
+                let query = db.collection('integracao').where('integ_stage', '==', s.stage);
+                if (s.stage !== 'Concluído') {
+                    query = query.where('status', '==', 'em_integracao');
+                }
+
+                query.onSnapshot(snap => {
+                    renderList(snap, s.cont, s.stage);
+                    
+                    // Update reactive counts
+                    window._stageCounts[s.stage] = snap.size;
+                    
+                    if (s.badge) {
+                        const b = document.getElementById(s.badge);
+                        b.innerText = snap.size > 0 ? `(${snap.size})` : '';
+                    }
+
+                    // Update sidebar counts
+                    const sidebarBadge = document.getElementById('sidebar-badge-' + s.cont.replace('list-', ''));
+                    if (sidebarBadge) {
+                        sidebarBadge.innerText = snap.size;
+                        sidebarBadge.style.display = snap.size > 0 ? 'inline-block' : 'none';
+                    }
+
+                    // Recalculate and update dashboard metrics
+                    updateProgressMetrics();
+                });
+            });
+        }
+
+        function updateProgressMetrics() {
+            const weights = {
+                'Novos Amigos (3m)': 20,
+                'Evento': 40,
+                'PCE': 60,
+                'PG ou GG': 80,
+                'Monitoramento (3m)': 95,
+                'Concluído': 100
+            };
+            
+            let totalScore = 0;
+            let totalContacts = 0;
+            let concludedCount = 0;
+
+            for (let stage in window._stageCounts) {
+                let count = window._stageCounts[stage] || 0;
+                totalContacts += count;
+                totalScore += count * (weights[stage] || 0);
+                if (stage === 'Concluído') {
+                    concludedCount = count;
+                }
+            }
+
+            let generalPercent = totalContacts > 0 ? Math.round(totalScore / totalContacts) : 0;
+
+            // Update Left Sidebar Progress Metrics
+            const progressPercentElem = document.getElementById('general-progress-percent');
+            if (progressPercentElem) {
+                progressPercentElem.innerText = `${generalPercent}% concluído`;
+            }
+            const progressBarElem = document.getElementById('general-progress-bar');
+            if (progressBarElem) {
+                progressBarElem.style.width = `${generalPercent}%`;
+            }
+
+            // Update Right Sidebar Progress Metrics
+            const summaryPercentElem = document.getElementById('summary-progress-percent');
+            if (summaryPercentElem) {
+                summaryPercentElem.innerText = `${concludedCount} de ${totalContacts} etapas concluídas`;
+            }
+            const summaryBarElem = document.getElementById('summary-progress-bar');
+            if (summaryBarElem) {
+                let concludedPercent = totalContacts > 0 ? Math.round((concludedCount / totalContacts) * 100) : 0;
+                summaryBarElem.style.width = `${concludedPercent}%`;
+            }
+        }
+
+        function renderList(snap, containerId, listType) {
+            const list = document.getElementById(containerId);
+            if (snap.empty) {
+                list.innerHTML = `<div style="text-align:center; padding:80px 20px; opacity:0.4; animation: fadeIn 0.5s;"><p style="font-family: 'Playfair Display', serif; font-size:1.4rem; font-weight:700; margin:0; color: var(--gold);">Etapa concluída</p><p style="font-size:0.92rem; margin-top:6px; color: var(--text-muted);">Não há registros pendentes.</p></div>`;
+                return;
+            }
+
+            window._integrationDataMap = window._integrationDataMap || {};
+
+            let html = '';
+            let docsData = [];
+            snap.forEach(doc => {
+                const d = doc.data();
+                window._integrationDataMap[doc.id] = d;
+                docsData.push({ id: doc.id, data: d });
+            });
+            
+            docsData.sort((a,b) => {
+                const tA = a.data.last_update || a.data.dispatched_at || a.data.timestamp;
+                const tB = b.data.last_update || b.data.dispatched_at || b.data.timestamp;
+                return (tB ? tB.seconds : 0) - (tA ? tA.seconds : 0);
+            });
+
+            docsData.forEach(item => {
+                const id = item.id;
+                const d = item.data;
+                const isConvert = (d.type || '').toLowerCase() === 'conversao';
+                let ageStr = d.dispatched_at ? calculateDays(d.dispatched_at.toDate()) : 'Novo';
+                
+                let historyHtml = '';
+                if (d.history && d.history.length > 0) {
+                    const lastAction = d.history[d.history.length - 1];
+                    historyHtml = `<div style="background: #fafaf9; padding: 18px; border-radius: 18px; border-left: 3px solid var(--gold); margin-top: 15px; font-size: 0.9rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);">
+                        <span style="font-size:0.72rem; color:var(--gold); font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Última Interação • ${lastAction.action || 'Atualização'}</span>
+                        <div style="color:var(--text-main); margin-top:6px; line-height:1.4; font-weight: 500;">${lastAction.notes || ''}</div>
+                    </div>`;
+                }
+
+                let contact = (d.contact || '').replace(/\D/g, '');
+                let waUrl = contact ? `https://wa.me/${contact}` : '#';
+
+                html += `
+                <div class="list-card">
+                    <div class="list-card-header">
+                        <div style="width:100%;">
+                            <strong style="font-family: 'Playfair Display', serif; font-size:1.65rem; color:var(--text-main); display:block; letter-spacing:-0.5px; font-weight: 700;">${d.name || 'Sem Nome'}</strong>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                                <div style="font-size:0.92rem; color:var(--text-muted); font-weight:500; display:flex; align-items:center; gap:6px;">
+                                    WhatsApp: ${d.contact || 'Sem telefone'}
+                                    ${isConvert ? `<span style="background:#e8fdf0; color:#15803d; padding:3px 10px; border-radius:30px; margin-left:12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; letter-spacing: 0.5px;">Decisão</span>` : ''}
+                                </div>
+                                <div style="background:var(--gold-dim); color:var(--gold); padding:5px 14px; border-radius:30px; font-size:0.72rem; font-weight:700; border:1px solid rgba(201,160,80,0.08);">${ageStr}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; font-size:0.88rem; margin-top:4px;">
+                        <div style="color:var(--text-muted);">Cuidador: <strong style="color:var(--text-main); font-weight:600;">${d.helper || '-'}</strong></div>
+                        <div style="color:var(--text-muted);">Líder: <strong style="color:var(--text-main); font-weight:600;">${d.leader || '-'}</strong></div>
+                    </div>
+                    
+                    ${d.need ? `<div style="font-size:0.88rem; color:var(--text-main); background:rgba(201, 160, 80, 0.02); padding:14px; border-radius:12px; border:1px solid rgba(201, 160, 80, 0.04); font-weight:500;">Necessidade: ${d.need}</div>` : ''}
+                    ${historyHtml}
+
+                    ${listType !== 'Concluído' ? `
+                    <div style="display:flex; justify-content:space-between; gap:12px; margin-top:15px; border-top:1px solid #f1f5f9; padding-top:20px;">
+                        <a href="${waUrl}" target="_blank" class="btn-action btn-whatsapp" style="flex:1; text-decoration:none;">
+                            WhatsApp
+                        </a>
+                        <button onclick="openModal('${id}', '${listType}')" class="btn-action btn-outline-gold" style="flex:1;">
+                            Registrar
+                        </button>
+                    </div>` : `
+                    <div style="text-align:right; font-size:0.8rem; color:var(--text-muted); font-weight:700; margin-top:10px; text-transform:uppercase; letter-spacing: 0.5px;">Integrado por: ${d.leader || 'Equipe Lausanne'}</div>
+                    `}
+                </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+        function calculateDays(dateObj) {
+            const diffDays = Math.floor(Math.abs(new Date() - dateObj) / (1000 * 60 * 60 * 24)); 
+            return diffDays === 0 ? "Hoje" : (diffDays === 1 ? "Há 1 dia" : `Há ${diffDays} dias`);
+        }
+
+        function openModal(id, currentStage) {
+            const meta = window._integrationDataMap[id] || {};
+            document.getElementById('fu-id').value = id;
+            document.getElementById('fu-notes').value = '';
+            document.getElementById('fu-helper').value = meta.helper || '';
+            document.getElementById('fu-leader').value = meta.leader || '';
+            document.getElementById('fu-need').value = meta.need || '';
+            document.getElementById('fu-action').value = "Ligação Realizada";
+            document.getElementById('fu-status-stage').value = currentStage;
+            document.getElementById('followup-modal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('followup-modal').style.display = 'none'; }
+
+        async function saveFollowUp() {
+            const id = document.getElementById('fu-id').value;
+            const action = document.getElementById('fu-action').value;
+            const notes = document.getElementById('fu-notes').value;
+            const newStage = document.getElementById('fu-status-stage').value;
+            const helper = document.getElementById('fu-helper').value;
+            const leader = document.getElementById('fu-leader').value;
+            const need = document.getElementById('fu-need').value;
+
+            if (!helper || !leader) return alert("Identificação do Cuidador e Líder é obrigatória!");
+
+            const historyEntry = { action, notes, helper, leader, timestamp: firebase.firestore.Timestamp.now() };
+
+            try {
+                const docRef = db.collection('integracao').doc(id);
+                const docSnap = await docRef.get();
+                const d = docSnap.data();
+
+                await docRef.update({
+                    integ_stage: newStage,
+                    status: newStage === 'Arquivado' ? 'arquivado' : (newStage === 'Concluído' ? 'pendente_secretaria' : 'em_integracao'),
+                    helper, leader, need,
+                    last_update: firebase.firestore.FieldValue.serverTimestamp(),
+                    history: firebase.firestore.FieldValue.arrayUnion(historyEntry)
+                });
+
+                await db.collection('pending').add({
+                    type: 'log_integracao',
+                    name: d.name || 'Sem Nome',
+                    contact: d.contact || '',
+                    action: `CRM: ${action}`,
+                    extra: `[Etapa: ${newStage}] ${notes}`,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    origin: 'followup_lausanne'
+                });
+
+                closeModal();
+            } catch(e) { alert("Erro: " + e.message); }
+        }
+    </script>
+
+    <!-- LOGIN MODAL -->
+    <div id="login-overlay" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body); z-index: 99999; flex-direction: column; justify-content: center; align-items: center; padding:20px;">
+        <div style="background: #ffffff; padding: 45px 40px; border-radius: 28px; width: 100%; max-width: 340px; text-align: center; box-shadow:0 25px 60px rgba(28,25,23,0.03), 0 10px 30px rgba(201,160,80,0.02); border:1px solid rgba(201,160,80,0.06); animation: modalIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); color: var(--text-main);">
+            <div style="background:var(--gold-dim); width:60px; height:60px; border-radius:30px; display:flex; align-items:center; justify-content:center; margin:0 auto 25px; color:var(--gold); border:1px solid rgba(201,160,80,0.08);">
+                <span style="font-family:'Playfair Display', serif; font-weight:800; font-size:1.4rem; letter-spacing:-1px;">C</span>
+            </div>
+            <h2 style="color: var(--text-main); margin-bottom: 8px; font-weight:800; font-family:'Playfair Display', serif; font-size: 1.6rem; letter-spacing:-0.5px;">Jornada Connect</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:30px; font-weight:500;">Faça login para gerenciar o acolhimento.</p>
+
+            <input type="email" id="login-email" placeholder="E-mail Pastoral" style="width: 100%; box-sizing:border-box; padding: 16px; margin-bottom: 15px; border: 1.5px solid #e2e8f0; border-radius: 14px; font-family:'Inter'; outline:none; background:#fafaf9; transition:all 0.3s;" onfocus="this.style.borderColor='var(--gold)'; this.style.background='#fff';">
+            <input type="password" id="login-pass" placeholder="Senha de Acesso" style="width: 100%; box-sizing:border-box; padding: 16px; margin-bottom: 25px; border: 1.5px solid #e2e8f0; border-radius: 14px; font-family:'Inter'; outline:none; background:#fafaf9; transition:all 0.3s;" onfocus="this.style.borderColor='var(--gold)'; this.style.background='#fff';">
+
+            <button onclick="doLogin()" style="width: 100%; padding: 16px; background: var(--gold); color: white; font-weight: 600; border: none; border-radius: 30px; cursor: pointer; font-family:'Inter'; letter-spacing: 0.8px; text-transform: uppercase; font-size: 0.85rem; box-shadow:0 10px 20px rgba(201, 160, 80, 0.15); transition: 0.3s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">Entrar</button>
+            <p id="login-msg" style="color: #ef4444; margin-top: 20px; font-size: 0.9rem; font-weight:700;"></p>
+        </div>
+    </div>
+    
+    <script>
+        function doLogin() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            const msg = document.getElementById('login-msg');
+            if (!email || !pass) return;
+            msg.innerText = "Verificando...";
+            firebase.auth().signInWithEmailAndPassword(email.trim(), pass).catch(error => msg.innerText = "Acesso negado!");
+        }
+    </script>
+</body>
+
+</html>

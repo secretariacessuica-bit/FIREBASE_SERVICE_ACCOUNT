@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script>
-        // EMERGENCY CACHE BUSTER v70.3.77
+        // EMERGENCY CACHE BUSTER v70.3.78
         (function() {
             // Unregister all Service Workers immediately
             if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
@@ -22,7 +22,7 @@
                 });
             }
 
-            const CURRENT_VER = "70.3.77";
+            const CURRENT_VER = "70.3.78";
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('v') !== CURRENT_VER && window.location.protocol !== 'file:') {
                 urlParams.set('v', CURRENT_VER);
@@ -40,8 +40,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js?v=70.3.77"></script>
-    <script src="js/auth-manager.js?v=70.3.77"></script>
+    <script src="js/firebase-config.js?v=70.3.78"></script>
+    <script src="js/auth-manager.js?v=70.3.78"></script>
 
     <style>
         :root {
@@ -300,14 +300,14 @@
         <div class="portal-header">
             <!-- Notificacao Removida conforme pedido -->
             <div class="avatar-circle">
-                <img src="assets/logo_3.png?v=70.3.77" alt="Logo avatar">
+                <img src="assets/logo_3.png?v=70.3.78" alt="Logo avatar">
             </div>
         </div>
 
         <!-- ROLE SELECTION VIEW -->
         <div id="role-selection" style="width: 100%; max-width: 800px; margin: 0 auto; text-align: center;">
             <div class="logo-box" style="margin: 0 auto 5px auto;">
-                <img src="assets/logo_3.png?v=70.3.77" alt="CES Logo">
+                <img src="assets/logo_3.png?v=70.3.78" alt="CES Logo">
             </div>
             
             <h1 style="font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 700; color: #ffffff; margin-bottom: 8px; letter-spacing: -0.5px;">
@@ -422,7 +422,7 @@
     <!-- APP NAVIGATION SHELL -->
     <header class="app-header" id="app-header">
         <div style="display:flex; align-items:center; gap:15px;">
-            <img src="assets/logo_3.png?v=70.3.77" style="height:40px; width:auto;">
+            <img src="assets/logo_3.png?v=70.3.78" style="height:40px; width:auto;">
         </div>
         <i class="fas fa-power-off" style="color:#FF4444; font-size: 1.4rem; cursor:pointer;" onclick="logout()"></i>
     </header>
@@ -548,7 +548,7 @@
                 document.getElementById(viewId).classList.add('active');
                 const f = document.getElementById(frameId);
                 if (f) {
-                    if (!f.src) f.src = f.dataset.src + "?v=70.3.77&role=" + role;
+                    if (!f.src) f.src = f.dataset.src + "?v=70.3.78&role=" + role;
                     
                     if(pin === 'Lausanne25') {
                         setTimeout(() => {
