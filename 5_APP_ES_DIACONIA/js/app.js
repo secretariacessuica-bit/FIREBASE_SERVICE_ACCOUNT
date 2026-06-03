@@ -16,29 +16,45 @@ const App = {
     
     // Static lists for Sectors and their Roles
     sectorsData: {
-        'diaconia_templo': {
-            nome: "Diaconia do Templo",
-            funcoes: ["Portaria", "Check-in", "Apoio ao Templo - Lado Direito", "Apoio ao Templo - Lado Esquerdo", "Ronda do Templo - Lado Direito", "Ronda do Templo - Lado Esquerdo"],
+        'entrada': {
+            nome: "Entrada",
+            desc: "Portaria e Recepção Externa",
+            funcoes: ["Entrada"],
             cor: "#127369",
-            themeClass: "theme-diaconia"
+            themeClass: "theme-diaconia",
+            icon: "fa-solid fa-door-open"
         },
-        'acolhimento_integracao': {
-            nome: "Acolhimento e Integração",
-            funcoes: ["Acolhimento", "Integração"],
-            cor: "#D9A752",
-            themeClass: "theme-acolhimento"
+        'check_in': {
+            nome: "Check-in",
+            desc: "Validação de presença e controle de acesso",
+            funcoes: ["Check-in"],
+            cor: "#10403B",
+            themeClass: "theme-diaconia",
+            icon: "fa-solid fa-address-card"
         },
-        'limpeza': {
-            nome: "Limpeza",
-            funcoes: ["Limpeza geral", "Salão e banheiros", "Áreas externas", "Reposição de produtos"],
-            cor: "#4C5958",
-            themeClass: "theme-limpeza"
-        },
-        'manutencao': {
-            nome: "Manutenção",
-            funcoes: ["Manutenção predial", "Elétrica", "Hidráulica", "Ar-condicionado", "Reparos gerais"],
+        'apoio_templo_ronda_dir': {
+            nome: "Apoio Templo / Ronda Lado Direito",
+            desc: "Diaconia interna e ronda no lado direito do templo",
+            funcoes: ["Apoio Templo / Ronda Lado Direito"],
             cor: "#8AA6A3",
-            themeClass: "theme-manutencao"
+            themeClass: "theme-diaconia",
+            icon: "fa-solid fa-chevron-right"
+        },
+        'apoio_templo_ronda_esq': {
+            nome: "Apoio Templo / Ronda Lado Esquerdo",
+            desc: "Diaconia interna e ronda no lado esquerdo do templo",
+            funcoes: ["Apoio Templo / Ronda Lado Esquerdo"],
+            cor: "#4C5958",
+            themeClass: "theme-diaconia",
+            icon: "fa-solid fa-chevron-left"
+        },
+        'acolhimento': {
+            nome: "Acolhimento",
+            desc: "Recepção interna e integração de visitantes",
+            funcoes: ["Acolhimento"],
+            cor: "#D9A752",
+            themeClass: "theme-acolhimento",
+            icon: "fa-solid fa-heart"
         }
     },
 
@@ -51,30 +67,13 @@ const App = {
             }
         }
         
-        if (modeloEscala === 'Culto Completo') {
-            if (sectorId === 'diaconia_templo') {
-                return ["Entrada", "Corredores", "Apoio Interno", "Cuidados Internos", "Estacionamento"];
-            }
-            if (sectorId === 'acolhimento_integracao') {
-                return ["Recepção"];
-            }
-            return [];
-        } else if (modeloEscala === 'Culto Menor') {
-            if (sectorId === 'diaconia_templo') {
-                return ["Cuidados Internos"];
-            }
-            if (sectorId === 'acolhimento_integracao') {
-                return ["Recepção"];
+        if (modeloEscala === 'Culto Menor') {
+            // No Culto Menor, apenas Check-in e Acolhimento sao escalados
+            if (sectorId === 'check_in' || sectorId === 'acolhimento') {
+                const sector = this.sectorsData[sectorId];
+                return sector ? sector.funcoes : [];
             }
             return [];
-        }
-        
-        if (sectorId === 'acolhimento_integracao') {
-            if (cultoTipo === 'especial') {
-                return ["Acolhimento", "Decoração", "Integração"];
-            } else {
-                return ["Acolhimento", "Integração"];
-            }
         }
         
         const sector = this.sectorsData[sectorId];
@@ -93,11 +92,7 @@ const App = {
         const cultoTipo = c ? c.tipo : 'regular';
         
         let isOutsideCulto = false;
-        if (cultoTipo === 'especial') {
-            isOutsideCulto = (sectorId === 'manutencao' || funcao === 'Integração');
-        } else {
-            isOutsideCulto = (sectorId === 'limpeza' || sectorId === 'manutencao' || funcao === 'Integração');
-        }
+        isOutsideCulto = (funcao === 'Integração');
         
         if (c) {
             if (isOutsideCulto) {
@@ -157,29 +152,19 @@ const App = {
                 console.log("Could not run product migration:", e);
             }
 
-            // Ensure sector color in Firestore matches the new palette
+            // Sincronizar novos setores no Firestore
             try {
-                await db.collection('setores').doc('diaconia_templo').update({ cor: "#127369" });
+                for (const [id, sec] of Object.entries(this.sectorsData)) {
+                    await db.collection('setores').doc(id).set({
+                        id: id,
+                        nome: sec.nome,
+                        funcoes: sec.funcoes,
+                        cor: sec.cor
+                    }, { merge: true });
+                }
+                console.log("Setores sincronizados com o Firestore com sucesso!");
             } catch (e) {
-                console.log("Could not auto-update sector color in Firestore:", e);
-            }
-
-            // Ensure Acolhimento e Integração sector in Firestore does not have "Recepção" anymore
-            try {
-                await db.collection('setores').doc('acolhimento_integracao').update({
-                    funcoes: ["Acolhimento", "Integração"]
-                });
-            } catch (e) {
-                console.log("Could not update acolhimento_integracao sector in Firestore:", e);
-            }
-
-            // Ensure diaconia_templo sector in Firestore has the updated functions list
-            try {
-                await db.collection('setores').doc('diaconia_templo').update({
-                    funcoes: ["Portaria", "Check-in", "Apoio ao Templo - Lado Direito", "Apoio ao Templo - Lado Esquerdo", "Ronda do Templo - Lado Direito", "Ronda do Templo - Lado Esquerdo"]
-                });
-            } catch (e) {
-                console.log("Could not update diaconia_templo sector functions in Firestore:", e);
+                console.log("Erro ao sincronizar setores no Firestore:", e);
             }
         } else {
             console.error("DbService not loaded!");
@@ -351,17 +336,12 @@ const App = {
 
         // Map sector and function to area detail nodeId to automatically open the detail page
         let nodeId = null;
-        if (setorId === 'acolhimento_integracao') {
+        if (setorId === 'acolhimento') {
             nodeId = 'acolhimento';
-        } else if (setorId === 'diaconia_templo') {
-            const funcLower = (funcao || '').toLowerCase();
-            if (funcLower.includes('portaria') || funcLower.includes('check')) {
-                nodeId = 'recepcao';
-            } else if (funcLower.includes('apoio')) {
-                nodeId = 'templo';
-            } else if (funcLower.includes('ronda')) {
-                nodeId = 'ronda';
-            }
+        } else if (setorId === 'entrada' || setorId === 'check_in') {
+            nodeId = 'recepcao';
+        } else if (setorId === 'apoio_templo_ronda_dir' || setorId === 'apoio_templo_ronda_esq') {
+            nodeId = 'templo';
         }
 
         if (nodeId) {
@@ -729,7 +709,7 @@ const App = {
         notif.onclick = () => {
             window.focus();
             notif.close();
-            this.activeSectorId = 'diaconia_templo';
+            this.activeSectorId = 'entrada';
             this.navigateTo('view-member');
         };
     },
@@ -750,14 +730,14 @@ const App = {
         notif.onclick = () => {
             window.focus();
             notif.close();
-            this.activeSectorId = 'diaconia_templo';
+            this.activeSectorId = 'entrada';
             this.navigateTo('view-member');
         };
     },
 
     async handleNotificationAction(action, scaleId) {
         if (!scaleId) {
-            this.activeSectorId = 'diaconia_templo';
+            this.activeSectorId = 'entrada';
             this.navigateTo('view-member');
             return;
         }
@@ -958,7 +938,7 @@ const App = {
                     `;
                 } else {
                     nextHighlightEl.innerHTML = `
-                        <div class="next-service-premium-card" style="justify-content: center; align-items: center; padding: 20px; cursor: pointer;" onclick="App.activeSectorId = 'diaconia_templo'; App.navigateTo('view-member');">
+                        <div class="next-service-premium-card" style="justify-content: center; align-items: center; padding: 20px; cursor: pointer;" onclick="App.activeSectorId = 'entrada'; App.navigateTo('view-member');">
                             <div style="text-align: center; color: #64748b; width: 100%;">
                                 <i class="fa-regular fa-calendar-times" style="font-size: 1.8rem; margin-bottom: 8px; display: block; color: #8AA6A3;"></i>
                                 <h4 style="color: #ffffff; margin-bottom: 4px; font-size: 0.95rem;">Nenhuma Escala Agendada</h4>
@@ -1096,16 +1076,8 @@ const App = {
                     }
                 }
 
-                let desc = '';
-                if (key === 'diaconia_templo') desc = 'Portaria, Check-in, Apoio ao Templo e Ronda';
-                else if (key === 'acolhimento_integracao') desc = 'Acolhimento e Integração';
-                else if (key === 'limpeza') desc = 'Limpeza do templo e áreas comuns';
-                else if (key === 'manutencao') desc = 'Apoio técnico, reparos e manutenção';
-
-                let iconClass = 'fa-church';
-                if (key === 'acolhimento_integracao') iconClass = 'fa-hands-holding-child';
-                else if (key === 'limpeza') iconClass = 'fa-broom';
-                else if (key === 'manutencao') iconClass = 'fa-screwdriver-wrench';
+                let desc = sector.desc || sector.nome;
+                let iconClass = sector.icon || 'fa-solid fa-calendar';
 
                 // Check badges state for this sector
                 const sectorEscalas = escalas.filter(e => e.setorId === key);
@@ -1133,17 +1105,17 @@ const App = {
                 }
 
                 const card = document.createElement('div');
-                const sectorShortName = key.split('_')[0];
-                card.className = `sector-card ${sectorShortName}-card`;
+                card.className = `sector-card`;
+                card.style.borderLeft = `5px solid ${sector.cor}`;
                 card.onclick = () => {
                     this.activeSectorId = key;
-                    this.closeSectorSelectorModal();
+                    this.memberActiveTab = 'escala';
                     this.navigateTo('view-member');
                 };
 
                 card.innerHTML = `
                     <div class="sector-card-left">
-                        <div class="sector-icon"><i class="fa-solid ${iconClass}"></i></div>
+                        <div class="sector-icon" style="color: ${sector.cor};"><i class="${iconClass}"></i></div>
                         <div class="sector-info">
                             <h3>${sector.nome}</h3>
                             <p>${desc}</p>
@@ -1175,7 +1147,7 @@ const App = {
     handleMobileNavClick(tabName) {
         if (!this.currentUser) return;
         
-        const targetSector = this.activeSectorId || this.currentUser.setor || (Array.isArray(this.currentUser.setores) && this.currentUser.setores[0]) || 'diaconia_templo';
+        const targetSector = this.activeSectorId || this.currentUser.setor || (Array.isArray(this.currentUser.setores) && this.currentUser.setores[0]) || 'entrada';
         this.activeSectorId = targetSector;
         
         this.navigateTo('view-member');
@@ -1553,7 +1525,8 @@ const App = {
         }
 
         try {
-            const sectorToFetch = this.activeSectorId === 'diaconia_templo' ? null : this.activeSectorId;
+            const isDiaconiaOrAcolhimento = ['entrada', 'check_in', 'apoio_templo_ronda_dir', 'apoio_templo_ronda_esq', 'acolhimento'].includes(this.activeSectorId);
+            const sectorToFetch = null;
             const escalas = await DbService.getEscalas(sectorToFetch, dateRange.start, dateRange.end);
 
             // Smart check for non-scheduled members (v3.6.22)
@@ -1566,7 +1539,7 @@ const App = {
             let nextService = null;
             const hojeStr = this.formatLocalISOString(new Date()).split('T')[0];
 
-            if (this.activeSectorId === 'diaconia_templo') {
+            if (isDiaconiaOrAcolhimento) {
                 await this.renderDiaconiaOrganograma(escalas, container);
                 
                 // Detect next service for highlight
@@ -2002,26 +1975,40 @@ const App = {
             const func = (escala.funcao || '').toLowerCase();
             const obs = (escala.observacoes || '').toLowerCase();
 
-            if (sectorId === 'acolhimento_integracao') {
-                if (func.includes('acolhimento')) {
-                    acolhimentoScales.push(escala);
+            if (sectorId === 'acolhimento' || func.includes('acolhimento')) {
+                acolhimentoScales.push(escala);
+            } else if (sectorId === 'entrada' || func.includes('entrada') || func.includes('portaria')) {
+                portariaScales.push(escala);
+            } else if (sectorId === 'check_in' || func.includes('check')) {
+                checkinScales.push(escala);
+            } else if (sectorId === 'apoio_templo_ronda_dir') {
+                if (func.includes('ronda')) {
+                    rondaDireitoScales.push(escala);
+                } else {
+                    apoioDireitoScales.push(escala);
+                }
+            } else if (sectorId === 'apoio_templo_ronda_esq') {
+                if (func.includes('ronda')) {
+                    rondaEsquerdoScales.push(escala);
+                } else {
+                    apoioEsquerdoScales.push(escala);
                 }
             } else {
-                if (func.includes('portaria')) {
+                if (func.includes('portaria') || func.includes('entrada')) {
                     portariaScales.push(escala);
-                } else if (func.includes('check-in') || func.includes('checkin')) {
+                } else if (func.includes('check')) {
                     checkinScales.push(escala);
                 } else if (func.includes('apoio')) {
-                    if (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('left') || func.includes('esq')) {
-                        apoioEsquerdoScales.push(escala);
-                    } else if (func.includes('direito') || obs.includes('direito') || func.includes('right') || func.includes('dir')) {
+                    if (func.includes('direito') || obs.includes('direito') || func.includes('dir')) {
                         apoioDireitoScales.push(escala);
+                    } else {
+                        apoioEsquerdoScales.push(escala);
                     }
                 } else if (func.includes('ronda')) {
-                    if (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('left') || func.includes('esq')) {
-                        rondaEsquerdoScales.push(escala);
-                    } else if (func.includes('direito') || obs.includes('direito') || func.includes('right') || func.includes('dir')) {
+                    if (func.includes('direito') || obs.includes('direito') || func.includes('dir')) {
                         rondaDireitoScales.push(escala);
+                    } else {
+                        rondaEsquerdoScales.push(escala);
                     }
                 }
             }
@@ -2388,28 +2375,34 @@ const App = {
 
                     if (escala.statusPresenca === 'Recusada') return;
 
-                    if (nodeId === 'acolhimento' && sectorId === 'acolhimento_integracao' && func.includes('acolhimento')) {
+                    if (nodeId === 'acolhimento' && (sectorId === 'acolhimento' || func.includes('acolhimento'))) {
                         areaScales.push(escala);
-                    } else if (sectorId === 'diaconia_templo') {
-                        if (nodeId === 'portaria' && func.includes('portaria')) {
-                            areaScales.push(escala);
-                        } else if (nodeId === 'checkin' && (func.includes('check-in') || func.includes('checkin'))) {
-                            areaScales.push(escala);
-                        } else if (nodeId === 'apoio-direito' && func.includes('apoio') && (func.includes('direito') || obs.includes('direito') || func.includes('right') || func.includes('dir'))) {
-                            areaScales.push(escala);
-                        } else if (nodeId === 'apoio-esquerdo' && func.includes('apoio') && (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('left') || func.includes('esq'))) {
-                            areaScales.push(escala);
-                        } else if (nodeId === 'ronda-direito' && func.includes('ronda') && (func.includes('direito') || obs.includes('direito') || func.includes('right') || func.includes('dir'))) {
-                            areaScales.push(escala);
-                        } else if (nodeId === 'ronda-esquerdo' && func.includes('ronda') && (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('left') || func.includes('esq'))) {
+                    } else if (nodeId === 'recepcao' && (sectorId === 'entrada' || sectorId === 'check_in' || func.includes('entrada') || func.includes('check') || func.includes('portaria') || func.includes('recep'))) {
+                        areaScales.push(escala);
+                    } else if (nodeId === 'templo' && (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq' || func.includes('apoio'))) {
+                        if (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq') {
+                            if (!func.includes('ronda')) areaScales.push(escala);
+                        } else {
                             areaScales.push(escala);
                         }
-                        // Unified mappings (v3.6.22)
-                        else if (nodeId === 'recepcao' && (func.includes('portaria') || func.includes('check-in') || func.includes('checkin'))) {
+                    } else if (nodeId === 'ronda' && (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq' || func.includes('ronda'))) {
+                        if (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq') {
+                            if (func.includes('ronda')) areaScales.push(escala);
+                        } else {
                             areaScales.push(escala);
-                        } else if (nodeId === 'templo' && func.includes('apoio')) {
+                        }
+                    } else {
+                        if (nodeId === 'portaria' && (func.includes('portaria') || func.includes('entrada'))) {
                             areaScales.push(escala);
-                        } else if (nodeId === 'ronda' && func.includes('ronda')) {
+                        } else if (nodeId === 'checkin' && func.includes('check')) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'apoio-direito' && func.includes('apoio') && (func.includes('direito') || obs.includes('direito') || func.includes('dir'))) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'apoio-esquerdo' && func.includes('apoio') && (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('esq'))) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'ronda-direito' && func.includes('ronda') && (func.includes('direito') || obs.includes('direito') || func.includes('dir'))) {
+                            areaScales.push(escala);
+                        } else if (nodeId === 'ronda-esquerdo' && func.includes('ronda') && (func.includes('esquerdo') || obs.includes('esquerdo') || func.includes('esq'))) {
                             areaScales.push(escala);
                         }
                     }
@@ -2492,25 +2485,13 @@ const App = {
                 }
                 const areaStandbys = standbys.filter(s => {
                     if (s.cultoId !== cultoId) return false;
-                    if (this.activeSectorId === 'diaconia_templo') {
-                        if (nodeId === 'acolhimento' && s.setorId === 'acolhimento_integracao') return true;
-                        if (s.setorId !== 'diaconia_templo') return false;
-                        const funcLower = (s.funcao || '').toLowerCase();
-                        if (nodeId === 'portaria' && funcLower.includes('portaria')) return true;
-                        if (nodeId === 'checkin' && funcLower.includes('check')) return true;
-                        if (nodeId === 'apoio-direito' && funcLower.includes('apoio') && funcLower.includes('dir')) return true;
-                        if (nodeId === 'apoio-esquerdo' && funcLower.includes('apoio') && funcLower.includes('esq')) return true;
-                        if (nodeId === 'ronda-direito' && funcLower.includes('ronda') && funcLower.includes('dir')) return true;
-                        if (nodeId === 'ronda-esquerdo' && funcLower.includes('ronda') && funcLower.includes('esq')) return true;
-                        
-                        // Unified mappings (v3.6.22)
-                        if (nodeId === 'recepcao' && (funcLower.includes('portaria') || funcLower.includes('check') || funcLower.includes('recepção'))) return true;
-                        if (nodeId === 'templo' && funcLower.includes('apoio')) return true;
-                        if (nodeId === 'ronda' && funcLower.includes('ronda')) return true;
-                        return false;
-                    } else {
-                        return s.setorId === this.activeSectorId;
-                    }
+                    const sectorId = s.setorId;
+                    const funcLower = (s.funcao || '').toLowerCase();
+                    if (nodeId === 'acolhimento' && (sectorId === 'acolhimento' || funcLower.includes('acolhimento'))) return true;
+                    if (nodeId === 'recepcao' && (sectorId === 'entrada' || sectorId === 'check_in' || funcLower.includes('entrada') || funcLower.includes('check') || funcLower.includes('portaria') || funcLower.includes('recep'))) return true;
+                    if (nodeId === 'templo' && (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq' || funcLower.includes('apoio'))) return true;
+                    if (nodeId === 'ronda' && (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq' || funcLower.includes('ronda'))) return true;
+                    return s.setorId === this.activeSectorId;
                 });
 
                 let standbysHtml = '';
@@ -3828,21 +3809,16 @@ const App = {
             // 1. Fetch counts for stats cards (escalas ativas por setor)
             const escalas = await DbService.getEscalas();
             
-            const sectorEscalas = {
-                diaconia_templo: 0,
-                acolhimento_integracao: 0,
-                limpeza: 0,
-                manutencao: 0
-            };
+            const sectorEscalas = {};
+            const sectorVoluntarios = {};
 
-            const sectorVoluntarios = {
-                diaconia_templo: 0,
-                acolhimento_integracao: 0,
-                limpeza: 0,
-                manutencao: 0
-            };
+            // Inicializar contagens para todos os setores ativos
+            for (const key in this.sectorsData) {
+                sectorEscalas[key] = 0;
+                sectorVoluntarios[key] = 0;
+            }
 
-            // Count active scheduled scales per sector
+            // Contar escalas ativas por setor
             escalas.forEach(e => {
                 if (e.statusServico !== 'Finalizado') {
                     if (sectorEscalas[e.setorId] !== undefined) {
@@ -3851,7 +3827,7 @@ const App = {
                 }
             });
 
-            // Count active registered members per sector
+            // Contar membros ativos por setor
             membros.forEach(m => {
                 if (m.status === 'ativo') {
                     if (Array.isArray(m.setores)) {
@@ -3866,21 +3842,33 @@ const App = {
                 }
             });
 
-            // Update stats grid values
-            const updateStat = (sectorKey, elementEscalasId, elementMembrosId) => {
-                const escalasEl = document.getElementById(elementEscalasId);
-                const membrosEl = document.getElementById(elementMembrosId);
-                if (escalasEl) escalasEl.innerText = sectorEscalas[sectorKey];
-                if (membrosEl) {
-                    const totalVol = sectorVoluntarios[sectorKey];
-                    membrosEl.innerText = `${totalVol} voluntário${totalVol !== 1 ? 's' : ''}`;
+            // Renderizar cartões de estatísticas dinamicamente
+            const statsGrid = document.getElementById('admin-dashboard-stats-grid');
+            if (statsGrid) {
+                let cardsHtml = '';
+                for (const [key, sector] of Object.entries(this.sectorsData)) {
+                    const activeCount = sectorEscalas[key] || 0;
+                    const totalVol = sectorVoluntarios[key] || 0;
+                    
+                    cardsHtml += `
+                        <div class="stat-card" style="position:relative; overflow:hidden; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; background: var(--bg-panel); box-shadow: var(--shadow-sm); transition: all 0.3s ease;">
+                            <div style="position:absolute; top:0; left:0; right:0; height:4px; background:${sector.cor};"></div>
+                            <div class="stat-card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <span class="stat-sector-title" style="font-size:0.9rem; font-weight:700; color:var(--navy-dark);">${sector.nome}</span>
+                                <div class="stat-icon-wrapper" style="width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:${sector.cor}20; color:${sector.cor};"><i class="${sector.icon}"></i></div>
+                            </div>
+                            <div class="stat-card-body" style="margin-bottom:15px;">
+                                <div class="stat-main-number" style="font-size:2rem; font-weight:800; color:var(--navy-dark);">${activeCount}</div>
+                                <span class="stat-desc" style="font-size:0.78rem; color:var(--slate-gray);">escalas ativas</span>
+                            </div>
+                            <div class="stat-card-footer">
+                                <span class="stat-badge" style="background:${sector.cor}15; color:${sector.cor}; padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">${totalVol} voluntário${totalVol !== 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                    `;
                 }
-            };
-
-            updateStat('diaconia_templo', 'dash-stat-diaconia-escalas', 'dash-stat-diaconia-membros');
-            updateStat('acolhimento_integracao', 'dash-stat-acolhimento-escalas', 'dash-stat-acolhimento-membros');
-            updateStat('limpeza', 'dash-stat-limpeza-escalas', 'dash-stat-limpeza-membros');
-            updateStat('manutencao', 'dash-stat-manutencao-escalas', 'dash-stat-manutencao-membros');
+                statsGrid.innerHTML = cardsHtml;
+            }
 
             // 2. Load Services in Progress
             const activeServices = await DbService.getServicosEmAndamento();
@@ -4682,7 +4670,7 @@ const App = {
                 });
                 
                 if (this.openAccordions[sectorId] === undefined) {
-                    this.openAccordions[sectorId] = sectorId === 'diaconia_templo';
+                    this.openAccordions[sectorId] = sectorId === 'entrada';
                 }
                 
                 const isOpen = this.openAccordions[sectorId];
@@ -4868,13 +4856,7 @@ const App = {
     },
     
     getSectorIcon(sectorId) {
-        switch(sectorId) {
-            case 'diaconia_templo': return 'fa-solid fa-place-of-worship';
-            case 'acolhimento_integracao': return 'fa-solid fa-people-group';
-            case 'limpeza': return 'fa-solid fa-broom';
-            case 'manutencao': return 'fa-solid fa-screwdriver-wrench';
-            default: return 'fa-solid fa-calendar';
-        }
+        return this.sectorsData[sectorId]?.icon || 'fa-solid fa-calendar';
     },
 
     openEscalaFormModalParaFuncao(sectorId, funcao) {
@@ -4929,8 +4911,8 @@ const App = {
             horaFimInput.value = '12:00';
         }
         
-        document.getElementById('escala-setor').value = 'diaconia_templo';
-        await this.handleEscalaSetorChange('diaconia_templo');
+        document.getElementById('escala-setor').value = 'entrada';
+        await this.handleEscalaSetorChange('entrada');
         
         document.getElementById('modal-escala-form').classList.add('active');
     },
@@ -6234,32 +6216,35 @@ const App = {
             let sectorId = App.activeSectorId;
             let funcao = App.currentUser.funcao || 'Voluntário';
             
-            if (App.activeSectorId === 'diaconia_templo') {
-                const titleMap = {
-                    'portaria': 'Portaria',
-                    'checkin': 'Check-in',
-                    'apoio-direito': 'Apoio Interno (L. Dir.)',
-                    'apoio-esquerdo': 'Apoio Interno (L. Esq.)',
-                    'ronda-direito': 'Ronda (L. Dir.)',
-                    'ronda-esquerdo': 'Ronda (L. Esq.)',
-                    'acolhimento': 'Acolhimento',
-                    
-                    // Unified mappings (v3.6.22)
-                    'recepcao': 'Recepção',
-                    'templo': 'Apoio Interno',
-                    'ronda': 'Ronda'
-                };
-                funcao = titleMap[nodeId] || App.currentUser.funcao || 'Voluntário';
-                
-                // Read from dropdown if present
-                const selectEl = document.getElementById('standby-role-select');
-                if (selectEl) {
-                    funcao = selectEl.value;
-                }
-                
-                if (nodeId === 'acolhimento') {
-                    sectorId = 'acolhimento_integracao';
-                }
+            // Definir funcao padrao com base no nodeId
+            const titleMap = {
+                'recepcao': 'Check-in',
+                'templo': 'Apoio Templo / Ronda Lado Direito',
+                'ronda': 'Apoio Templo / Ronda Lado Direito',
+                'acolhimento': 'Acolhimento'
+            };
+            funcao = titleMap[nodeId] || App.currentUser.funcao || 'Voluntário';
+
+            // Carregar do select se houver
+            const selectEl = document.getElementById('standby-role-select');
+            if (selectEl) {
+                funcao = selectEl.value;
+            }
+
+            // Mapear sectorId com base na funcao selecionada
+            const funcLower = funcao.toLowerCase();
+            if (funcLower.includes('entrada')) {
+                sectorId = 'entrada';
+            } else if (funcLower.includes('check')) {
+                sectorId = 'check_in';
+            } else if (funcLower.includes('acolhimento')) {
+                sectorId = 'acolhimento';
+            } else if (funcLower.includes('direito') || funcLower.includes('dir')) {
+                sectorId = 'apoio_templo_ronda_dir';
+            } else if (funcLower.includes('esquerdo') || funcLower.includes('esq')) {
+                sectorId = 'apoio_templo_ronda_esq';
+            } else {
+                sectorId = App.activeSectorId;
             }
             
             const standbyData = {
@@ -6396,13 +6381,7 @@ const App = {
     },
 
     getSectorFriendlyName(sectorId) {
-        const map = {
-            'diaconia_templo': 'Diaconia do Templo',
-            'acolhimento_integracao': 'Acolhimento e Integração',
-            'limpeza': 'Limpeza',
-            'manutencao': 'Manutenção'
-        };
-        return map[sectorId] || sectorId || 'Sem Setor';
+        return this.sectorsData[sectorId]?.nome || sectorId || 'Sem Setor';
     },
 
     async loadAndRenderSupervisorAlerts() {
@@ -7073,6 +7052,13 @@ const App = {
     },
 
     async openQuickStandbyModal() {
+        let optionsHtml = '<option value="Qualquer:Qualquer">Qualquer um / Deixar em aberto</option>';
+        for (const [key, sector] of Object.entries(this.sectorsData)) {
+            sector.funcoes.forEach(fun => {
+                optionsHtml += `<option value="${key}:${fun}">${sector.nome} - ${fun}</option>`;
+            });
+        }
+
         const html = `
             <div style="text-align: left; display: flex; flex-direction: column; gap: 15px;">
                 <p style="font-size: 0.82rem; color: #8aa6a3; margin: 0 0 10px 0;">Selecione o setor em que deseja trabalhar no próximo culto. Se preferir não escolher, selecione "Qualquer um / Deixar em aberto".</p>
@@ -7080,13 +7066,7 @@ const App = {
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 0.72rem; color: #8aa6a3; font-weight: 700; text-transform: uppercase;">Setor / Função:</label>
                     <select id="quick-standby-sector" style="width: 100%; height: 42px; border-radius: 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.08); color: #fff; padding: 0 10px; font-size: 0.85rem; outline: none; cursor: pointer;">
-                        <option value="diaconia_templo:Qualquer">Qualquer um / Deixar em aberto</option>
-                        <option value="diaconia_templo:recepcao">Diaconia - Recepção (Portaria/Check-in)</option>
-                        <option value="diaconia_templo:templo">Diaconia - Templo (Apoio Interno)</option>
-                        <option value="diaconia_templo:ronda">Diaconia - Ronda</option>
-                        <option value="acolhimento_integracao:acolhimento">Acolhimento e Integração</option>
-                        <option value="limpeza:Limpeza">Limpeza</option>
-                        <option value="manutencao:Manutenção">Manutenção</option>
+                        ${optionsHtml}
                     </select>
                 </div>
                 
@@ -7122,13 +7102,15 @@ const App = {
             
             App.closeAlert();
             
-            let nodeId = func === 'Qualquer' ? 'recepcao' : (func.toLowerCase().includes('apoio') ? 'templo' : (func.toLowerCase().includes('ronda') ? 'ronda' : func.toLowerCase()));
-            
-            if (nodeId === 'acolhimento') {
-                this.activeSectorId = 'diaconia_templo';
-            } else {
-                this.activeSectorId = setorId;
+            let nodeId = 'recepcao';
+            const funcLower = func.toLowerCase();
+            if (funcLower.includes('acolhimento')) {
+                nodeId = 'acolhimento';
+            } else if (funcLower.includes('apoio') || funcLower.includes('ronda')) {
+                nodeId = 'templo';
             }
+            
+            this.activeSectorId = setorId === 'Qualquer' ? 'entrada' : setorId;
             
             await this.handleRegisterStandby(
                 nextCulto.id,
@@ -7144,7 +7126,7 @@ const App = {
         }
     },
 
-    // --- AUTO SCALING ASSISTANT SYSTEM ---
+    // --- AUTO SCALING ASSISTANT SYSTEM (DIRECT IA GENERATOR) ---
     async openAutoGeneratorWizard() {
         const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
         if (!c) return;
@@ -7157,102 +7139,82 @@ const App = {
 
         try {
             App.showLoading();
-            await this.generateAutoScaleSuggested(c);
+            await this.runAutoScaleAndPublish(c);
             App.hideLoading();
+            this.showToast("Escala gerada e publicada com sucesso pela I.A!", "success");
+            this.loadAdminEscalas();
         } catch(e) {
             App.hideLoading();
             console.error(e);
-            this.showAlert("Erro ao processar sugestão automática de escala.");
+            this.showAlert("Erro ao processar e salvar a escala automática.");
         }
     },
 
-    closeScaleDraftModal() {
-        document.getElementById('modal-escala-rascunho').classList.remove('active');
-    },
-
-    async generateAutoScaleSuggested(culto) {
-        const body = document.getElementById('draft-scale-table-body');
-        body.innerHTML = '';
-        const warningsEl = document.getElementById('draft-scale-warnings');
-        warningsEl.innerHTML = '';
-
-        document.getElementById('draft-scale-subtitle').innerText = `Sugestão de Escala para: ${culto.nome} em ${culto.data.split('-').reverse().join('/')}`;
-
+    async runAutoScaleAndPublish(culto) {
         const model = culto.modeloEscala;
-        
         let slots = [];
         if (model === 'Culto Completo') {
             slots = [
-                { setorId: 'diaconia_templo', funcao: 'Entrada' },
-                { setorId: 'diaconia_templo', funcao: 'Entrada' },
-                { setorId: 'acolhimento_integracao', funcao: 'Recepção' },
-                { setorId: 'diaconia_templo', funcao: 'Corredores' },
-                { setorId: 'diaconia_templo', funcao: 'Corredores' },
-                { setorId: 'diaconia_templo', funcao: 'Apoio Interno' },
-                { setorId: 'diaconia_templo', funcao: 'Apoio Interno' },
-                { setorId: 'diaconia_templo', funcao: 'Cuidados Internos' },
-                { setorId: 'diaconia_templo', funcao: 'Cuidados Internos' },
-                { setorId: 'diaconia_templo', funcao: 'Estacionamento' },
-                { setorId: 'diaconia_templo', funcao: 'Estacionamento' }
+                { setorId: 'entrada', funcao: 'Entrada' },
+                { setorId: 'entrada', funcao: 'Entrada' },
+                { setorId: 'check_in', funcao: 'Check-in' },
+                { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
+                { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
+                { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
+                { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
+                { setorId: 'acolhimento', funcao: 'Acolhimento' },
+                { setorId: 'acolhimento', funcao: 'Acolhimento' }
             ];
         } else if (model === 'Culto Menor') {
             slots = [
-                { setorId: 'acolhimento_integracao', funcao: 'Recepção' },
-                { setorId: 'diaconia_templo', funcao: 'Cuidados Internos' }
+                { setorId: 'check_in', funcao: 'Check-in' },
+                { setorId: 'acolhimento', funcao: 'Acolhimento' }
             ];
         } else if (model === 'Personalizado') {
             slots = culto.funcoesPersonalizadas || [
-                { setorId: 'diaconia_templo', funcao: 'Entrada' },
-                { setorId: 'acolhimento_integracao', funcao: 'Recepção' },
-                { setorId: 'diaconia_templo', funcao: 'Apoio Interno' }
+                { setorId: 'entrada', funcao: 'Entrada' },
+                { setorId: 'check_in', funcao: 'Check-in' },
+                { setorId: 'acolhimento', funcao: 'Acolhimento' }
             ];
         }
 
         const membros = await DbService.getMembros();
         const escalas = await DbService.getEscalas();
 
-        // 1. Mapeamento do último dia em que cada obreiro serviu
+        // Mapear último serviço de cada membro
         const lastScaledMap = {};
         escalas.forEach(e => {
-            if (e.membroId && e.statusPresenca !== 'Recusado') {
+            if (e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
                 if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
                     lastScaledMap[e.membroId] = e.data;
                 }
             }
         });
 
-        this.draftScaleAssignments = [];
+        const assignments = [];
         const scheduledMemberIds = new Set();
-        const warnings = [];
 
-        // 2. Alocação slot a slot
         for (let slot of slots) {
-            // Filtrar obreiros elegíveis
             let eligible = membros.filter(m => {
                 if (m.perfil === 'admin') return false;
                 if (m.status !== 'ativo') return false;
                 
-                // Setor coincidente
                 const mSectors = m.setores || (m.setor ? [m.setor] : []);
                 if (!mSectors.includes(slot.setorId)) return false;
                 
-                // Disponibilidade física
                 if (!App.isMembroDisponivel(m, culto.data, culto.horarioInicio)) return false;
-                
-                // Evita duplicidade no mesmo culto
                 if (scheduledMemberIds.has(m.id)) return false;
 
-                // Capacidade para a função (Principal ou Secundária)
                 const fPrincipal = (m.funcaoPrincipal || '').toLowerCase().trim();
                 const fSecundaria = (m.funcaoSecundaria || '').toLowerCase().trim();
                 const fSlot = slot.funcao.toLowerCase().trim();
                 return fPrincipal.includes(fSlot) || fSecundaria.includes(fSlot);
             });
 
-            // Regras de Gênero (Aplicar apenas em Entrada, Recepção, Apoio Interno)
-            const needsGenderCheck = ['entrada', 'recep', 'apoio'].some(x => slot.funcao.toLowerCase().includes(x));
+            // Regra de Gênero (Entrada e Apoio)
+            const needsGenderCheck = ['entrada', 'apoio'].some(x => slot.funcao.toLowerCase().includes(x));
             if (needsGenderCheck) {
-                const sameFunctionDraft = this.draftScaleAssignments.filter(a => a.funcao === slot.funcao);
+                const sameFunctionDraft = assignments.filter(a => a.funcao === slot.funcao);
                 if (sameFunctionDraft.length > 0) {
                     const assignedSexes = sameFunctionDraft.map(a => a.sexo);
                     if (assignedSexes.includes('Masculino') && !assignedSexes.includes('Feminino')) {
@@ -7265,9 +7227,8 @@ const App = {
                 }
             }
 
-            // Calcula Score IA Preditiva para cada candidato elegível
+            // Calcular score
             const candidatesWithScore = eligible.map(m => {
-                // A) Fator Rodízio (Peso 40% = máx 40 pontos)
                 let rodizioPontos = 40;
                 if (lastScaledMap[m.id]) {
                     const diffTime = Math.abs(new Date(culto.data) - new Date(lastScaledMap[m.id]));
@@ -7275,24 +7236,18 @@ const App = {
                     rodizioPontos = diffDays >= 30 ? 40 : (diffDays / 30) * 40;
                 }
 
-                // B) Score de Confiabilidade (Peso 30% = máx 30 pontos)
                 const mEscalas = escalas.filter(e => e.membroId === m.id);
                 const scoreObj = DbService.calcularScoreConfiabilidade(mEscalas);
-                let scoreConfiabilidadePoints = 22.5; // Default 75% se em avaliação
+                let scoreConfiabilidadePoints = 22.5;
                 if (!scoreObj.emAvaliacao) {
                     scoreConfiabilidadePoints = (scoreObj.score / 100) * 30;
                 }
 
-                // C) Função Principal ou Secundária (Peso 20% = máx 20 pontos)
                 let funcaoPontos = 10;
                 if ((m.funcaoPrincipal || '').toLowerCase().trim().includes(slot.funcao.toLowerCase().trim())) {
                     funcaoPontos = 20;
                 }
 
-                // D) Afinidade de Dupla (Peso 10% = máx 10 pontos)
-                let afinidadePontos = 10;
-
-                // Penalidades adicionais de disponibilidade
                 let penalidades = 0;
                 if (m.indisponibilidades_mensais && m.indisponibilidades_mensais[culto.data]) {
                     const indState = m.indisponibilidades_mensais[culto.data];
@@ -7301,179 +7256,59 @@ const App = {
                     }
                 }
 
-                const totalScore = Math.max(0, rodizioPontos + scoreConfiabilidadePoints + funcaoPontos + afinidadePontos - penalidades);
+                const totalScore = Math.max(0, rodizioPontos + scoreConfiabilidadePoints + funcaoPontos + 10 - penalidades);
 
                 return {
                     member: m,
-                    score: totalScore,
-                    explanation: `Rodízio: ${rodizioPontos.toFixed(1)}/40 | Confiabilidade: ${scoreConfiabilidadePoints.toFixed(1)}/30 | Função: ${funcaoPontos}/20 | Afinidade: ${afinidadePontos}/10${penalidades > 0 ? ' | Penalidades: -' + penalidades : ''}`
+                    score: totalScore
                 };
             });
 
-            // Sort descending by score
             candidatesWithScore.sort((a, b) => b.score - a.score);
 
             if (candidatesWithScore.length > 0) {
                 const best = candidatesWithScore[0];
                 const chosen = best.member;
                 scheduledMemberIds.add(chosen.id);
-                const lastScaledStr = lastScaledMap[chosen.id] ? lastScaledMap[chosen.id].split('-').reverse().join('/') : 'Nunca';
 
-                this.draftScaleAssignments.push({
+                assignments.push({
                     setorId: slot.setorId,
                     funcao: slot.funcao,
                     membroId: chosen.id,
                     membroNome: chosen.nome,
-                    sexo: chosen.sexo || 'Masculino',
-                    tipoEscolha: `IA: ${best.score.toFixed(0)} pts`,
-                    ultimaEscala: lastScaledStr,
-                    explicaoIA: best.explanation
+                    sexo: chosen.sexo || 'Masculino'
                 });
             } else {
-                this.draftScaleAssignments.push({
+                assignments.push({
                     setorId: slot.setorId,
                     funcao: slot.funcao,
                     membroId: '',
-                    membroNome: 'Pendente / Sem voluntário elegível',
-                    sexo: '-',
-                    tipoEscolha: '-',
-                    ultimaEscala: '-',
-                    explicaoIA: 'Sem candidatos elegíveis disponíveis.'
-                });
-                warnings.push(`Nenhum voluntário elegível disponível para a vaga de ${slot.funcao} (${this.sectorsData[slot.setorId]?.nome}).`);
-            }
-        }
-
-        // 3. Renderizar linhas
-        this.draftScaleAssignments.forEach((item, index) => {
-            const row = document.createElement('tr');
-
-            let selectHtml = `<select class="select-clean" style="font-size:0.85rem;" onchange="App.adjustDraftSlotMember(${index}, this.value)">`;
-            selectHtml += `<option value="" ${item.membroId === '' ? 'selected' : ''}>Pendente</option>`;
-
-            membros.filter(m => m.perfil !== 'admin' && m.status === 'ativo').forEach(m => {
-                const isSelected = m.id === item.membroId;
-                selectHtml += `<option value="${m.id}" ${isSelected ? 'selected' : ''}>${m.nome} (${m.statusOperacional || 'Disponível'})</option>`;
-            });
-            selectHtml += `</select>`;
-
-            row.innerHTML = `
-                <td style="padding: 12px 16px;"><b>${this.sectorsData[item.setorId]?.nome || item.setorId}</b></td>
-                <td style="padding: 12px 16px;">${item.funcao}</td>
-                <td style="padding: 12px 16px;">
-                    ${selectHtml}
-                    <div style="font-size: 0.72rem; color: #10B981; margin-top: 4px;"><i class="fa-solid fa-brain"></i> Explicação: ${item.explicaoIA}</div>
-                </td>
-                <td style="padding: 12px 16px; text-align: center;">${item.sexo}</td>
-                <td style="padding: 12px 16px;"><span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem;">${item.tipoEscolha}</span></td>
-                <td style="padding: 12px 16px;">${item.ultimaEscala}</td>
-            `;
-            body.appendChild(row);
-        });
-
-        if (warnings.length > 0) {
-            warningsEl.innerHTML = `
-                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); color: #D97706; padding: 12px; border-radius: 8px; font-size: 0.8rem;">
-                    <span style="font-weight: 700;"><i class="fa-solid fa-triangle-exclamation"></i> Avisos da Geração:</span>
-                    <ul style="margin: 5px 0 0 15px; padding: 0;">
-                        ${warnings.map(w => `<li>${w}</li>`).join('')}
-                    </ul>
-                </div>
-            `;
-        }
-
-        document.getElementById('modal-escala-rascunho').classList.add('active');
-    },
-
-    adjustDraftSlotMember(index, memberId) {
-        const item = this.draftScaleAssignments[index];
-        if (!item) return;
-
-        if (!memberId) {
-            item.membroId = '';
-            item.membroNome = 'Pendente';
-            item.sexo = '-';
-            item.tipoEscolha = '-';
-            item.ultimaEscala = '-';
-            item.explicaoIA = 'Ajustado manualmente para Pendente.';
-            return;
-        }
-
-        DbService.getMembros().then(membros => {
-            const m = membros.find(x => x.id === memberId);
-            if (m) {
-                item.membroId = m.id;
-                item.membroNome = m.nome;
-                item.sexo = m.sexo || 'Masculino';
-                item.tipoEscolha = 'Ajuste Manual';
-                item.explicaoIA = 'Definido manualmente pelo Supervisor.';
-                
-                DbService.getEscalas().then(escalas => {
-                    const lastScaledMap = {};
-                    escalas.forEach(e => {
-                        if (e.membroId && e.statusPresenca !== 'Recusado') {
-                            if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
-                                lastScaledMap[e.membroId] = e.data;
-                            }
-                        }
-                    });
-                    
-                    let rodizioPontos = 40;
-                    if (lastScaledMap[m.id]) {
-                        const diffDays = Math.ceil(Math.abs(new Date() - new Date(lastScaledMap[m.id])) / (1000 * 60 * 60 * 24));
-                        rodizioPontos = diffDays >= 30 ? 40 : (diffDays / 30) * 40;
-                    }
-                    const mEscalas = escalas.filter(e => e.membroId === m.id);
-                    const scoreObj = DbService.calcularScoreConfiabilidade(mEscalas);
-                    let scoreConfiabilidadePoints = scoreObj.emAvaliacao ? 22.5 : (scoreObj.score / 100) * 30;
-                    let funcaoPontos = (m.funcaoPrincipal || '').toLowerCase().includes(item.funcao.toLowerCase()) ? 20 : 10;
-                    
-                    item.explicaoIA = `Ajuste manual (Score Estimado: ${(rodizioPontos + scoreConfiabilidadePoints + funcaoPontos + 10).toFixed(0)} pts)`;
-                    
-                    const warningDiv = document.querySelectorAll('#draft-scale-table-body tr')[index].querySelector('div');
-                    if (warningDiv) {
-                        warningDiv.innerHTML = `<i class="fa-solid fa-brain"></i> Explicação: ${item.explicaoIA}`;
-                    }
+                    membroNome: 'Vaga Pendente',
+                    sexo: '-'
                 });
             }
-        });
-    },
+        }
 
-    async saveAndPublishDraftScale() {
-        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
-        if (!c) return;
-
-        try {
-            App.showLoading();
-
-            for (let item of this.draftScaleAssignments) {
-                if (!item.membroId) continue;
-
-                const escalaPayload = {
-                    cultoId: c.id,
-                    cultoNome: c.nome,
-                    data: c.data,
-                    horarioInicio: c.horarioInicio,
-                    horarioFim: c.horarioFim,
-                    setorId: item.setorId,
-                    funcao: item.funcao,
-                    membroId: item.membroId,
-                    membroNome: item.membroNome,
-                    statusPresenca: 'Pendente',
-                    statusServico: 'Planejado'
-                };
-
-                await DbService.saveEscala(null, escalaPayload);
+        // Salvar escalas diretamente no Firestore
+        for (let item of assignments) {
+            const escalaPayload = {
+                cultoId: culto.id,
+                cultoNome: culto.nome,
+                data: culto.data,
+                horarioInicio: culto.horarioInicio,
+                horarioFim: culto.horarioFim,
+                setorId: item.setorId,
+                funcao: item.funcao,
+                membroId: item.membroId,
+                membroNome: item.membroNome,
+                statusPresenca: 'Pendente',
+                statusServico: 'Planejado'
+            };
+            if (!item.membroId) {
+                escalaPayload.observacoes = "🚨 Sem substituto disponível na fila de rodízio. Sob responsabilidade da Supervisão.";
             }
 
-            this.closeScaleDraftModal();
-            App.hideLoading();
-            this.showToast("Escala publicada com sucesso!", "success");
-            this.loadAdminEscalas();
-        } catch(e) {
-            App.hideLoading();
-            console.error(e);
-            this.showAlert("Erro ao persistir a escala.");
+            await DbService.saveEscala(null, escalaPayload);
         }
     },
 
