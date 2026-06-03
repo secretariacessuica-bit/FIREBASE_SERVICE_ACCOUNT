@@ -2986,6 +2986,55 @@ const App = {
         return firstName.endsWith('a');
     },
 
+    isMembroDisponivel(m, data, horarioInicio) {
+        if (!m || m.status !== 'ativo' || m.perfil === 'admin') return false;
+        
+        // 1. Verificar afastamento temporário / férias
+        if (m.statusOperacional && m.statusOperacional !== 'Disponível') {
+            if (data && m.afastamentoInicio && m.afastamentoFim) {
+                if (data >= m.afastamentoInicio && data <= m.afastamentoFim) {
+                    return false; // Afastado no período
+                }
+            } else if (m.statusOperacional === 'Inativo Temporário') {
+                return false;
+            }
+        }
+        
+        // 2. Verificar indisponibilidade declarada para o dia específico (Portal do Obreiro)
+        if (data && m.indisponibilidades_mensais && m.indisponibilidades_mensais[data]) {
+            if (m.indisponibilidades_mensais[data] === 'nao_posso') {
+                return false;
+            }
+        }
+        
+        // 3. Verificar disponibilidade por turno (Domingo Manhã / Noite / Eventos Especiais / Todos)
+        if (data) {
+            const dateObj = new Date(data + 'T12:00:00'); // Evita timezone offset
+            const dayOfWeek = dateObj.getDay(); // 0 = Domingo, 1 = Segunda, etc.
+            const disp = m.disponibilidade || 'Todos';
+            
+            if (dayOfWeek === 0) { // Domingo
+                const hour = parseInt((horarioInicio || '09:00').split(':')[0], 10);
+                const isMorning = hour < 13;
+                if (isMorning) {
+                    if (disp !== 'Todos' && disp !== 'Domingo Manhã') {
+                        return false;
+                    }
+                } else {
+                    if (disp !== 'Todos' && disp !== 'Domingo Noite') {
+                        return false;
+                    }
+                }
+            } else { // Dia de semana
+                if (disp !== 'Todos' && disp !== 'Eventos Especiais') {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    },
+
     toggleOrgEventsList() {
         const listEl = document.getElementById('org-events-list-scroll');
         const chevronEl = document.getElementById('org-banner-chevron');
@@ -4173,6 +4222,14 @@ const App = {
         // Reset password requirement
         document.getElementById('membro-senha').required = true;
         
+        // Reset advanced fields to defaults
+        document.getElementById('membro-sexo').value = 'Masculino';
+        document.getElementById('membro-disponibilidade').value = 'Todos';
+        document.getElementById('membro-funcao-principal').value = '';
+        document.getElementById('membro-funcao-secundaria').value = '';
+        document.getElementById('membro-participa-substituicao').value = 'Sim';
+        document.getElementById('membro-prioridade').value = 'Normal';
+        
         // Render empty checkboxes
         this.renderMembroSetoresCheckboxes([]);
         
@@ -4272,6 +4329,14 @@ const App = {
                 }
                 this.renderMembroSetoresCheckboxes(selectedSectors);
                 document.getElementById('membro-funcao').value = m.funcao || '';
+                
+                // Advanced fields
+                document.getElementById('membro-sexo').value = m.sexo || 'Masculino';
+                document.getElementById('membro-disponibilidade').value = m.disponibilidade || 'Todos';
+                document.getElementById('membro-funcao-principal').value = m.funcaoPrincipal || '';
+                document.getElementById('membro-funcao-secundaria').value = m.funcaoSecundaria || '';
+                document.getElementById('membro-participa-substituicao').value = m.participaSubstituicao || 'Sim';
+                document.getElementById('membro-prioridade').value = m.prioridade || 'Normal';
             }
 
             document.getElementById('membro-e-repositor').checked = !!m.eRepositor;
@@ -4294,6 +4359,13 @@ const App = {
         let setor = null;
         let setores = [];
         let funcao = 'Administrador';
+        
+        let sexo = 'Masculino';
+        let disponibilidade = 'Todos';
+        let funcaoPrincipal = '';
+        let funcaoSecundaria = '';
+        let participaSubstituicao = 'Sim';
+        let prioridade = 'Normal';
 
         if (perfil !== 'admin') {
             const checkedBoxes = document.querySelectorAll('#membro-setores-checkboxes input[type="checkbox"]:checked');
@@ -4310,6 +4382,13 @@ const App = {
             }
             // Fallback for single sector field
             setor = setores[0];
+            
+            sexo = document.getElementById('membro-sexo').value;
+            disponibilidade = document.getElementById('membro-disponibilidade').value;
+            funcaoPrincipal = document.getElementById('membro-funcao-principal').value.trim();
+            funcaoSecundaria = document.getElementById('membro-funcao-secundaria').value.trim();
+            participaSubstituicao = document.getElementById('membro-participa-substituicao').value;
+            prioridade = document.getElementById('membro-prioridade').value;
         }
 
         try {
@@ -4328,7 +4407,13 @@ const App = {
                 status,
                 fotoUrl,
                 dataNascimento,
-                eRepositor: !!eRepositor
+                eRepositor: !!eRepositor,
+                sexo,
+                disponibilidade,
+                funcaoPrincipal,
+                funcaoSecundaria,
+                participaSubstituicao,
+                prioridade
             });
 
             this.closeMembroFormModal();
@@ -7093,6 +7178,555 @@ const App = {
             App.hideLoading();
             console.error(err);
             App.showToast('Erro ao registrar voluntariado.', 'danger');
+        }
+    },
+
+    // --- AUTO SCALING ASSISTANT SYSTEM ---
+    async openAutoGeneratorWizard() {
+        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+        if (!c) return;
+
+        const model = c.modeloEscala || 'Manter Existente';
+        if (model === 'Manter Existente') {
+            this.showAlert("Este culto está configurado como 'Manter Existente'. Mude o Modelo de Escala nas propriedades do culto para permitir geração automática.");
+            return;
+        }
+
+        try {
+            App.showLoading();
+            await this.generateAutoScaleSuggested(c);
+            App.hideLoading();
+        } catch(e) {
+            App.hideLoading();
+            console.error(e);
+            this.showAlert("Erro ao processar sugestão automática de escala.");
+        }
+    },
+
+    closeScaleDraftModal() {
+        document.getElementById('modal-escala-rascunho').classList.remove('active');
+    },
+
+    async generateAutoScaleSuggested(culto) {
+        const body = document.getElementById('draft-scale-table-body');
+        body.innerHTML = '';
+        const warningsEl = document.getElementById('draft-scale-warnings');
+        warningsEl.innerHTML = '';
+
+        document.getElementById('draft-scale-subtitle').innerText = `Sugestão de Escala para: ${culto.nome} em ${culto.data.split('-').reverse().join('/')}`;
+
+        const model = culto.modeloEscala;
+        
+        let slots = [];
+        if (model === 'Culto Completo') {
+            slots = [
+                { setorId: 'diaconia_templo', funcao: 'Portaria' },
+                { setorId: 'diaconia_templo', funcao: 'Check-in' },
+                { setorId: 'diaconia_templo', funcao: 'Apoio Interno' },
+                { setorId: 'diaconia_templo', funcao: 'Ronda' },
+                { setorId: 'acolhimento_integracao', funcao: 'Acolhimento' },
+                { setorId: 'acolhimento_integracao', funcao: 'Integração' }
+            ];
+        } else if (model === 'Culto Menor') {
+            slots = [
+                { setorId: 'acolhimento_integracao', funcao: 'Acolhimento' },
+                { setorId: 'diaconia_templo', funcao: 'Apoio Interno' }
+            ];
+        } else if (model === 'Personalizado') {
+            slots = culto.funcoesPersonalizadas || [
+                { setorId: 'diaconia_templo', funcao: 'Portaria' },
+                { setorId: 'acolhimento_integracao', funcao: 'Acolhimento' }
+            ];
+        }
+
+        const membros = await DbService.getMembros();
+        const escalas = await DbService.getEscalas();
+
+        // 1. Mapeamento do último dia em que cada obreiro serviu
+        const lastScaledMap = {};
+        escalas.forEach(e => {
+            if (e.membroId && e.statusPresenca !== 'Recusado') {
+                if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
+                    lastScaledMap[e.membroId] = e.data;
+                }
+            }
+        });
+
+        this.draftScaleAssignments = [];
+        const scheduledMemberIds = new Set();
+        const warnings = [];
+
+        // 2. Alocação slot a slot
+        for (let slot of slots) {
+            // Filtrar obreiros elegíveis
+            let eligible = membros.filter(m => {
+                if (m.perfil === 'admin') return false;
+                if (m.status !== 'ativo') return false;
+                
+                // Setor coincidente
+                const mSectors = m.setores || (m.setor ? [m.setor] : []);
+                if (!mSectors.includes(slot.setorId)) return false;
+                
+                // Disponibilidade física
+                if (!App.isMembroDisponivel(m, culto.data, culto.horarioInicio)) return false;
+                
+                // Evita duplicidade no mesmo culto
+                if (scheduledMemberIds.has(m.id)) return false;
+
+                // Capacidade para a função (Principal ou Secundária)
+                const fPrincipal = (m.funcaoPrincipal || '').toLowerCase().trim();
+                const fSecundaria = (m.funcaoSecundaria || '').toLowerCase().trim();
+                const fSlot = slot.funcao.toLowerCase().trim();
+                return fPrincipal.includes(fSlot) || fSecundaria.includes(fSlot);
+            });
+
+            // Regras de Gênero
+            const needsGenderCheck = ['acolhimento', 'recepção', 'entrada', 'apoio interno', 'cuidados internos'].some(x => slot.funcao.toLowerCase().includes(x));
+            if (needsGenderCheck) {
+                const sameFunctionDraft = this.draftScaleAssignments.filter(a => a.funcao === slot.funcao);
+                if (sameFunctionDraft.length > 0) {
+                    const assignedSexes = sameFunctionDraft.map(a => a.sexo);
+                    if (assignedSexes.includes('Masculino') && !assignedSexes.includes('Feminino')) {
+                        const femEligible = eligible.filter(m => m.sexo === 'Feminino');
+                        if (femEligible.length > 0) eligible = femEligible;
+                    } else if (assignedSexes.includes('Feminino') && !assignedSexes.includes('Masculino')) {
+                        const mascEligible = eligible.filter(m => m.sexo === 'Masculino');
+                        if (mascEligible.length > 0) eligible = mascEligible;
+                    }
+                }
+            }
+
+            // Calcula Score IA Preditiva para cada candidato elegível
+            const candidatesWithScore = eligible.map(m => {
+                // A) Fator Rodízio (Peso 40% = máx 40 pontos)
+                let rodizioPontos = 40;
+                if (lastScaledMap[m.id]) {
+                    const diffTime = Math.abs(new Date(culto.data) - new Date(lastScaledMap[m.id]));
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    rodizioPontos = diffDays >= 30 ? 40 : (diffDays / 30) * 40;
+                }
+
+                // B) Score de Confiabilidade (Peso 30% = máx 30 pontos)
+                const mEscalas = escalas.filter(e => e.membroId === m.id);
+                const scoreObj = DbService.calcularScoreConfiabilidade(mEscalas);
+                let scoreConfiabilidadePoints = 22.5; // Default 75% se em avaliação
+                if (!scoreObj.emAvaliacao) {
+                    scoreConfiabilidadePoints = (scoreObj.score / 100) * 30;
+                }
+
+                // C) Função Principal ou Secundária (Peso 20% = máx 20 pontos)
+                let funcaoPontos = 10;
+                if ((m.funcaoPrincipal || '').toLowerCase().trim().includes(slot.funcao.toLowerCase().trim())) {
+                    funcaoPontos = 20;
+                }
+
+                // D) Afinidade de Dupla (Peso 10% = máx 10 pontos)
+                let afinidadePontos = 10;
+
+                // Penalidades adicionais de disponibilidade
+                let penalidades = 0;
+                if (m.indisponibilidades_mensais && m.indisponibilidades_mensais[culto.data]) {
+                    const indState = m.indisponibilidades_mensais[culto.data];
+                    if (indState === 'pode_restricao' || indState === 'preferia_nao') {
+                        penalidades = 15;
+                    }
+                }
+
+                const totalScore = Math.max(0, rodizioPontos + scoreConfiabilidadePoints + funcaoPontos + afinidadePontos - penalidades);
+
+                return {
+                    member: m,
+                    score: totalScore,
+                    explanation: `Rodízio: ${rodizioPontos.toFixed(1)}/40 | Confiabilidade: ${scoreConfiabilidadePoints.toFixed(1)}/30 | Função: ${funcaoPontos}/20 | Afinidade: ${afinidadePontos}/10${penalidades > 0 ? ' | Penalidades: -' + penalidades : ''}`
+                };
+            });
+
+            // Sort descending by score
+            candidatesWithScore.sort((a, b) => b.score - a.score);
+
+            if (candidatesWithScore.length > 0) {
+                const best = candidatesWithScore[0];
+                const chosen = best.member;
+                scheduledMemberIds.add(chosen.id);
+                const lastScaledStr = lastScaledMap[chosen.id] ? lastScaledMap[chosen.id].split('-').reverse().join('/') : 'Nunca';
+
+                this.draftScaleAssignments.push({
+                    setorId: slot.setorId,
+                    funcao: slot.funcao,
+                    membroId: chosen.id,
+                    membroNome: chosen.nome,
+                    sexo: chosen.sexo || 'Masculino',
+                    tipoEscolha: `IA: ${best.score.toFixed(0)} pts`,
+                    ultimaEscala: lastScaledStr,
+                    explicaoIA: best.explanation
+                });
+            } else {
+                this.draftScaleAssignments.push({
+                    setorId: slot.setorId,
+                    funcao: slot.funcao,
+                    membroId: '',
+                    membroNome: 'Pendente / Sem voluntário elegível',
+                    sexo: '-',
+                    tipoEscolha: '-',
+                    ultimaEscala: '-',
+                    explicaoIA: 'Sem candidatos elegíveis disponíveis.'
+                });
+                warnings.push(`Nenhum voluntário elegível disponível para a vaga de ${slot.funcao} (${this.sectorsData[slot.setorId]?.nome}).`);
+            }
+        }
+
+        // 3. Renderizar linhas
+        this.draftScaleAssignments.forEach((item, index) => {
+            const row = document.createElement('tr');
+
+            let selectHtml = `<select class="select-clean" style="font-size:0.85rem;" onchange="App.adjustDraftSlotMember(${index}, this.value)">`;
+            selectHtml += `<option value="" ${item.membroId === '' ? 'selected' : ''}>Pendente</option>`;
+
+            membros.filter(m => m.perfil !== 'admin' && m.status === 'ativo').forEach(m => {
+                const isSelected = m.id === item.membroId;
+                selectHtml += `<option value="${m.id}" ${isSelected ? 'selected' : ''}>${m.nome} (${m.statusOperacional || 'Disponível'})</option>`;
+            });
+            selectHtml += `</select>`;
+
+            row.innerHTML = `
+                <td style="padding: 12px 16px;"><b>${this.sectorsData[item.setorId]?.nome || item.setorId}</b></td>
+                <td style="padding: 12px 16px;">${item.funcao}</td>
+                <td style="padding: 12px 16px;">
+                    ${selectHtml}
+                    <div style="font-size: 0.72rem; color: #10B981; margin-top: 4px;"><i class="fa-solid fa-brain"></i> Explicação: ${item.explicaoIA}</div>
+                </td>
+                <td style="padding: 12px 16px; text-align: center;">${item.sexo}</td>
+                <td style="padding: 12px 16px;"><span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem;">${item.tipoEscolha}</span></td>
+                <td style="padding: 12px 16px;">${item.ultimaEscala}</td>
+            `;
+            body.appendChild(row);
+        });
+
+        if (warnings.length > 0) {
+            warningsEl.innerHTML = `
+                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); color: #D97706; padding: 12px; border-radius: 8px; font-size: 0.8rem;">
+                    <span style="font-weight: 700;"><i class="fa-solid fa-triangle-exclamation"></i> Avisos da Geração:</span>
+                    <ul style="margin: 5px 0 0 15px; padding: 0;">
+                        ${warnings.map(w => `<li>${w}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        document.getElementById('modal-escala-rascunho').classList.add('active');
+    },
+
+    adjustDraftSlotMember(index, memberId) {
+        const item = this.draftScaleAssignments[index];
+        if (!item) return;
+
+        if (!memberId) {
+            item.membroId = '';
+            item.membroNome = 'Pendente';
+            item.sexo = '-';
+            item.tipoEscolha = '-';
+            item.ultimaEscala = '-';
+            item.explicaoIA = 'Ajustado manualmente para Pendente.';
+            return;
+        }
+
+        DbService.getMembros().then(membros => {
+            const m = membros.find(x => x.id === memberId);
+            if (m) {
+                item.membroId = m.id;
+                item.membroNome = m.nome;
+                item.sexo = m.sexo || 'Masculino';
+                item.tipoEscolha = 'Ajuste Manual';
+                item.explicaoIA = 'Definido manualmente pelo Supervisor.';
+                
+                DbService.getEscalas().then(escalas => {
+                    const lastScaledMap = {};
+                    escalas.forEach(e => {
+                        if (e.membroId && e.statusPresenca !== 'Recusado') {
+                            if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
+                                lastScaledMap[e.membroId] = e.data;
+                            }
+                        }
+                    });
+                    
+                    let rodizioPontos = 40;
+                    if (lastScaledMap[m.id]) {
+                        const diffDays = Math.ceil(Math.abs(new Date() - new Date(lastScaledMap[m.id])) / (1000 * 60 * 60 * 24));
+                        rodizioPontos = diffDays >= 30 ? 40 : (diffDays / 30) * 40;
+                    }
+                    const mEscalas = escalas.filter(e => e.membroId === m.id);
+                    const scoreObj = DbService.calcularScoreConfiabilidade(mEscalas);
+                    let scoreConfiabilidadePoints = scoreObj.emAvaliacao ? 22.5 : (scoreObj.score / 100) * 30;
+                    let funcaoPontos = (m.funcaoPrincipal || '').toLowerCase().includes(item.funcao.toLowerCase()) ? 20 : 10;
+                    
+                    item.explicaoIA = `Ajuste manual (Score Estimado: ${(rodizioPontos + scoreConfiabilidadePoints + funcaoPontos + 10).toFixed(0)} pts)`;
+                    
+                    const warningDiv = document.querySelectorAll('#draft-scale-table-body tr')[index].querySelector('div');
+                    if (warningDiv) {
+                        warningDiv.innerHTML = `<i class="fa-solid fa-brain"></i> Explicação: ${item.explicaoIA}`;
+                    }
+                });
+            }
+        });
+    },
+
+    async saveAndPublishDraftScale() {
+        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+        if (!c) return;
+
+        try {
+            App.showLoading();
+
+            for (let item of this.draftScaleAssignments) {
+                if (!item.membroId) continue;
+
+                const escalaPayload = {
+                    cultoId: c.id,
+                    cultoNome: c.nome,
+                    data: c.data,
+                    horarioInicio: c.horarioInicio,
+                    horarioFim: c.horarioFim,
+                    setorId: item.setorId,
+                    funcao: item.funcao,
+                    membroId: item.membroId,
+                    membroNome: item.membroNome,
+                    statusPresenca: 'Pendente',
+                    statusServico: 'Planejado'
+                };
+
+                await DbService.saveEscala(null, escalaPayload);
+            }
+
+            this.closeScaleDraftModal();
+            App.hideLoading();
+            this.showToast("Escala publicada com sucesso!", "success");
+            this.loadAdminEscalas();
+        } catch(e) {
+            App.hideLoading();
+            console.error(e);
+            this.showAlert("Erro ao persistir a escala.");
+        }
+    },
+
+    // --- AUTOMATIC PREDICTIVE SUBSTITUTION ---
+    async tentarSubstituicaoAutomatica(escalaId) {
+        try {
+            console.log(`Iniciando algoritmo de substituição preditiva para escala: ${escalaId}`);
+            const escalas = await DbService.getEscalas();
+            const escalaRefused = escalas.find(e => e.id === escalaId);
+            if (!escalaRefused) return;
+
+            const membros = await DbService.getMembros();
+            const refusedMemberId = escalaRefused.membroId;
+            const refusedMember = membros.find(m => m.id === refusedMemberId);
+            const refusedMemberNome = refusedMember ? refusedMember.nome : 'Voluntário';
+
+            // 1. Filtrar membros elegíveis disponíveis
+            let eligible = membros.filter(m => {
+                if (m.perfil === 'admin') return false;
+                if (m.status !== 'ativo') return false;
+                if (m.id === refusedMemberId) return false;
+                if ((m.participaSubstituicao || 'Sim') !== 'Sim') return false;
+
+                const mSectors = m.setores || (m.setor ? [m.setor] : []);
+                if (!mSectors.includes(escalaRefused.setorId)) return false;
+
+                if (!App.isMembroDisponivel(m, escalaRefused.data, escalaRefused.horarioInicio)) return false;
+
+                const fPrincipal = (m.funcaoPrincipal || '').toLowerCase().trim();
+                const fSecundaria = (m.funcaoSecundaria || '').toLowerCase().trim();
+                const fSlot = escalaRefused.funcao.toLowerCase().trim();
+                return fPrincipal.includes(fSlot) || fSecundaria.includes(fSlot);
+            });
+
+            // 2. Calcular scores e ordenar
+            const lastScaledMap = {};
+            escalas.forEach(e => {
+                if (e.membroId && e.statusPresenca !== 'Recusado') {
+                    if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
+                        lastScaledMap[e.membroId] = e.data;
+                    }
+                }
+            });
+
+            const candidatesWithScore = eligible.map(m => {
+                let rodizioPontos = 40;
+                if (lastScaledMap[m.id]) {
+                    const diffDays = Math.ceil(Math.abs(new Date(escalaRefused.data) - new Date(lastScaledMap[m.id])) / (1000 * 60 * 60 * 24));
+                    rodizioPontos = diffDays >= 30 ? 40 : (diffDays / 30) * 40;
+                }
+                const mEscalas = escalas.filter(e => e.membroId === m.id);
+                const scoreObj = DbService.calcularScoreConfiabilidade(mEscalas);
+                let scoreConfiabilidadePoints = scoreObj.emAvaliacao ? 22.5 : (scoreObj.score / 100) * 30;
+                let funcaoPontos = (m.funcaoPrincipal || '').toLowerCase().includes(escalaRefused.funcao.toLowerCase()) ? 20 : 10;
+                
+                return {
+                    member: m,
+                    score: rodizioPontos + scoreConfiabilidadePoints + funcaoPontos + 10
+                };
+            });
+
+            candidatesWithScore.sort((a, b) => b.score - a.score);
+
+            if (candidatesWithScore.length > 0) {
+                const substitute = candidatesWithScore[0].member;
+
+                escalaRefused.membroId = substitute.id;
+                escalaRefused.membroNome = substitute.nome;
+                escalaRefused.statusPresenca = 'Pendente';
+                escalaRefused.statusServico = 'Planejado';
+                
+                await DbService.saveEscala(escalaId, escalaRefused);
+
+                const logPayload = {
+                    escalaId,
+                    cultoId: escalaRefused.cultoId,
+                    cultoNome: escalaRefused.cultoNome,
+                    data: escalaRefused.data,
+                    funcao: escalaRefused.funcao,
+                    membroSaindoId: refusedMemberId,
+                    membroSaindoNome: refusedMemberNome,
+                    membroEntrandoId: substitute.id,
+                    membroEntrandoNome: substitute.nome,
+                    motivo: "Substituição preditiva automática Fase 2.1",
+                    dataHora: new Date().toISOString()
+                };
+                await DbService.addSubstituicaoLog(logPayload);
+
+                await DbService.addNotificacao({
+                    paraUsuarioId: 'admin_default',
+                    paraUsuarioNome: 'Supervisor Geral',
+                    titulo: 'Substituição Automática Efetuada',
+                    mensagem: `Escala de ${refusedMemberNome} para ${escalaRefused.funcao} foi assumida automaticamente por ${substitute.nome}.`,
+                    tipo: 'sistema'
+                });
+
+                this.showToast(`Substituição automática efetuada. ${substitute.nome} assumiu a escala!`, 'success');
+            } else {
+                escalaRefused.membroId = '';
+                escalaRefused.membroNome = 'Vaga Pendente';
+                escalaRefused.statusPresenca = 'Pendente';
+                escalaRefused.statusServico = 'Planejado';
+                
+                await DbService.saveEscala(escalaId, escalaRefused);
+
+                const logPayload = {
+                    escalaId,
+                    cultoId: escalaRefused.cultoId,
+                    cultoNome: escalaRefused.cultoNome,
+                    data: escalaRefused.data,
+                    funcao: escalaRefused.funcao,
+                    membroSaindoId: refusedMemberId,
+                    membroSaindoNome: refusedMemberNome,
+                    membroEntrandoId: '',
+                    membroEntrandoNome: 'Nenhum Substituto Disponível',
+                    motivo: "Sem voluntários elegíveis livres para substituição",
+                    dataHora: new Date().toISOString()
+                };
+                await DbService.addSubstituicaoLog(logPayload);
+
+                await DbService.addNotificacao({
+                    paraUsuarioId: 'admin_default',
+                    paraUsuarioNome: 'Supervisor Geral',
+                    titulo: 'Substituição Falhou - Vaga Aberta',
+                    mensagem: `A escala de ${refusedMemberNome} para ${escalaRefused.funcao} está vaga. Nenhum voluntário elegível disponível.`,
+                    tipo: 'alerta'
+                });
+
+                this.showToast("Substituição automática não encontrou voluntários livres. Vaga ficou em aberto.", "warning");
+            }
+
+            this.loadAdminEscalas();
+        } catch(e) {
+            console.error("Erro na substituição automática:", e);
+        }
+    },
+
+    // --- HEALTH PANEL & SYSTEM GOVERNANCE ---
+    switchReportSubTab(tab) {
+        const btnEngagement = document.getElementById('btn-report-engagement');
+        const btnHealth = document.getElementById('btn-report-health');
+        const secEngagement = document.getElementById('reports-engagement-section');
+        const secHealth = document.getElementById('reports-health-section');
+
+        if (!btnEngagement || !btnHealth || !secEngagement || !secHealth) return;
+
+        if (tab === 'engagement') {
+            btnEngagement.className = 'btn-primary';
+            btnEngagement.style.background = 'var(--teal-primary)';
+            btnEngagement.style.color = '#fff';
+            
+            btnHealth.className = 'btn-secondary';
+            btnHealth.style.background = 'transparent';
+            btnHealth.style.color = 'var(--navy-dark)';
+            
+            secEngagement.style.display = 'block';
+            secHealth.style.display = 'none';
+        } else if (tab === 'health') {
+            btnHealth.className = 'btn-primary';
+            btnHealth.style.background = 'var(--teal-primary)';
+            btnHealth.style.color = '#fff';
+            
+            btnEngagement.className = 'btn-secondary';
+            btnEngagement.style.background = 'transparent';
+            btnEngagement.style.color = 'var(--navy-dark)';
+            
+            secEngagement.style.display = 'none';
+            secHealth.style.display = 'block';
+
+            this.loadAndRenderHealthMetrics();
+        }
+    },
+
+    async loadAndRenderHealthMetrics() {
+        try {
+            // 1. Métricas do Cache
+            const stats = DbService.cacheStats || { leiturasEconomizadas: 0, leiturasReais: 0 };
+            const economizadas = stats.leiturasEconomizadas || 0;
+            const reais = stats.leiturasReais || 0;
+            const totalReads = economizadas + reais;
+            const efficiency = totalReads > 0 ? ((economizadas / totalReads) * 100).toFixed(1) : '100.0';
+            const lastSyncStr = stats.ultimaAtualizacao ? new Date(stats.ultimaAtualizacao).toLocaleTimeString('pt-BR') : 'Nenhuma';
+
+            document.getElementById('health-reads-saved').innerText = economizadas;
+            document.getElementById('health-cache-efficiency').innerText = `${efficiency}%`;
+            document.getElementById('health-last-sync').innerText = lastSyncStr;
+
+            // 2. Métricas de Armazenamento
+            const metrics = await DbService.getMetricasSaudeSistema();
+            document.getElementById('health-doc-membros').innerText = metrics.membrosAtivos;
+            document.getElementById('health-doc-escalas-ativas').innerText = metrics.escalasAtivas;
+            document.getElementById('health-doc-escalas-arquivadas').innerText = metrics.escalasArquivadas;
+
+            // 3. Último Arquivamento Histórico
+            const lastArchive = await DbService.getUltimoArquivamento();
+            if (lastArchive && lastArchive.executadoEm) {
+                const dateStr = new Date(lastArchive.executadoEm).toLocaleDateString('pt-BR');
+                document.getElementById('health-last-archive').innerText = `${dateStr} (${lastArchive.total} docs)`;
+            } else {
+                document.getElementById('health-last-archive').innerText = 'Nunca';
+            }
+        } catch (e) {
+            console.error('Erro ao renderizar métricas de saúde:', e);
+        }
+    },
+
+    async handleManualArchiving() {
+        if (!confirm("Deseja realmente iniciar a rotina de arquivamento histórico manual? Escalas com mais de 14 meses serão transferidas com segurança.")) {
+            return;
+        }
+
+        try {
+            App.showLoading();
+            const total = await DbService.arquivarDadosHistoricos();
+            App.hideLoading();
+            
+            this.showToast(`Arquivamento histórico concluído! ${total} escalas foram movidas para o arquivo seguro.`, 'success');
+            this.loadAndRenderHealthMetrics();
+        } catch (e) {
+            App.hideLoading();
+            console.error(e);
+            this.showAlert("Erro ao processar arquivamento manual.");
         }
     }
 };

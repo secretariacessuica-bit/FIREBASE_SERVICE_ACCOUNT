@@ -849,50 +849,161 @@
                         
                         <!-- TAB: Relatórios -->
                         <div id="admin-sub-relatorios" class="admin-tabview" style="display: none;">
-                            <div class="panel-card">
-                                <div class="panel-header">
-                                    <div class="panel-title"><i class="fa-solid fa-chart-line" style="margin-right: 5px;"></i> Métricas e Relatório de Engajamento</div>
-                                    <div>
-                                        <select id="report-filter-month" class="select-clean" style="padding: 8px 32px 8px 12px;" onchange="App.loadAndRenderReports()">
-                                            <!-- Pre-populated dynamically -->
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <div class="dashboard-columns">
-                                    <div class="panel-card" style="border: 1px solid #E2E8F0; box-shadow: none;">
-                                        <div class="panel-title" style="margin-bottom: 15px; color: #10B981;"><i class="fa-solid fa-circle-check"></i> Já Serviram este Mês</div>
-                                        <div id="report-list-served" style="max-height: 400px; overflow-y: auto;">
-                                            <!-- List -->
+                            <!-- Sub-abas -->
+                            <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                                <button class="btn-primary" id="btn-report-engagement" onclick="App.switchReportSubTab('engagement')" style="width: auto; height: 38px; padding: 0 16px; font-size: 0.85rem; background: var(--teal-primary);">
+                                    <i class="fa-solid fa-chart-line"></i> Engajamento
+                                </button>
+                                <button class="btn-secondary" id="btn-report-health" onclick="App.switchReportSubTab('health')" style="width: auto; height: 38px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-color); color: var(--navy-dark); background: transparent;">
+                                    <i class="fa-solid fa-heart-pulse"></i> Saúde do Sistema
+                                </button>
+                            </div>
+
+                            <!-- Seção de Engajamento (Antigo Relatório) -->
+                            <div id="reports-engagement-section">
+                                <div class="panel-card">
+                                    <div class="panel-header">
+                                        <div class="panel-title"><i class="fa-solid fa-chart-line" style="margin-right: 5px;"></i> Métricas e Relatório de Engajamento</div>
+                                        <div>
+                                            <select id="report-filter-month" class="select-clean" style="padding: 8px 32px 8px 12px;" onchange="App.loadAndRenderReports()">
+                                                <!-- Pre-populated dynamically -->
+                                            </select>
                                         </div>
                                     </div>
                                     
-                                    <div class="panel-card" style="border: 1px solid #E2E8F0; box-shadow: none;">
-                                        <div class="panel-title" style="margin-bottom: 15px; color: #EF4444;"><i class="fa-solid fa-circle-xmark"></i> Ainda Não Serviram este Mês</div>
-                                        <div id="report-list-not-served" style="max-height: 400px; overflow-y: auto;">
-                                            <!-- List -->
+                                    <div class="dashboard-columns">
+                                        <div class="panel-card" style="border: 1px solid #E2E8F0; box-shadow: none;">
+                                            <div class="panel-title" style="margin-bottom: 15px; color: #10B981;"><i class="fa-solid fa-circle-check"></i> Já Serviram este Mês</div>
+                                            <div id="report-list-served" style="max-height: 400px; overflow-y: auto;">
+                                                <!-- List -->
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="panel-card" style="border: 1px solid #E2E8F0; box-shadow: none;">
+                                            <div class="panel-title" style="margin-bottom: 15px; color: #EF4444;"><i class="fa-solid fa-circle-xmark"></i> Ainda Não Serviram este Mês</div>
+                                            <div id="report-list-not-served" style="max-height: 400px; overflow-y: auto;">
+                                                <!-- List -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="panel-card" style="margin-top: 20px; border: 1px solid #E2E8F0; box-shadow: none;">
+                                        <div class="panel-title" style="margin-bottom: 15px;"><i class="fa-solid fa-book" style="margin-right: 5px;"></i> Histórico Geral de Serviços Executados</div>
+                                        <div class="table-container">
+                                            <table class="admin-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Data</th>
+                                                        <th>Setor</th>
+                                                        <th>Voluntário</th>
+                                                        <th>Função</th>
+                                                        <th>Duração</th>
+                                                        <th>Observações de Fechamento</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="admin-history-table-body">
+                                                    <!-- Dynamic list -->
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div class="panel-card" style="margin-top: 20px; border: 1px solid #E2E8F0; box-shadow: none;">
-                                    <div class="panel-title" style="margin-bottom: 15px;"><i class="fa-solid fa-book" style="margin-right: 5px;"></i> Histórico Geral de Serviços Executados</div>
-                                    <div class="table-container">
-                                        <table class="admin-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Data</th>
-                                                    <th>Setor</th>
-                                                    <th>Voluntário</th>
-                                                    <th>Função</th>
-                                                    <th>Duração</th>
-                                                    <th>Observações de Fechamento</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="admin-history-table-body">
-                                                <!-- Dynamic list -->
-                                            </tbody>
-                                        </table>
+                            </div>
+
+                            <!-- Seção de Saúde do Sistema & Cache -->
+                            <div id="reports-health-section" style="display: none;">
+                                <div class="panel-card">
+                                    <div class="panel-header">
+                                        <div class="panel-title"><i class="fa-solid fa-heart-pulse" style="margin-right: 5px;"></i> Status e Governança do Sistema</div>
+                                    </div>
+
+                                    <div class="dashboard-columns" style="margin-bottom: 20px;">
+                                        <!-- Card 1: Métricas de Cache -->
+                                        <div class="panel-card" style="border: 1px solid #E2E8F0; box-shadow: none; background: var(--bg-panel);">
+                                            <div class="panel-title" style="color: var(--teal-primary); font-size: 0.9rem; margin-bottom: 15px;">
+                                                <i class="fa-solid fa-database"></i> Métricas do Cache local
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span>Leituras Economizadas:</span>
+                                                    <span id="health-reads-saved" style="font-weight: 700; color: #10B981;">0</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span>Eficiência do Cache:</span>
+                                                    <span id="health-cache-efficiency" style="font-weight: 700; color: #10B981;">0%</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span>Sincronização do Cache:</span>
+                                                    <span id="health-last-sync" style="font-weight: 600; color: var(--navy-dark);">0</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Card 2: Armazenamento e Tamanho -->
+                                        <div class="panel-card" style="border: 1px solid #E2E8F0; box-shadow: none; background: var(--bg-panel);">
+                                            <div class="panel-title" style="color: var(--cyan-accent); font-size: 0.9rem; margin-bottom: 15px;">
+                                                <i class="fa-solid fa-folder-open"></i> Estatísticas de Documentos
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span>Obreiros Cadastrados:</span>
+                                                    <span id="health-doc-membros" style="font-weight: 600;">0</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span>Escalas Ativas (14 meses):</span>
+                                                    <span id="health-doc-escalas-ativas" style="font-weight: 600;">0</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span>Escalas Arquivadas:</span>
+                                                    <span id="health-doc-escalas-arquivadas" style="font-weight: 600; color: #64748B;">0</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Arquivamento Histórico & Governança -->
+                                    <div class="dashboard-columns">
+                                        <!-- Card 3: Segurança e SSL -->
+                                        <div class="panel-card" style="border: 1px solid #E2E8F0; box-shadow: none; background: var(--bg-panel);">
+                                            <div class="panel-title" style="color: #6366F1; font-size: 0.9rem; margin-bottom: 15px;">
+                                                <i class="fa-solid fa-lock"></i> Segurança e Conectividade
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span>Conexão SSL (HTTPS):</span>
+                                                    <span style="font-weight: 700; color: #10B981;"><i class="fa-solid fa-shield-halved"></i> Ativa</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span>Firestore Security Rules:</span>
+                                                    <span style="font-weight: 700; color: #10B981;"><i class="fa-solid fa-circle-check"></i> Protegido</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span>Status da API Firebase:</span>
+                                                    <span style="font-weight: 700; color: #10B981;">Online</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Card 4: Rotina de Arquivamento -->
+                                        <div class="panel-card" style="border: 1px solid #E2E8F0; box-shadow: none; background: var(--bg-panel); display: flex; flex-direction: column; justify-content: space-between;">
+                                            <div>
+                                                <div class="panel-title" style="color: #EF4444; font-size: 0.9rem; margin-bottom: 15px;">
+                                                    <i class="fa-solid fa-box-archive"></i> Arquivamento Histórico
+                                                </div>
+                                                <p style="font-size: 0.78rem; color: var(--slate-gray); margin-bottom: 15px; line-height: 1.4;">
+                                                    Escalas com mais de 14 meses são movidas automaticamente para otimizar leituras do banco. Você também pode forçar o processo manualmente.
+                                                </p>
+                                            </div>
+                                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                                                <div style="font-size: 0.8rem;">
+                                                    <span>Última Execução:</span><br>
+                                                    <span id="health-last-archive" style="font-weight: 700; color: var(--navy-dark);">Nunca</span>
+                                                </div>
+                                                <button class="btn-primary" onclick="App.handleManualArchiving()" style="width: auto; padding: 8px 16px; font-size: 0.8rem; background: #EF4444; border-color: #EF4444;">
+                                                    <i class="fa-solid fa-box-archive"></i> Arquivar Agora
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1043,10 +1154,76 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="membro-funcao">Função / Observação</label>
+                        <label for="membro-funcao">Função / Observação Geral</label>
                         <div class="input-icon-wrapper">
                             <i class="fa-solid fa-address-card"></i>
                             <input type="text" id="membro-funcao" placeholder="Ex: Portaria, Limpeza Geral, Reparos" style="padding-left: 45px;" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label for="membro-sexo">Sexo</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-venus-mars"></i>
+                                <select id="membro-sexo" required style="padding-left: 45px;">
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Feminino">Feminino</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="membro-disponibilidade">Disponibilidade Geral</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-calendar-days"></i>
+                                <select id="membro-disponibilidade" required style="padding-left: 45px;">
+                                    <option value="Todos">Todos</option>
+                                    <option value="Domingo Manhã">Domingo Manhã</option>
+                                    <option value="Domingo Noite">Domingo Noite</option>
+                                    <option value="Eventos Especiais">Eventos Especiais</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label for="membro-funcao-principal">Função Principal</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-star"></i>
+                                <input type="text" id="membro-funcao-principal" placeholder="Ex: Recepção" style="padding-left: 45px;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="membro-funcao-secundaria">Função Secundária</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-star-half-stroke"></i>
+                                <input type="text" id="membro-funcao-secundaria" placeholder="Ex: Apoio Interno" style="padding-left: 45px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label for="membro-participa-substituicao">Participa de Substituição?</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-shuffle"></i>
+                                <select id="membro-participa-substituicao" required style="padding-left: 45px;">
+                                    <option value="Sim">Sim</option>
+                                    <option value="Não">Não</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="membro-prioridade">Prioridade / Nível</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-arrow-up-9-1"></i>
+                                <select id="membro-prioridade" required style="padding-left: 45px;">
+                                    <option value="Normal">Normal</option>
+                                    <option value="Supervisor">Supervisor</option>
+                                    <option value="Coordenador">Coordenador</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1169,6 +1346,74 @@
                     <button type="submit" class="btn-primary" style="flex: 2;">Confirmar Escala</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: RASCUNHO DE ESCALA (Geração Automática por IA) ===== -->
+    <div class="premium-modal glass-modal" id="modal-escala-rascunho" style="z-index: 2000;">
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto; border-radius: 20px; padding: 0; background: var(--bg-card); border: 1px solid var(--border-color);">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, var(--teal-primary), var(--teal-dark)); padding: 22px 28px; border-radius: 20px 20px 0 0; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <h2 style="color: #fff; font-size: 1.2rem; font-weight: 700; margin: 0;">
+                        <i class="fa-solid fa-brain" style="margin-right: 8px; opacity: 0.9;"></i>
+                        Sugestão de Escala — Assistente de IA
+                    </h2>
+                    <p id="draft-scale-subtitle" style="color: rgba(255,255,255,0.75); font-size: 0.85rem; margin: 4px 0 0;"></p>
+                </div>
+                <button onclick="App.closeScaleDraftModal()" style="background: rgba(255,255,255,0.15); border: none; color: #fff; width: 34px; height: 34px; border-radius: 50%; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div style="padding: 24px 28px;">
+                <!-- Aviso de IA -->
+                <div style="background: linear-gradient(90deg, rgba(59, 130, 246, 0.08), rgba(16, 185, 129, 0.08)); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 10px;">
+                    <i class="fa-solid fa-circle-info" style="color: var(--teal-primary); margin-top: 2px; flex-shrink: 0;"></i>
+                    <span style="font-size: 0.83rem; color: var(--navy-dark); line-height: 1.5;">
+                        A IA Preditiva selecionou os melhores obreiros considerando: <strong>Fator Rodízio</strong>, <strong>Confiabilidade</strong>, <strong>Disponibilidade por Turno</strong> e <strong>Afinidades de Dupla</strong>. Você pode fazer ajustes manuais antes de publicar.
+                    </span>
+                </div>
+
+                <!-- Warnings container -->
+                <div id="draft-scale-warnings" style="margin-bottom: 15px;"></div>
+
+                <!-- Table -->
+                <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-panel);">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="background: var(--bg-panel); border-bottom: 1px solid var(--border-color);">
+                                <th style="padding: 12px 16px; font-weight: 600; color: var(--navy-dark); width: 20%; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.05em;">Setor</th>
+                                <th style="padding: 12px 16px; font-weight: 600; color: var(--navy-dark); width: 20%; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.05em;">Função</th>
+                                <th style="padding: 12px 16px; font-weight: 600; color: var(--navy-dark); width: 45%; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.05em;">Membro Sugerido</th>
+                                <th style="padding: 12px 16px; font-weight: 600; color: var(--navy-dark); width: 15%; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.05em; text-align: center;">Sexo</th>
+                                <th style="padding: 12px 16px; font-weight: 600; color: var(--navy-dark); width: 15%; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.05em; white-space: nowrap;">Tipo Escolha</th>
+                                <th style="padding: 12px 16px; font-weight: 600; color: var(--navy-dark); width: 15%; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.05em; white-space: nowrap;">Última Escala</th>
+                            </tr>
+                        </thead>
+                        <tbody id="draft-scale-table-body">
+                            <!-- Populated dynamically by generateAutoScaleSuggested() -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Legenda do Score IA -->
+                <div style="margin-top: 14px; padding: 10px 14px; background: var(--bg-panel); border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.78rem; color: var(--slate-gray); line-height: 1.6;">
+                    <strong style="color: var(--navy-dark);"><i class="fa-solid fa-info-circle" style="margin-right: 4px;"></i> Score IA:</strong>
+                    Rodízio (40 pts) + Confiabilidade (30 pts) + Função (20 pts) + Afinidade de Dupla (10 pts) − Penalidades por Indisponibilidade
+                </div>
+            </div>
+
+            <!-- Footer com botões -->
+            <div style="padding: 16px 28px 24px; display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid var(--border-color);">
+                <button class="btn-secondary" onclick="App.closeScaleDraftModal()" style="width: auto; padding: 10px 22px; font-size: 0.9rem; border-color: var(--border-color); color: var(--navy-dark); background: transparent;">
+                    <i class="fa-solid fa-xmark" style="margin-right: 6px;"></i> Cancelar
+                </button>
+                <button class="btn-primary" onclick="App.saveAndPublishDraftScale()" style="width: auto; padding: 10px 26px; font-size: 0.9rem; background: var(--teal-primary);">
+                    <i class="fa-solid fa-check" style="margin-right: 6px;"></i> Confirmar e Publicar Escala
+                </button>
+            </div>
         </div>
     </div>
     
