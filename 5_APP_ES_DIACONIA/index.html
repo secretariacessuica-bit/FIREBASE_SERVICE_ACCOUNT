@@ -698,13 +698,17 @@
                                         </div>
                                     </div>
                                     
-                                    <div class="selected-culto-actions-right">
+                                    <div class="selected-culto-actions-right" style="display: flex; gap: 10px; align-items: flex-end;">
                                         <div class="dropdown-wrapper">
                                             <label style="font-size: 0.75rem; color: var(--slate-gray); display: block; margin-bottom: 2px;">Visualização</label>
-                                            <select class="select-clean" style="padding: 6px 32px 6px 12px; font-size: 0.85rem; width: 150px;" id="admin-scale-view-mode">
+                                            <select class="select-clean" style="padding: 6px 32px 6px 12px; font-size: 0.85rem; width: 140px;" id="admin-scale-view-mode">
                                                 <option value="setor" selected>Por Setor</option>
                                             </select>
                                         </div>
+                                        
+                                        <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem; background-color: #10B981; border: none; display: flex; align-items: center; gap: 6px; width: auto; height: 38px;" onclick="App.openAutoGeneratorWizard()">
+                                            <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Automática
+                                        </button>
                                         
                                         <div class="dropdown-wrapper actions-dropdown" style="position: relative;">
                                             <label style="font-size: 0.75rem; color: var(--slate-gray); display: block; margin-bottom: 2px; visibility: hidden;">Ações</label>
@@ -1525,6 +1529,19 @@
                                 <option value="Confirmado">Confirmado</option>
                             </select>
                         </div>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label for="culto-modelo-escala">Modelo de Escala</label>
+                    <div class="input-icon-wrapper">
+                        <i class="fa-solid fa-sliders"></i>
+                        <select id="culto-modelo-escala" required>
+                            <option value="Manter Existente" selected>Manter Existente (Sem autogeração)</option>
+                            <option value="Culto Completo">Culto Completo (Todas as funções)</option>
+                            <option value="Culto Menor">Culto Menor (Apenas Recepção e Cuidados Internos)</option>
+                            <option value="Personalizado">Personalizado (Definido manualmente)</option>
+                        </select>
                     </div>
                 </div>
                 

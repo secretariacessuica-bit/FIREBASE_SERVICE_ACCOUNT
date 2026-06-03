@@ -42,12 +42,31 @@ const App = {
         }
     },
 
-    getSectorFunctions(sectorId, cultoTipo = null) {
-        if (!cultoTipo && this.adminSelectedCultoId) {
+    getSectorFunctions(sectorId, cultoTipo = null, modeloEscala = null) {
+        if (this.adminSelectedCultoId) {
             const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
             if (c) {
-                cultoTipo = c.tipo;
+                if (!cultoTipo) cultoTipo = c.tipo;
+                if (!modeloEscala) modeloEscala = c.modeloEscala || 'Manter Existente';
             }
+        }
+        
+        if (modeloEscala === 'Culto Completo') {
+            if (sectorId === 'diaconia_templo') {
+                return ["Entrada", "Corredores", "Apoio Interno", "Cuidados Internos", "Estacionamento"];
+            }
+            if (sectorId === 'acolhimento_integracao') {
+                return ["Recepção"];
+            }
+            return [];
+        } else if (modeloEscala === 'Culto Menor') {
+            if (sectorId === 'diaconia_templo') {
+                return ["Cuidados Internos"];
+            }
+            if (sectorId === 'acolhimento_integracao') {
+                return ["Recepção"];
+            }
+            return [];
         }
         
         if (sectorId === 'acolhimento_integracao') {
@@ -5210,11 +5229,13 @@ const App = {
                 document.getElementById('culto-horafim').value = c.horarioFim;
                 document.getElementById('culto-tipo').value = c.tipo;
                 document.getElementById('culto-status').value = c.status;
+                document.getElementById('culto-modelo-escala').value = c.modeloEscala || 'Manter Existente';
                 
                 document.getElementById('btn-culto-delete').style.display = 'block';
             }
         } else {
             document.getElementById('culto-data').value = this.formatLocalISOString(new Date()).split('T')[0];
+            document.getElementById('culto-modelo-escala').value = 'Manter Existente';
             document.getElementById('btn-culto-delete').style.display = 'none';
         }
         
@@ -5254,6 +5275,7 @@ const App = {
         const horarioFim = document.getElementById('culto-horafim').value;
         const tipo = document.getElementById('culto-tipo').value;
         const status = document.getElementById('culto-status').value;
+        const modeloEscala = document.getElementById('culto-modelo-escala').value;
         
         try {
             const cultoPayload = {
@@ -5262,7 +5284,8 @@ const App = {
                 horarioInicio,
                 horarioFim,
                 tipo,
-                status
+                status,
+                modeloEscala
             };
             
             const savedId = await DbService.saveCulto(id ? id : null, cultoPayload);
@@ -7220,22 +7243,28 @@ const App = {
         let slots = [];
         if (model === 'Culto Completo') {
             slots = [
-                { setorId: 'diaconia_templo', funcao: 'Portaria' },
-                { setorId: 'diaconia_templo', funcao: 'Check-in' },
+                { setorId: 'diaconia_templo', funcao: 'Entrada' },
+                { setorId: 'diaconia_templo', funcao: 'Entrada' },
+                { setorId: 'acolhimento_integracao', funcao: 'Recepção' },
+                { setorId: 'diaconia_templo', funcao: 'Corredores' },
+                { setorId: 'diaconia_templo', funcao: 'Corredores' },
                 { setorId: 'diaconia_templo', funcao: 'Apoio Interno' },
-                { setorId: 'diaconia_templo', funcao: 'Ronda' },
-                { setorId: 'acolhimento_integracao', funcao: 'Acolhimento' },
-                { setorId: 'acolhimento_integracao', funcao: 'Integração' }
+                { setorId: 'diaconia_templo', funcao: 'Apoio Interno' },
+                { setorId: 'diaconia_templo', funcao: 'Cuidados Internos' },
+                { setorId: 'diaconia_templo', funcao: 'Cuidados Internos' },
+                { setorId: 'diaconia_templo', funcao: 'Estacionamento' },
+                { setorId: 'diaconia_templo', funcao: 'Estacionamento' }
             ];
         } else if (model === 'Culto Menor') {
             slots = [
-                { setorId: 'acolhimento_integracao', funcao: 'Acolhimento' },
-                { setorId: 'diaconia_templo', funcao: 'Apoio Interno' }
+                { setorId: 'acolhimento_integracao', funcao: 'Recepção' },
+                { setorId: 'diaconia_templo', funcao: 'Cuidados Internos' }
             ];
         } else if (model === 'Personalizado') {
             slots = culto.funcoesPersonalizadas || [
-                { setorId: 'diaconia_templo', funcao: 'Portaria' },
-                { setorId: 'acolhimento_integracao', funcao: 'Acolhimento' }
+                { setorId: 'diaconia_templo', funcao: 'Entrada' },
+                { setorId: 'acolhimento_integracao', funcao: 'Recepção' },
+                { setorId: 'diaconia_templo', funcao: 'Apoio Interno' }
             ];
         }
 
@@ -7280,8 +7309,8 @@ const App = {
                 return fPrincipal.includes(fSlot) || fSecundaria.includes(fSlot);
             });
 
-            // Regras de Gênero
-            const needsGenderCheck = ['acolhimento', 'recepção', 'entrada', 'apoio interno', 'cuidados internos'].some(x => slot.funcao.toLowerCase().includes(x));
+            // Regras de Gênero (Aplicar apenas em Entrada, Recepção, Apoio Interno)
+            const needsGenderCheck = ['entrada', 'recep', 'apoio'].some(x => slot.funcao.toLowerCase().includes(x));
             if (needsGenderCheck) {
                 const sameFunctionDraft = this.draftScaleAssignments.filter(a => a.funcao === slot.funcao);
                 if (sameFunctionDraft.length > 0) {
@@ -7538,6 +7567,28 @@ const App = {
                 const fSlot = escalaRefused.funcao.toLowerCase().trim();
                 return fPrincipal.includes(fSlot) || fSecundaria.includes(fSlot);
             });
+
+            // Aplica regra de gênero na substituição se necessário (apenas em Entrada, Recepção, Apoio Interno)
+            const needsGenderCheck = ['entrada', 'recep', 'apoio'].some(x => escalaRefused.funcao.toLowerCase().includes(x));
+            if (needsGenderCheck) {
+                // Encontrar todas as OUTRAS escalas para esta função no mesmo culto
+                const sameCultoScales = escalas.filter(e => e.cultoId === escalaRefused.cultoId && e.id !== escalaId && e.funcao.toLowerCase().trim() === escalaRefused.funcao.toLowerCase().trim() && e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada');
+                if (sameCultoScales.length > 0) {
+                    // Verificar o sexo de quem já está escalado
+                    const assignedSexes = sameCultoScales.map(s => {
+                        const mInfo = membros.find(m => m.id === s.membroId);
+                        return mInfo ? (mInfo.sexo || 'Masculino') : 'Masculino';
+                    });
+                    
+                    if (assignedSexes.includes('Masculino') && !assignedSexes.includes('Feminino')) {
+                        const femEligible = eligible.filter(m => m.sexo === 'Feminino');
+                        if (femEligible.length > 0) eligible = femEligible;
+                    } else if (assignedSexes.includes('Feminino') && !assignedSexes.includes('Masculino')) {
+                        const mascEligible = eligible.filter(m => m.sexo === 'Masculino');
+                        if (mascEligible.length > 0) eligible = mascEligible;
+                    }
+                }
+            }
 
             // 2. Calcular scores e ordenar
             const lastScaledMap = {};
