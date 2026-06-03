@@ -858,6 +858,9 @@
                                 <button class="btn-primary" id="btn-report-engagement" onclick="App.switchReportSubTab('engagement')" style="width: auto; height: 38px; padding: 0 16px; font-size: 0.85rem; background: var(--teal-primary);">
                                     <i class="fa-solid fa-chart-line"></i> Engajamento
                                 </button>
+                                <button class="btn-secondary" id="btn-report-rotation" onclick="App.switchReportSubTab('rotation')" style="width: auto; height: 38px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-color); color: var(--navy-dark); background: transparent;">
+                                    <i class="fa-solid fa-arrows-spin"></i> Rodízio por Setor
+                                </button>
                                 <button class="btn-secondary" id="btn-report-health" onclick="App.switchReportSubTab('health')" style="width: auto; height: 38px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-color); color: var(--navy-dark); background: transparent;">
                                     <i class="fa-solid fa-heart-pulse"></i> Saúde do Sistema
                                 </button>
@@ -910,6 +913,26 @@
                                                 </tbody>
                                             </table>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Seção de Rodízio por Setor -->
+                            <div id="reports-rotation-section" style="display: none;">
+                                <div class="panel-card">
+                                    <div class="panel-header">
+                                        <div class="panel-title">
+                                            <i class="fa-solid fa-arrows-spin" style="margin-right: 5px; color: var(--teal-primary);"></i> 
+                                            Fila de Rodízio de Obreiros por Setor
+                                        </div>
+                                    </div>
+                                    <p style="font-size: 0.83rem; color: var(--slate-gray); margin-bottom: 20px; line-height: 1.5; background: rgba(18, 115, 105, 0.05); padding: 12px; border-radius: 8px;">
+                                        <i class="fa-solid fa-circle-info" style="color: var(--teal-primary); margin-right: 4px;"></i>
+                                        A fila é ordenada pela data do último serviço executado (do mais antigo para o mais recente). Obreiros que nunca serviram têm prioridade máxima. Se houver recusa em uma escala automática, o sistema aciona de forma preditiva o próximo voluntário disponível na fila para o setor e função correspondente. Se não houver substituto disponível, a vaga fica em aberto sob a responsabilidade do supervisor geral.
+                                    </p>
+                                    
+                                    <div id="rotation-sectors-container" style="display: flex; flex-direction: column; gap: 25px;">
+                                        <!-- Dynamic sector lists will be rendered here -->
                                     </div>
                                 </div>
                             </div>

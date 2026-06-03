@@ -2875,67 +2875,7 @@ const App = {
         }
     },
 
-    /**
-     * Tenta substituição automática ao recusar escala.
-     * 1. Busca standbys do mesmo culto e setor.
-     * 2. Se houver fila: notifica o próximo e remove da fila.
-     * 3. Se a fila estiver vazia: notifica o supervisor.
-     */
-    async tentarSubstituicaoAutomatica(escalaId) {
-        try {
-            // Buscar a escala recusada diretamente no Firestore
-            const escalaDoc = await db.collection('escalas').doc(escalaId).get();
-            if (!escalaDoc.exists) return;
-            const escala = { id: escalaDoc.id, ...escalaDoc.data() };
 
-            const cultoId = escala.cultoId;
-            const setorId = escala.setorId;
-            const cultoNome = escala.cultoNome || 'o culto';
-            const dataCulto = escala.data || '';
-            const funcao = escala.funcao || '';
-            const membroRecusouNome = escala.membroNome || 'Membro';
-
-            // Buscar standbys para o mesmo culto (filtrar por setor se disponível)
-            const todosStandbys = await DbService.getStandbys();
-            const candidatos = todosStandbys.filter(s =>
-                s.cultoId === cultoId &&
-                (s.setorId === setorId || !s.setorId)
-            );
-
-            if (candidatos.length > 0) {
-                // Pega o primeiro da fila (ordem de cadastro)
-                const proximo = candidatos[0];
-
-                // Notifica o candidato
-                await DbService.addNotificacao({
-                    paraUsuarioId: proximo.membroId,
-                    paraUsuarioNome: proximo.membroNome,
-                    titulo: '⚠️ Convite de Substituição',
-                    mensagem: `${membroRecusouNome} recusou a escala para ${cultoNome}${dataCulto ? ' (' + dataCulto.split('-').reverse().join('/') + ')' : ''}. Você está próximo(a) na fila de voluntários${funcao ? ' para a função: ' + funcao : ''}. Confirme sua disponibilidade.`,
-                    tipo: 'substituicao'
-                });
-
-                // Remove o candidato da fila de standby
-                await DbService.deleteStandby(proximo.id);
-
-                this.showToast(`${proximo.membroNome} foi alertado(a) como próximo(a) na fila de substituição.`, 'info');
-            } else {
-                // Sem candidatos — notifica o supervisor
-                await DbService.addNotificacao({
-                    paraUsuarioId: 'admin_default',
-                    paraUsuarioNome: 'Supervisor Geral',
-                    titulo: '🚨 Sem Substituto Disponível',
-                    mensagem: `${membroRecusouNome} recusou a escala para ${cultoNome}${dataCulto ? ' (' + dataCulto.split('-').reverse().join('/') + ')' : ''}${funcao ? ' — Função: ' + funcao : ''}. Não há voluntários na fila de espera. Ação manual necessária.`,
-                    tipo: 'sem_substituto'
-                });
-
-                // Marca a escala para aparecer no painel do supervisor
-                await DbService.saveEscala(escalaId, { rejeicaoResolvida: false });
-            }
-        } catch (err) {
-            console.error('Erro na substituição automática:', err);
-        }
-    },
 
     showAreaInstructions(nodeId) {
         const staticData = this.areaStaticData[nodeId];
@@ -7658,6 +7598,7 @@ const App = {
                 escalaRefused.membroNome = 'Vaga Pendente';
                 escalaRefused.statusPresenca = 'Pendente';
                 escalaRefused.statusServico = 'Planejado';
+                escalaRefused.observacoes = "🚨 Sem substituto disponível na fila de rodízio. Sob responsabilidade da Supervisão.";
                 
                 await DbService.saveEscala(escalaId, escalaRefused);
 
@@ -7696,23 +7637,38 @@ const App = {
     // --- HEALTH PANEL & SYSTEM GOVERNANCE ---
     switchReportSubTab(tab) {
         const btnEngagement = document.getElementById('btn-report-engagement');
+        const btnRotation = document.getElementById('btn-report-rotation');
         const btnHealth = document.getElementById('btn-report-health');
+        
         const secEngagement = document.getElementById('reports-engagement-section');
+        const secRotation = document.getElementById('reports-rotation-section');
         const secHealth = document.getElementById('reports-health-section');
 
-        if (!btnEngagement || !btnHealth || !secEngagement || !secHealth) return;
+        if (!btnEngagement || !btnRotation || !btnHealth || !secEngagement || !secRotation || !secHealth) return;
+
+        // Reset all buttons style
+        [btnEngagement, btnRotation, btnHealth].forEach(btn => {
+            btn.className = 'btn-secondary';
+            btn.style.background = 'transparent';
+            btn.style.color = 'var(--navy-dark)';
+        });
+
+        // Hide all sections
+        secEngagement.style.display = 'none';
+        secRotation.style.display = 'none';
+        secHealth.style.display = 'none';
 
         if (tab === 'engagement') {
             btnEngagement.className = 'btn-primary';
             btnEngagement.style.background = 'var(--teal-primary)';
             btnEngagement.style.color = '#fff';
-            
-            btnHealth.className = 'btn-secondary';
-            btnHealth.style.background = 'transparent';
-            btnHealth.style.color = 'var(--navy-dark)';
-            
             secEngagement.style.display = 'block';
-            secHealth.style.display = 'none';
+        } else if (tab === 'rotation') {
+            btnRotation.className = 'btn-primary';
+            btnRotation.style.background = 'var(--teal-primary)';
+            btnRotation.style.color = '#fff';
+            secRotation.style.display = 'block';
+            this.loadAndRenderRotationMetrics();
         } else if (tab === 'health') {
             btnHealth.className = 'btn-primary';
             btnHealth.style.background = 'var(--teal-primary)';
@@ -7726,6 +7682,125 @@ const App = {
             secHealth.style.display = 'block';
 
             this.loadAndRenderHealthMetrics();
+        }
+    },
+
+    async loadAndRenderRotationMetrics() {
+        const container = document.getElementById('rotation-sectors-container');
+        if (!container) return;
+        
+        container.innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--teal-primary);"></i><p style="margin-top:10px; font-size:0.9rem;">Calculando filas de rodízio por setor...</p></div>';
+        
+        try {
+            const membros = await DbService.getMembros();
+            const escalas = await DbService.getEscalas();
+            
+            // Map members to their last scaled date
+            const lastScaledMap = {};
+            escalas.forEach(e => {
+                if (e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                    if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
+                        lastScaledMap[e.membroId] = e.data;
+                    }
+                }
+            });
+            
+            let html = '';
+            
+            for (const sectorId in this.sectorsData) {
+                const sector = this.sectorsData[sectorId];
+                
+                // Get all active members belonging to this sector
+                let sectorMembers = membros.filter(m => {
+                    if (m.perfil === 'admin') return false;
+                    if (m.status !== 'ativo') return false;
+                    
+                    const mSectors = m.setores || (m.setor ? [m.setor] : []);
+                    return mSectors.includes(sectorId);
+                });
+                
+                // Sort by last scaled date: oldest or never scaled first
+                sectorMembers.sort((a, b) => {
+                    const dateA = lastScaledMap[a.id] || '';
+                    const dateB = lastScaledMap[b.id] || '';
+                    
+                    if (dateA === '' && dateB !== '') return -1;
+                    if (dateA !== '' && dateB === '') return 1;
+                    if (dateA === '' && dateB === '') return a.nome.localeCompare(b.nome);
+                    
+                    return dateA.localeCompare(dateB);
+                });
+                
+                let tbodyHtml = '';
+                if (sectorMembers.length === 0) {
+                    tbodyHtml = '<tr><td colspan="6" style="text-align:center; color: var(--slate-gray); padding: 20px;">Nenhum voluntário cadastrado neste setor.</td></tr>';
+                } else {
+                    sectorMembers.forEach((m, idx) => {
+                        const lastServed = lastScaledMap[m.id] ? lastScaledMap[m.id].split('-').reverse().join('/') : 'Nunca serviu';
+                        const lastServedBadge = lastScaledMap[m.id] 
+                            ? `<span class="badge" style="background: rgba(30, 41, 59, 0.1); color: var(--navy-dark); font-weight:500;">${lastServed}</span>` 
+                            : `<span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10B981; font-weight:700;">Nunca serviu (Prioridade)</span>`;
+                            
+                        const functions = [m.funcaoPrincipal, m.funcaoSecundaria].filter(x => !!x).join(', ') || m.funcao || 'Voluntário';
+                        
+                        const mEscalas = escalas.filter(e => e.membroId === m.id);
+                        const reliability = DbService.calcularScoreConfiabilidade(mEscalas);
+                        const reliabilityStr = reliability.emAvaliacao ? 'Em avaliação' : `${reliability.score}%`;
+                        
+                        let queueBadge = `<span style="font-weight:700; color: var(--navy-dark);">${idx + 1}º</span>`;
+                        if (idx === 0) {
+                            queueBadge = `<span class="badge" style="background: #10B981; color: white; padding: 4px 8px; font-weight:800;">1º (Próximo)</span>`;
+                        } else if (idx === 1) {
+                            queueBadge = `<span class="badge" style="background: #3B82F6; color: white; padding: 4px 8px; font-weight:700;">2º</span>`;
+                        }
+                        
+                        tbodyHtml += `
+                            <tr>
+                                <td style="text-align: center; vertical-align: middle;">${queueBadge}</td>
+                                <td style="vertical-align: middle;"><b>${m.nome}</b></td>
+                                <td style="vertical-align: middle;">${lastServedBadge}</td>
+                                <td style="vertical-align: middle;">${functions}</td>
+                                <td style="vertical-align: middle; font-size: 0.8rem; color: var(--slate-gray);">${m.disponibilidade || 'Todos'}</td>
+                                <td style="vertical-align: middle; font-weight: 600; color: ${reliability.emAvaliacao ? 'var(--slate-gray)' : '#10B981'};">${reliabilityStr}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                html += `
+                    <div class="panel-card" style="border: 1px solid var(--border-color); box-shadow: none; margin-bottom: 20px;">
+                        <div class="panel-title" style="display:flex; align-items:center; gap:10px; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:10px; color:${sector.cor};">
+                            <i class="${this.getSectorIcon(sectorId)}"></i> 
+                            ${sector.nome} 
+                            <span style="font-size:0.8rem; font-weight:normal; color:var(--slate-gray); margin-left:auto;">
+                                ${sectorMembers.length} obreiros ativos
+                            </span>
+                        </div>
+                        <div class="table-container" style="box-shadow:none; padding:0;">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 12%; text-align: center;">Posição na Fila</th>
+                                        <th style="width: 25%;">Voluntário</th>
+                                        <th style="width: 20%;">Último Serviço</th>
+                                        <th style="width: 20%;">Função / Capacidade</th>
+                                        <th style="width: 13%;">Disponibilidade</th>
+                                        <th style="width: 10%;">Confiabilidade</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tbodyHtml}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = '<div style="color:red; text-align:center; padding:20px;">Erro ao gerar filas de rodízio.</div>';
         }
     },
 
