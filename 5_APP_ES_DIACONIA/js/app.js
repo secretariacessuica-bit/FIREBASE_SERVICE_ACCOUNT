@@ -2843,16 +2843,9 @@ const App = {
             if (status === 'Confirmada') {
                 this.showToast(`Presença confirmada com sucesso!`, 'success');
             } else if (status === 'Recusada') {
-                this.showToast(`Escala recusada. O supervisor foi notificado.`, 'info');
-                try {
-                    await DbService.addNotificacao({
-                        paraUsuarioId: 'admin_default',
-                        paraUsuarioNome: 'Supervisor Geral',
-                        titulo: 'Presença Recusada',
-                        mensagem: `${this.currentUser.nome} recusou a escala no detalhe do organograma.`,
-                        tipo: 'rejeicao'
-                    });
-                } catch (err) {}
+                this.showToast(`Escala recusada. O sistema tentará substituição automática.`, 'info');
+                // Trigger auto-substitution
+                await this.tentarSubstituicaoAutomatica(escalaId);
             } else {
                 this.showToast(`Presença atualizada com sucesso!`, 'success');
             }
@@ -2860,6 +2853,68 @@ const App = {
             this.closeAreaDetail();
         } catch (e) {
             this.showAlert('Erro ao atualizar presença no servidor.', 'Erro');
+        }
+    },
+
+    /**
+     * Tenta substituição automática ao recusar escala.
+     * 1. Busca standbys do mesmo culto e setor.
+     * 2. Se houver fila: notifica o próximo e remove da fila.
+     * 3. Se a fila estiver vazia: notifica o supervisor.
+     */
+    async tentarSubstituicaoAutomatica(escalaId) {
+        try {
+            // Buscar a escala recusada diretamente no Firestore
+            const escalaDoc = await db.collection('escalas').doc(escalaId).get();
+            if (!escalaDoc.exists) return;
+            const escala = { id: escalaDoc.id, ...escalaDoc.data() };
+
+            const cultoId = escala.cultoId;
+            const setorId = escala.setorId;
+            const cultoNome = escala.cultoNome || 'o culto';
+            const dataCulto = escala.data || '';
+            const funcao = escala.funcao || '';
+            const membroRecusouNome = escala.membroNome || 'Membro';
+
+            // Buscar standbys para o mesmo culto (filtrar por setor se disponível)
+            const todosStandbys = await DbService.getStandbys();
+            const candidatos = todosStandbys.filter(s =>
+                s.cultoId === cultoId &&
+                (s.setorId === setorId || !s.setorId)
+            );
+
+            if (candidatos.length > 0) {
+                // Pega o primeiro da fila (ordem de cadastro)
+                const proximo = candidatos[0];
+
+                // Notifica o candidato
+                await DbService.addNotificacao({
+                    paraUsuarioId: proximo.membroId,
+                    paraUsuarioNome: proximo.membroNome,
+                    titulo: '⚠️ Convite de Substituição',
+                    mensagem: `${membroRecusouNome} recusou a escala para ${cultoNome}${dataCulto ? ' (' + dataCulto.split('-').reverse().join('/') + ')' : ''}. Você está próximo(a) na fila de voluntários${funcao ? ' para a função: ' + funcao : ''}. Confirme sua disponibilidade.`,
+                    tipo: 'substituicao'
+                });
+
+                // Remove o candidato da fila de standby
+                await DbService.deleteStandby(proximo.id);
+
+                this.showToast(`${proximo.membroNome} foi alertado(a) como próximo(a) na fila de substituição.`, 'info');
+            } else {
+                // Sem candidatos — notifica o supervisor
+                await DbService.addNotificacao({
+                    paraUsuarioId: 'admin_default',
+                    paraUsuarioNome: 'Supervisor Geral',
+                    titulo: '🚨 Sem Substituto Disponível',
+                    mensagem: `${membroRecusouNome} recusou a escala para ${cultoNome}${dataCulto ? ' (' + dataCulto.split('-').reverse().join('/') + ')' : ''}${funcao ? ' — Função: ' + funcao : ''}. Não há voluntários na fila de espera. Ação manual necessária.`,
+                    tipo: 'sem_substituto'
+                });
+
+                // Marca a escala para aparecer no painel do supervisor
+                await DbService.saveEscala(escalaId, { rejeicaoResolvida: false });
+            }
+        } catch (err) {
+            console.error('Erro na substituição automática:', err);
         }
     },
 
@@ -3105,11 +3160,11 @@ const App = {
         const monthLabel = baseDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         
         // Fetch all cultos for the calendar month (expanding range to avoid time zone cutting)
-        const firstDayOfMonth = new Date(year, month - 1, 1);
-        const lastDayOfMonth = new Date(year, month + 2, 0);
+        const fetchStart = new Date(year, month - 1, 1);
+        const fetchEnd = new Date(year, month + 2, 0);
         
-        const startStr = this.formatLocalISOString(firstDayOfMonth).split('T')[0];
-        const endStr = this.formatLocalISOString(lastDayOfMonth).split('T')[0];
+        const startStr = this.formatLocalISOString(fetchStart).split('T')[0];
+        const endStr = this.formatLocalISOString(fetchEnd).split('T')[0];
         
         let cultos = [];
         try {
@@ -3134,8 +3189,12 @@ const App = {
             }
         });
         
-        const firstDayIndex = firstDayOfMonth.getDay();
-        const totalDays = lastDayOfMonth.getDate();
+        // Calcule o primeiro dia e a quantidade de dias correta do mês visualizado
+        const firstDayOfCurrentMonth = new Date(year, month, 1);
+        const lastDayOfCurrentMonth = new Date(year, month + 1, 0);
+        
+        const firstDayIndex = firstDayOfCurrentMonth.getDay();
+        const totalDays = lastDayOfCurrentMonth.getDate();
         
         let gridHtml = '';
         
@@ -3287,16 +3346,9 @@ const App = {
             if (status === 'Confirmada') {
                 this.showToast(`Presença confirmada com sucesso!`, 'success');
             } else if (status === 'Recusada') {
-                this.showToast(`Escala recusada. O supervisor foi notificado.`, 'info');
-                try {
-                    await DbService.addNotificacao({
-                        paraUsuarioId: 'admin_default',
-                        paraUsuarioNome: 'Supervisor Geral',
-                        titulo: 'Presença Recusada',
-                        mensagem: `${this.currentUser.nome} recusou a escala.`,
-                        tipo: 'rejeicao'
-                    });
-                } catch (err) {}
+                this.showToast(`Escala recusada. O sistema tentará substituição automática.`, 'info');
+                // Trigger auto-substitution
+                await this.tentarSubstituicaoAutomatica(escalaId);
             } else {
                 this.showToast(`Presença atualizada com sucesso!`, 'success');
             }
@@ -6315,7 +6367,31 @@ const App = {
         try {
             const standbys = await DbService.getStandbys();
             const allEscalas = await DbService.getEscalas();
-            const rejections = allEscalas.filter(e => e.statusPresenca === 'Recusada' && e.rejeicaoResolvida !== true);
+            const hojeStr = new Date().toISOString().split('T')[0];
+            const limiteData = new Date();
+            limiteData.setDate(limiteData.getDate() - 60);
+            const limiteDateStr = limiteData.toISOString().split('T')[0];
+
+            // Separa: rejeições de cultos passados (auto-dispensar) vs. futuras (exibir)
+            const rejectionsAll = allEscalas.filter(e => {
+                if (e.statusPresenca !== 'Recusada') return false;
+                if (e.rejeicaoResolvida === true) return false;
+                if (e.rejeicaoResolvida === undefined || e.rejeicaoResolvida === null) {
+                    return e.data && e.data >= limiteDateStr;
+                }
+                return true;
+            });
+
+            // Auto-dispensa silenciosa de cultos já realizados (data < hoje)
+            const pastRejections = rejectionsAll.filter(e => e.data < hojeStr);
+            if (pastRejections.length > 0) {
+                pastRejections.forEach(e => {
+                    DbService.saveEscala(e.id, { rejeicaoResolvida: true }).catch(() => {});
+                });
+            }
+
+            // Apenas cultos futuros ou do dia de hoje ficam no painel
+            const rejections = rejectionsAll.filter(e => e.data >= hojeStr);
             const messages = await DbService.getSupervisionMessages();
             
             const totalAlerts = standbys.length + rejections.length + messages.length;
@@ -6340,16 +6416,22 @@ const App = {
                 
                 const dateParts = escala.data.split('-');
                 const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                const isFutureCulto = escala.data >= hojeStr;
                 
+                // Botão "Escalar Substitutos" só disponível para cultos ainda não realizados
+                const escalarBtn = isFutureCulto
+                    ? `<button class="btn-primary" style="padding: 6px 12px; font-size: 0.78rem; width: auto; background: var(--teal-primary);" onclick="App.handleReplaceRejection('${escala.cultoId}', '${escala.id}')">
+                            <i class="fa-solid fa-user-pen"></i> Escalar Substituto
+                       </button>`
+                    : `<span style="font-size: 0.75rem; color: #6b7280; font-style: italic; padding: 4px 8px; background: #f3f4f6; border-radius: 6px;"><i class="fa-solid fa-clock-rotate-left" style="margin-right:4px;"></i>Culto realizado — substituição automática já foi processada</span>`;
+
                 item.innerHTML = `
                     <div style="flex: 1; text-align: left;">
                         <span style="font-weight: 700; color: #dc2626; font-size: 0.8rem; text-transform: uppercase; display: block; margin-bottom: 2px;"><i class="fa-solid fa-triangle-exclamation"></i> Presença Recusada</span>
                         <span style="font-size: 0.88rem; color: var(--navy-dark); font-weight: 600;">${escala.membroNome}</span> recusou a escala para <span style="font-weight: 600;">${escala.cultoNome}</span> (${formattedDate} das ${escala.horarioInicio} às ${escala.horarioFim}) no setor <span style="font-weight: 600;">${App.getSectorFriendlyName(escala.setorId)}</span> (Função: ${escala.funcao}).
                     </div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn-primary" style="padding: 6px 12px; font-size: 0.78rem; width: auto; background: var(--teal-primary);" onclick="App.handleReplaceRejection('${escala.cultoId}', '${escala.id}')">
-                            <i class="fa-solid fa-user-pen"></i> Escalar Substitutos
-                        </button>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                        ${escalarBtn}
                         <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.78rem; width: auto;" onclick="App.handleDismissRejection('${escala.id}')">
                             <i class="fa-solid fa-check"></i> Dispensar Alerta
                         </button>

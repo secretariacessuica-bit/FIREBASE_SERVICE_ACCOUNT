@@ -7058,4 +7058,299 @@ body.area-detail-active .side-nav-zone {
     color: #ffffff !important;
 }
 
+/* ==========================================================================
+   NOSSOS ESTILOS PARA RELATÓRIOS, CONTROLES DE AFASTAMENTO E RASCUNHO
+   ========================================================================== */
+
+.reports-subtabs-nav .btn-secondary {
+    border: 1px solid #E2E8F0;
+    color: var(--slate-gray);
+    background: #F8FAFC;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.reports-subtabs-nav .btn-secondary.active {
+    background: var(--navy-primary) !important;
+    color: var(--white) !important;
+    border-color: var(--navy-primary) !important;
+    font-weight: 700;
+}
+
+.btn-table-action.pause:hover {
+    background: rgba(245, 158, 11, 0.1) !important;
+    color: #F59E0B !important;
+}
+
+/* Progress and Balance widgets */
+.bar-chart-container {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bar-chart-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bar-chart-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.bar-chart-progress {
+    height: 8px;
+    background: #E2E8F0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.bar-chart-fill {
+    height: 100%;
+    background: var(--teal-primary);
+    border-radius: 4px;
+}
+
+.absence-card {
+    background: #FFFBEB;
+    border: 1px solid #FCD34D;
+    border-radius: 12px;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.absence-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.absence-card-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #92400E;
+}
+
+.absence-card-meta {
+    font-size: 0.75rem;
+    color: #B45309;
+}
+
+.absence-card-badge {
+    background: #F59E0B;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+}
+
+/* --- FASE 2 STYLES --- */
+
+/* Badge do Score de Confiabilidade */
+.score-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    gap: 4px;
+}
+.score-excellent {
+    background-color: #DEF7EC;
+    color: #03543F;
+}
+.score-good {
+    background-color: #E1EFFE;
+    color: #1E429F;
+}
+.score-regular {
+    background-color: #FEF3C7;
+    color: #92400E;
+}
+.score-critical {
+    background-color: #FDE8E8;
+    color: #9B1C1C;
+}
+.score-evaluating {
+    background-color: #F3F4F6;
+    color: #374151;
+}
+
+/* Painel de Disponibilidade Obreiro */
+.availability-panel {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 24px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-md);
+}
+.availability-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.availability-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--navy-dark);
+}
+.availability-subtitle {
+    font-size: 0.8rem;
+    color: var(--slate-gray);
+}
+.avail-legend {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    background: #F8FAFC;
+    padding: 10px 15px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.avail-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--slate-gray);
+}
+.avail-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.avail-ok { background-color: #10B981; }
+.avail-maybe { background-color: #F59E0B; }
+.avail-no { background-color: #EF4444; }
+
+.avail-info-note {
+    font-size: 0.75rem;
+    color: var(--slate-gray);
+    margin-bottom: 20px;
+    line-height: 1.4;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+}
+.avail-info-note i {
+    color: var(--theme-color);
+    margin-top: 2px;
+}
+
+/* Calendário interativo de Disponibilidade */
+.avail-month-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--navy-dark);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.avail-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    background: #FFFFFF;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid #E2E8F0;
+}
+.avail-day-name {
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--slate-gray);
+    padding-bottom: 6px;
+}
+.avail-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    user-select: none;
+    border: 1px solid transparent;
+}
+.avail-day.empty {
+    cursor: default;
+    background: transparent;
+    border: none;
+}
+.avail-day:not(.empty):hover {
+    transform: scale(1.05);
+}
+.avail-day.state-posso {
+    background-color: #ECFDF5;
+    color: #065F46;
+    border-color: #A7F3D0;
+}
+.avail-day.state-prefiro_nao {
+    background-color: #FEF3C7;
+    color: #92400E;
+    border-color: #FDE68A;
+}
+.avail-day.state-nao_posso {
+    background-color: #FEE2E2;
+    color: #9B1C1C;
+    border-color: #FCA5A5;
+}
+.avail-day-num {
+    font-size: 0.85rem;
+}
+.avail-day-label {
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-top: 1px;
+    opacity: 0.8;
+}
+
+/* AI Explanation tooltip/tag */
+.ai-reasoning-tag {
+    font-size: 0.7rem;
+    background: rgba(124, 58, 237, 0.08);
+    color: #7C3AED;
+    border: 1px solid rgba(124, 58, 237, 0.15);
+    padding: 2px 6px;
+    border-radius: 6px;
+    margin-top: 4px;
+    display: inline-block;
+    font-weight: 600;
+}
+.ai-reasoning-text {
+    font-size: 0.75rem;
+    color: var(--slate-gray);
+    line-height: 1.4;
+    background: #F8FAFC;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border-left: 3px solid #7C3AED;
+    margin-top: 6px;
+}
+
+
+
 
