@@ -934,8 +934,8 @@ const App = {
 
 
             // Render Premium Next Service Card
-            const nextHighlightEl = document.getElementById('selector-next-service-highlight');
-            if (nextHighlightEl) {
+            const premiumNextContainer = document.getElementById('premium-next-scale-container');
+            if (premiumNextContainer) {
                 if (futureScales.length > 0) {
                     const next = futureScales[0];
                     const parts = next.data.split('-');
@@ -944,67 +944,92 @@ const App = {
                     const dNum = parseInt(parts[2], 10);
                     const dateObj = new Date(y, mIdx, dNum);
                     const monthAbbrev = dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+                    const dayNames = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+                    const weekday = dayNames[dateObj.getDay()];
 
                     const sectorName = this.sectorsData[next.setorId] ? this.sectorsData[next.setorId].nome : next.setorId;
                     const status = next.statusPresenca || "Pendente";
                     
-                    let badgeClass = "pendente";
-                    let badgeIcon = "fa-solid fa-triangle-exclamation";
-                    let statusDesc = "Aguardando confirmação de escala";
-
+                    let badgeClass = "pending";
+                    let statusText = "Pendente";
+                    
                     if (status === "Confirmada") {
-                        badgeClass = "confirmada";
-                        badgeIcon = "fa-solid fa-circle-check";
-                        statusDesc = "Sua presença está confirmada!";
+                        badgeClass = "confirmed";
+                        statusText = "Confirmada";
                     } else if (status === "Recusada") {
-                        badgeClass = "recusada";
-                        badgeIcon = "fa-solid fa-circle-xmark";
-                        statusDesc = "Você marcou que não comparecerá";
+                        badgeClass = "pending";
+                        statusText = "Recusada";
                     }
 
-                    nextHighlightEl.innerHTML = `
-                        <div class="next-service-premium-card" style="cursor: pointer;" onclick="App.navigateToNextService('${next.id}', '${next.data}', '${next.cultoId || 'sem-culto'}', '${next.horarioInicio || '00:00'}', '${next.setorId}', '${(next.funcao || '').replace(/'/g, '\\\'')}');">
-                            <div class="next-service-calendar-badge">
-                                <i class="fa-regular fa-calendar"></i>
-                                <span class="next-service-calendar-day">${String(dNum).padStart(2, '0')}</span>
-                                <span class="next-service-calendar-month">${monthAbbrev}</span>
-                            </div>
-                            <div class="next-service-details">
-                                <h4 class="next-service-title-time">${next.cultoNome || 'Culto'} - ${next.horarioInicio}</h4>
-                                <p class="next-service-location">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                    <span>Templo Central • ${next.funcao} (${sectorName})</span>
-                                </p>
-                                <div class="next-service-status-row">
-                                    <span class="next-service-badge-status ${badgeClass}">
-                                        <i class="${badgeIcon}"></i> ${status.toUpperCase()}
-                                    </span>
-                                    <span class="next-service-status-desc">${statusDesc}</span>
+                    let btnConfirmHtml = '';
+                    if (status !== 'Confirmada') {
+                        btnConfirmHtml = `
+                            <button class="btn-confirm-huge" onclick="event.stopPropagation(); App.confirmarPresencaDireto('${next.id}', '${next.data}')">
+                                <i class="fa-solid fa-circle-check"></i> CONFIRMAR PRESENÇA
+                            </button>
+                        `;
+                    }
+
+                    premiumNextContainer.innerHTML = `
+                        <div class="premium-next-scale-card" onclick="App.navigateToNextService('${next.id}', '${next.data}', '${next.cultoId || 'sem-culto'}', '${next.horarioInicio || '00:00'}', '${next.setorId}', '${(next.funcao || '').replace(/'/g, '\\\'')}');">
+                            <span class="scale-status-badge ${badgeClass}">${statusText}</span>
+                            
+                            <div class="scale-info-row">
+                                <div class="scale-date-badge">
+                                    <div class="month">${monthAbbrev}</div>
+                                    <div class="day">${String(dNum).padStart(2, '0')}</div>
+                                    <div class="weekday">${weekday.substring(0,3).toUpperCase()}</div>
+                                </div>
+                                <div class="scale-details">
+                                    <h4>${next.cultoNome || 'Culto'}</h4>
+                                    <p><i class="fa-solid fa-clock"></i> ${next.horarioInicio || '00:00'}</p>
+                                    <p><i class="fa-solid fa-location-dot"></i> Templo Central</p>
+                                    <p><i class="fa-solid fa-user-tag"></i> ${next.funcao} (${sectorName})</p>
                                 </div>
                             </div>
+                            
+                            ${btnConfirmHtml}
                         </div>
                     `;
                 } else {
-                    nextHighlightEl.innerHTML = `
-                        <div class="next-service-premium-card" style="justify-content: center; align-items: center; padding: 20px; cursor: pointer;" onclick="App.activeSectorId = 'entrada'; App.navigateTo('view-member');">
-                            <div style="text-align: center; color: #64748b; width: 100%;">
-                                <i class="fa-regular fa-calendar-times" style="font-size: 1.8rem; margin-bottom: 8px; display: block; color: #8AA6A3;"></i>
-                                <h4 style="color: #ffffff; margin-bottom: 4px; font-size: 0.95rem;">Nenhuma Escala Agendada</h4>
-                                <p style="font-size: 0.78rem; margin: 0 0 12px 0; color: #8AA6A3;">Você não possui serviços pendentes ou confirmados.</p>
-                                <button class="btn-primary" style="margin: 0 auto; padding: 8px 20px; font-size: 0.78rem; width: auto; height: auto; background: var(--teal-primary); border-color: var(--teal-primary); border-radius: 50px; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fa-solid fa-hand-holding-hand"></i> Ver Minha Escala
-                                </button>
-                            </div>
+                    premiumNextContainer.innerHTML = `
+                        <div class="premium-next-scale-card" style="align-items: center; text-align: center; justify-content: center; min-height: 140px;">
+                            <i class="fa-regular fa-calendar-times" style="font-size: 2rem; opacity: 0.5; margin-bottom: 5px;"></i>
+                            <h4 style="margin: 0; color: white; font-weight: 700;">Escala Livre</h4>
+                            <p style="opacity: 0.8; margin: 0; font-size: 0.85rem;">Você não possui serviços agendados.</p>
                         </div>
                     `;
                 }
             }
 
-            // Update pending scales bell badge count on Scales and Activities button
+            // Update pending scales bell badge count and Quick Stats
             let pendingCount = 0;
+            let confirmedCount = 0;
+            let eventTodayName = "Nenhum";
             if (this.currentUser) {
-                pendingCount = futureScales.filter(e => e.membroId === this.currentUser.id && e.statusPresenca === 'Pendente').length;
+                const userFuture = futureScales.filter(e => e.membroId === this.currentUser.id);
+                pendingCount = userFuture.filter(e => e.statusPresenca === 'Pendente').length;
+                confirmedCount = userFuture.filter(e => e.statusPresenca === 'Confirmada').length;
+                const todayScale = userFuture.find(e => e.data === hojeStr);
+                if (todayScale) eventTodayName = todayScale.cultoNome || "Atividade";
             }
+            
+            // Render Compact Status Bar
+            const compactStatusBar = document.getElementById('compact-status-bar');
+            if (compactStatusBar) {
+                const avisosCount = this.cachedAvisosList ? this.cachedAvisosList.length : 0;
+                const eventosCount = (eventTodayName !== "Nenhum") ? 1 : 0;
+                compactStatusBar.innerHTML = `
+                    <span class="status-item"><i class="fa-solid fa-users" style="color:#60A5FA;"></i> ${confirmedCount} Escalado${confirmedCount !== 1 ? 's' : ''}</span>
+                    <span class="status-divider">|</span>
+                    <span class="status-item"><i class="fa-solid fa-hourglass-half" style="color:#C084FC;"></i> ${pendingCount} Pendência${pendingCount !== 1 ? 's' : ''}</span>
+                    <span class="status-divider">|</span>
+                    <span class="status-item"><i class="fa-solid fa-bell" style="color:#FBBF24;"></i> ${avisosCount} Aviso${avisosCount !== 1 ? 's' : ''}</span>
+                    <span class="status-divider">|</span>
+                    <span class="status-item"><i class="fa-solid fa-calendar-day" style="color:#34D399;"></i> ${eventosCount} Evento${eventosCount !== 1 ? 's' : ''}</span>
+                `;
+            }
+
             const scalesBadge = document.getElementById('btn-scales-badge');
             if (scalesBadge) {
                 if (pendingCount > 0) {
@@ -7323,14 +7348,9 @@ const App = {
 
     // --- MURAL INFORMATIVO FUNCTIONS (v3.4.9) ---
     async loadAndRenderSectorSelectMural(escalas, avisos) {
-        const announcementDescEl = document.getElementById('mural-announcement-desc');
-        const eventsDescEl = document.getElementById('mural-events-desc');
-        const birthdaysDescEl = document.getElementById('mural-birthdays-desc');
-        const verseTextEl = document.getElementById('mural-verse-quote-text');
-        const verseRefEl = document.getElementById('mural-verse-quote-ref');
-        const reminderTextEl = document.getElementById('mural-footer-message');
+        let carouselItems = [];
 
-        // 1. Next Events (Render up to 2 future events)
+        // 1. Next Events (Future Cultos)
         const now = new Date();
         const tzOffset = now.getTimezoneOffset() * 60000;
         const hojeStr = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
@@ -7339,92 +7359,190 @@ const App = {
             const cultos = await DbService.getCultos();
             const futureCultos = cultos.filter(c => c.data >= hojeStr);
             if (futureCultos.length > 0) {
-                const topEvents = futureCultos.slice(0, 2);
-                const eventsHtml = topEvents.map(event => {
+                const topEvents = futureCultos.slice(0, 3);
+                topEvents.forEach(event => {
                     const parts = event.data.split('-');
-                    return `${parts[2]}/${parts[1]} • ${event.nome}`;
-                }).join('<br>');
-                if (eventsDescEl) eventsDescEl.innerHTML = eventsHtml;
-            } else {
-                if (eventsDescEl) eventsDescEl.innerText = 'Nenhum evento agendado';
+                    carouselItems.push({
+                        type: 'event',
+                        tag: 'Próximo Evento',
+                        title: event.nome,
+                        desc: `${parts[2]}/${parts[1]} • ${event.horarioInicio || ''}`,
+                        action: 'App.openMonthlyCalendar()'
+                    });
+                });
             }
-        } catch (e) {
-            console.error("Error loading next event for mural:", e);
-            if (eventsDescEl) eventsDescEl.innerText = 'Erro ao carregar eventos';
-        }
+        } catch (e) { console.error("Error loading next event for carousel:", e); }
 
-        // 2. Announcements list (up to 3 recent notices)
+        // 2. Announcements
         if (avisos && avisos.length > 0) {
             const topAvisos = avisos.slice(0, 3);
-            const htmlText = topAvisos.map(a => {
-                let dateStr = '';
-                if (a.criadoEm) {
-                    const d = a.criadoEm.toDate ? a.criadoEm.toDate() : new Date(a.criadoEm);
-                    dateStr = ` (${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')})`;
-                }
-                return `${a.titulo}${dateStr}`;
-            }).join('<br>');
-            if (announcementDescEl) announcementDescEl.innerHTML = htmlText;
+            topAvisos.forEach(a => {
+                carouselItems.push({
+                    type: 'warning',
+                    tag: 'Aviso Importante',
+                    title: a.titulo,
+                    desc: a.texto || 'Toque para ler mais',
+                    action: 'App.showMuralAvisosDetail()'
+                });
+            });
             this.cachedAvisosList = avisos;
         } else {
-            if (announcementDescEl) announcementDescEl.innerText = 'Sem avisos no momento';
             this.cachedAvisosList = [];
         }
 
-        // 3. Verse of the Day & Lembrete
+        // 3. Birthdays
         try {
-            const config = await DbService.getMuralConfig();
-            if (config) {
-                if (verseTextEl && config.versiculoTexto) verseTextEl.innerText = `"${config.versiculoTexto}"`;
-                if (verseRefEl && config.versiculoReferencia) verseRefEl.innerText = config.versiculoReferencia;
-                if (reminderTextEl && config.lembrete) reminderTextEl.innerText = config.lembrete;
+            const members = await DbService.getMembros();
+            const currentMonth = new Date().getMonth();
+            const birthdayMembers = members.filter(m => {
+                if (m.status !== 'ativo') return false;
+                if (!m.dataNascimento || m.dataNascimento === 'N/A') return false;
+                const parts = m.dataNascimento.split('-');
+                if (parts.length < 3) return false;
+                return (parseInt(parts[1], 10) - 1) === currentMonth;
+            });
+            birthdayMembers.sort((a, b) => this.getMemberBirthDayLocal(a) - this.getMemberBirthDayLocal(b));
+            
+            if (birthdayMembers.length > 0) {
+                const currentMonthNumStr = (currentMonth + 1).toString().padStart(2, '0');
+                birthdayMembers.slice(0, 3).forEach(m => {
+                    const day = this.getMemberBirthDayLocal(m).toString().padStart(2, '0');
+                    carouselItems.push({
+                        type: 'birthday',
+                        tag: 'Aniversariante',
+                        title: m.nome,
+                        desc: `${day}/${currentMonthNumStr} • Dê os parabéns!`,
+                        action: 'App.showMuralBirthdaysDetail()'
+                    });
+                });
+                this.cachedBirthdayMembers = birthdayMembers;
             } else {
-                if (verseTextEl) verseTextEl.innerText = `"Tudo o que fizerem, façam de todo o coração, como para o Senhor, e não para os homens."`;
-                if (verseRefEl) verseRefEl.innerText = "Colossenses 3:23";
-                if (reminderTextEl) reminderTextEl.innerText = "Sirvamos juntos com amor e dedicação!";
-            }
-        } catch (e) {
-            console.error("Error loading config for mural:", e);
-        }
-
-        // 4. Birthdays (Render text-based birthdays of the month)
-        if (birthdaysDescEl) {
-            try {
-                const members = await DbService.getMembros();
-                const currentMonth = new Date().getMonth();
-
-                const birthdayMembers = members.filter(m => {
-                    if (m.status !== 'ativo') return false;
-                    if (!m.dataNascimento || m.dataNascimento === 'N/A') return false;
-                    const parts = m.dataNascimento.split('-');
-                    if (parts.length < 3) return false;
-                    const month = parseInt(parts[1], 10) - 1;
-                    return month === currentMonth;
-                });
-
-                birthdayMembers.sort((a, b) => {
-                    return this.getMemberBirthDayLocal(a) - this.getMemberBirthDayLocal(b);
-                });
-
-                if (birthdayMembers.length > 0) {
-                    const currentMonthNumStr = (new Date().getMonth() + 1).toString().padStart(2, '0');
-                    const birthdayText = birthdayMembers.slice(0, 2).map(m => {
-                        const day = this.getMemberBirthDayLocal(m).toString().padStart(2, '0');
-                        return `${day}/${currentMonthNumStr} • ${m.nome}`;
-                    }).join('<br>');
-                    birthdaysDescEl.innerHTML = birthdayText;
-                    this.cachedBirthdayMembers = birthdayMembers;
-                } else {
-                    birthdaysDescEl.innerText = 'Nenhum aniversariante este mês';
-                    this.cachedBirthdayMembers = [];
-                }
-            } catch (e) {
-                console.error("Error loading birthday members for mural:", e);
-                birthdaysDescEl.innerText = 'Erro ao carregar aniversariantes';
                 this.cachedBirthdayMembers = [];
             }
+        } catch (e) { console.error("Error loading birthdays:", e); }
+
+        if (carouselItems.length === 0) {
+            carouselItems.push({
+                type: 'default',
+                tag: 'Mural',
+                title: 'Tudo em dia!',
+                desc: 'Nenhuma novidade no momento.',
+                action: ''
+            });
+        }
+
+        this.initPremiumCarousel(carouselItems);
+    },
+
+    // --- PREMIUM CAROUSEL LOGIC ---
+    initPremiumCarousel(items) {
+        this.carouselItems = items;
+        this.carouselIndex = 0;
+        this.renderCarousel();
+        this.startCarouselAutoPlay();
+
+        // Add touch/swipe support
+        const track = document.getElementById('mural-carousel-track');
+        if (track && !this.carouselTouchInit) {
+            this.carouselTouchInit = true;
+            let touchStartX = 0;
+            track.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+            track.addEventListener('touchend', e => {
+                let touchEndX = e.changedTouches[0].screenX;
+                if (touchStartX - touchEndX > 50) this.carouselNext(); // Swipe left
+                if (touchEndX - touchStartX > 50) this.carouselPrev(); // Swipe right
+            }, {passive: true});
         }
     },
+
+    renderCarousel() {
+        const track = document.getElementById('mural-carousel-track');
+        const dotsContainer = document.getElementById('mural-carousel-dots');
+        if (!track || !dotsContainer) return;
+
+        track.innerHTML = '';
+        dotsContainer.innerHTML = '';
+
+        this.carouselItems.forEach((item, index) => {
+            let iconStr = '📢';
+            if (item.type === 'event') iconStr = '📅';
+            if (item.type === 'birthday') iconStr = '🎉';
+            if (item.type === 'warning') iconStr = '⚠️';
+
+            let subtitle = item.desc;
+            let description = item.tag;
+            
+            if (item.type === 'warning' || item.type === 'default') {
+                subtitle = item.tag;
+                description = item.desc;
+            }
+
+            track.innerHTML += `
+                <div class="carousel-slide premium-dark-slide" onclick="App.handleCarouselInteraction(); ${item.action}">
+                    <div class="slide-content-dark">
+                        <h4 class="slide-title-dark">${iconStr} ${item.title.toUpperCase()}</h4>
+                        <span class="slide-subtitle-dark">${subtitle}</span>
+                        <p class="slide-desc-dark">${description}</p>
+                        <span class="slide-action-link">[ VER DETALHES ]</span>
+                    </div>
+                </div>
+            `;
+            
+            dotsContainer.innerHTML += `
+                <div class="carousel-dot ${index === 0 ? 'active' : ''}" onclick="event.stopPropagation(); App.carouselGoTo(${index})"></div>
+            `;
+        });
+        
+        this.updateCarouselView();
+    },
+
+    updateCarouselView() {
+        const track = document.getElementById('mural-carousel-track');
+        if (track) {
+            track.style.transform = `translateX(-${this.carouselIndex * 100}%)`;
+        }
+        
+        const dots = document.querySelectorAll('.carousel-dot');
+        dots.forEach((dot, idx) => {
+            if (idx === this.carouselIndex) dot.classList.add('active');
+            else dot.classList.remove('active');
+        });
+    },
+
+    carouselNext() {
+        this.handleCarouselInteraction();
+        if (!this.carouselItems || this.carouselItems.length === 0) return;
+        this.carouselIndex = (this.carouselIndex + 1) % this.carouselItems.length;
+        this.updateCarouselView();
+    },
+
+    carouselPrev() {
+        this.handleCarouselInteraction();
+        if (!this.carouselItems || this.carouselItems.length === 0) return;
+        this.carouselIndex = (this.carouselIndex - 1 + this.carouselItems.length) % this.carouselItems.length;
+        this.updateCarouselView();
+    },
+
+    carouselGoTo(index) {
+        this.handleCarouselInteraction();
+        this.carouselIndex = index;
+        this.updateCarouselView();
+    },
+
+    handleCarouselInteraction() {
+        // Pause and reset autoplay on interaction
+        this.startCarouselAutoPlay(15000);
+    },
+
+    startCarouselAutoPlay(delay = 8000) {
+        if (this.carouselInterval) clearInterval(this.carouselInterval);
+        this.carouselInterval = setInterval(() => {
+            if (!this.carouselItems || this.carouselItems.length <= 1) return;
+            this.carouselIndex = (this.carouselIndex + 1) % this.carouselItems.length;
+            this.updateCarouselView();
+        }, delay);
+    },
+
 
     getMemberBirthDayLocal(m) {
         if (m.dataNascimento && m.dataNascimento !== 'N/A') {
