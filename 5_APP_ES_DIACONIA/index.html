@@ -158,7 +158,7 @@
                         <i class="fa-regular fa-calendar-days"></i>
                         <span>Escalas</span>
                     </button>
-                    <button onclick="App.showAlert('Em breve nesta tela')" class="nav-action-btn" title="Meu Perfil">
+                    <button onclick="App.openMeuPerfilModal()" class="nav-action-btn" title="Meu Perfil">
                         <i class="fa-regular fa-circle-user"></i>
                         <span>Perfil</span>
                     </button>
@@ -1929,6 +1929,40 @@
             </div>
             <div class="modal-body" style="padding: 24px; overflow-y: auto; flex: 1;" id="minhas-escalas-list-container">
                 <!-- Injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         FASE 3: MODAL MEU PERFIL (Premium)
+         ========================================== -->
+    <div class="premium-modal glass-modal" id="modal-meu-perfil" style="z-index: 2500;">
+        <div class="modal-content" style="max-width: 500px; height: 90vh; display: flex; flex-direction: column; padding: 0; background: #F8FAFC; overflow: hidden; border-radius: 24px 24px 0 0; margin-top: auto;">
+            <div class="modal-header" style="padding: 20px 24px; background: white; border-bottom: 1px solid #E2E8F0; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0; font-size: 1.25rem; color: var(--navy-dark); font-weight: 800;"><i class="fa-solid fa-circle-user" style="color: var(--teal-primary); margin-right: 8px;"></i> Meu Perfil</h3>
+                <button onclick="document.getElementById('modal-meu-perfil').classList.remove('active')" style="background:none; border:none; font-size: 1.5rem; color: #94A3B8; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 24px; overflow-y: auto; flex: 1;">
+                <div id="meu-perfil-header-container" style="text-align: center; margin-bottom: 30px;">
+                    <!-- User info injected here -->
+                </div>
+                
+                <h4 style="font-size: 1rem; color: var(--navy-dark); margin-bottom: 15px; font-weight: 700;">Estatísticas Básicas</h4>
+                <div id="meu-perfil-stats-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px;">
+                    <!-- Stats injected here -->
+                </div>
+                
+                <h4 style="font-size: 1rem; color: var(--navy-dark); margin-bottom: 15px; font-weight: 700;">Contato</h4>
+                <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #E2E8F0;">
+                    <form id="meu-perfil-supervision-msg-form" onsubmit="App.handleSendMeuPerfilMessage(event)">
+                        <label for="meu-perfil-supervision-msg-text" style="color: var(--slate-gray); font-size: 0.85rem; display: block; margin-bottom: 10px; font-weight: 600;">Fale com a Supervisão</label>
+                        <div style="position: relative; margin-bottom: 15px;">
+                            <i class="fa-solid fa-comment" style="position: absolute; left: 15px; top: 15px; color: #94A3B8;"></i>
+                            <textarea id="meu-perfil-supervision-msg-text" rows="4" required placeholder="Escreva aqui sua dúvida, aviso ou mensagem de falta..." style="width: 100%; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 15px 12px 45px; font-family: inherit; font-size: 0.9rem; resize: none; background: #F8FAFC; box-sizing: border-box;"></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%; border-radius: 10px; padding: 12px; font-weight: 600;"><i class="fa-regular fa-paper-plane" style="margin-right: 8px;"></i> Enviar Mensagem</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

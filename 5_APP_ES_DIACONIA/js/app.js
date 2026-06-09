@@ -7747,6 +7747,85 @@ const App = {
         }
     },
 
+    async openMeuPerfilModal() {
+        if (!this.currentUser) return;
+        
+        const headerContainer = document.getElementById('meu-perfil-header-container');
+        const statsContainer = document.getElementById('meu-perfil-stats-container');
+        
+        if (!headerContainer || !statsContainer) return;
+        
+        const initials = this.currentUser.nome ? this.currentUser.nome.substring(0, 2).toUpperCase() : 'UI';
+        headerContainer.innerHTML = `
+            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--teal-primary), var(--navy-primary)); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; margin: 0 auto 15px auto; box-shadow: 0 8px 20px rgba(0,0,0,0.1);">
+                ${initials}
+            </div>
+            <h2 style="margin: 0 0 5px 0; color: var(--navy-dark); font-size: 1.3rem; font-weight: 800;">${this.currentUser.nome || 'Usuário'}</h2>
+            <p style="margin: 0; color: var(--slate-gray); font-size: 0.9rem; font-weight: 500;">Membro Ativo</p>
+        `;
+        
+        statsContainer.innerHTML = `
+            <div style="background: white; border-radius: 16px; padding: 15px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; align-items: center;">
+                <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.2rem; margin-bottom: 10px;"></i>
+                <span style="font-size: 0.8rem; color: var(--slate-gray);">Carregando...</span>
+            </div>
+        `;
+        
+        document.getElementById('modal-meu-perfil').classList.add('active');
+        
+        try {
+            const escalas = await DbService.getEscalasDoMembro(this.currentUser.id);
+            const stats = escalas.reduce((acc, curr) => {
+                acc.total++;
+                if (curr.status === 'confirmado') acc.confirmadas++;
+                else acc.pendentes++;
+                return acc;
+            }, { total: 0, confirmadas: 0, pendentes: 0 });
+            
+            statsContainer.innerHTML = `
+                <div style="background: white; border-radius: 16px; padding: 20px 15px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(16, 185, 129, 0.1); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 10px;">
+                        <i class="fa-solid fa-check-double"></i>
+                    </div>
+                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--navy-dark); line-height: 1;">${stats.confirmadas}</span>
+                    <span style="font-size: 0.75rem; color: var(--slate-gray); font-weight: 600; text-transform: uppercase; margin-top: 5px;">Confirmadas</span>
+                </div>
+                <div style="background: white; border-radius: 16px; padding: 20px 15px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); color: #3B82F6; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 10px;">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                    </div>
+                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--navy-dark); line-height: 1;">${stats.total}</span>
+                    <span style="font-size: 0.75rem; color: var(--slate-gray); font-weight: 600; text-transform: uppercase; margin-top: 5px;">Total</span>
+                </div>
+            `;
+            
+        } catch(e) {
+            console.error("Error loading profile stats:", e);
+        }
+    },
+
+    async handleSendMeuPerfilMessage(event) {
+        event.preventDefault();
+        const textarea = document.getElementById('meu-perfil-supervision-msg-text');
+        if (!textarea) return;
+        
+        const content = textarea.value.trim();
+        if (!content) return;
+        
+        try {
+            App.showLoading();
+            await DbService.saveSupervisionMessage(this.currentUser.id, this.currentUser.nome, content);
+            App.hideLoading();
+            App.showToast('Mensagem enviada com sucesso para a supervisão!', 'success');
+            textarea.value = '';
+            document.getElementById('modal-meu-perfil').classList.remove('active');
+        } catch (e) {
+            App.hideLoading();
+            console.error("Error sending supervision message from profile:", e);
+            App.showToast('Erro ao enviar mensagem. Tente novamente.', 'danger');
+        }
+    },
+
     openSectorSelectorModal() {
         const modal = document.getElementById('modal-sector-selector');
         if (modal) modal.style.display = 'block';
