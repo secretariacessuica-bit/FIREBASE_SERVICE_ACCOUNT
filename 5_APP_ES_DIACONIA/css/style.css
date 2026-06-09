@@ -4517,13 +4517,12 @@ table.admin-table tr:hover td {
 /* Premium Full Calendar Styling (Colors/Layout matching photos) */
 .premium-full-calendar {
     width: 100%;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: var(--white);
+    border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 16px;
     padding: 16px;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
     margin-bottom: 25px;
-    backdrop-filter: blur(10px);
 }
 .calendar-grid-full {
     display: grid;

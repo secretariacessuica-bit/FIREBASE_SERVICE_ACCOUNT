@@ -84,27 +84,29 @@ CES — Catedral da Esperança (organização-mãe)
 | **Logo** | `assets/logo.png` com moldura dourada circular |
 | **Páginas principais** | `admin.html`, `recepcao_v2.html`, `gabinete.html`, `visitante.html`, `integracao.html`, `checkin.html`, `followup.html`, `altar_final.html`, `acolhimento.html`, `connect.html`, `kids.html` |
 
-### 🧪 LAUSANNE — MÓDULO 5 — App ES Diaconia (em testes)
+### 🧪 LAUSANNE — MÓDULO 5 — App ES Diaconia (híbrido/transição)
 | Campo | Valor |
 |---|---|
 | **Pasta** | `5_APP_ES_DIACONIA/` |
-| **Status** | 🧪 **EM TESTES** — não é produção, piloto em Lausanne |
-| **Firebase Project** | `catedral-connect-267b2` (projeto DIACONIA) |
+| **Status** | 🟢 **CONCLUÍDO COM SUCESSO / HOMOLOGADO EM PRODUÇÃO** |
+| **Firebase Project** | `diaconia-a38f1` (Produção), `ces-diaconia-dev` (Dev), `catedral-connect-267b2` (Legado) |
 | **Hosting Target** | `diaconia` |
-| **Deploy** | `firebase deploy --only hosting:diaconia` |
+| **Deploy** | `firebase deploy --only hosting:diaconia --project diaconia-prod` |
 | **Páginas principais** | `index.html` |
 | **Push Notifications** | Sim — `sw-notifications.js` |
-| **Nota** | Quando aprovado, poderá ser expandido para outras filiais |
+| **Nota** | Servido de forma híbrida: hospedado no domínio legado, conectando no Firestore de Produção Novo |
 
 ---
 
-## 🔥 FIREBASE — 3 PROJETOS DISTINTOS
+## 🔥 FIREBASE — PROJETOS E AMBIENTES
 
 | Alias | Project ID | Módulos |
 |---|---|---|
 | `default` | `catedral-connect-bf717` | Módulo 1 (Site Bulle) + Módulo 2 (App Bulle) |
 | `lausanne` | `catedral-connect-6c55e` | Módulo 4 (App Lausanne Admin) |
-| `diaconia-project` | `catedral-connect-267b2` | Módulo 5 (App Diaconia) |
+| `diaconia-prod` | `diaconia-a38f1` | Módulo 5 (App Diaconia - Novo Produção) |
+| `diaconia-dev` | `ces-diaconia-dev` | Módulo 5 (App Diaconia - Desenvolvimento) |
+| `diaconia-project` | `catedral-connect-267b2` | Módulo 5 (App Diaconia - Legado Transição) |
 
 > ⚠️ **CRÍTICO**: Cada módulo usa seu próprio Firebase project. Nunca misturar dados entre projetos.
 
@@ -150,7 +152,7 @@ firebase deploy
 | Prefixo/Coleção | Projeto | Acesso |
 |---|---|---|
 | `bulle_*` | `catedral-connect-bf717` | Liberado (nuclear thaw) |
-| `diaconia_*` | `catedral-connect-267b2` | Liberado (nuclear thaw) |
+| `diaconia_*` (Legado) / limpas (Novo) | `catedral-connect-267b2` (Legado) / `diaconia-a38f1` (Novo) | Liberado / Base limpa |
 | `people`, `kids`, `integracao`, `decisions` | `catedral-connect-6c55e` | Role-based (Lausanne) |
 | `users`, `volunteers`, `attendance`, `leaders`, `birthdays` | root | Aberto (diagnóstico) |
 

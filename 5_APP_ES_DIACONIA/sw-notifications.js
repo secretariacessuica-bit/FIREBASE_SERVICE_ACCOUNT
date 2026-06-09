@@ -1,7 +1,7 @@
 // CES Diaconia - Service Worker de Notificações (v3.6.33)
 // Gerencia alertas de escala pendente e lembretes de escalas confirmadas.
 
-const SW_VERSION = 'ces-diaconia-sw-v3.6.33';
+const SW_VERSION = 'ces-diaconia-sw-v3.6.35';
 const APP_URL = '/';
 
 // ── Instalação ──────────────────────────────────────────────

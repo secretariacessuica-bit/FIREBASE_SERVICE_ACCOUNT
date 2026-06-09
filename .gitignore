@@ -3,3 +3,6 @@
 .DS_Store
 Thumbs.db
 *.log
+ 
+# Ignore temporary diagnostics
+5_APP_ES_DIACONIA/scratch/

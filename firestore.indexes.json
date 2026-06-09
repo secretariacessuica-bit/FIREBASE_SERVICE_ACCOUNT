@@ -15,7 +15,7 @@
       ]
     },
     {
-      "collectionGroup": "diaconia_escala_historico_estoque",
+      "collectionGroup": "historico_estoque",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -29,7 +29,7 @@
       ]
     },
     {
-      "collectionGroup": "diaconia_escala_notificacoes",
+      "collectionGroup": "notificacoes",
       "queryScope": "COLLECTION",
       "fields": [
         {

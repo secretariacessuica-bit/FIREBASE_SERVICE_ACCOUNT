@@ -1,7 +1,7 @@
 // Firebase Configuration for CES Diaconia (Standalone SPA)
-// Using project: catedral-connect-267b2 (diaconia)
+// Supporting Multi-Environment (Dev, Prod, and Old Project Migration Fallback)
 
-var firebaseConfig = {
+var firebaseConfigOld = {
     apiKey: "AIzaSyAtwHODax7kq0keaLuON1ZxbNfdaBP7yfo",
     authDomain: "catedral-connect-267b2.firebaseapp.com",
     projectId: "catedral-connect-267b2",
@@ -10,31 +10,72 @@ var firebaseConfig = {
     appId: "1:524359049819:web:d4788e1c64767e0818557e"
 };
 
-// Initialize Firebase
+var firebaseConfigDev = {
+    apiKey: "AIzaSyC5aYjN7SoiuITUrtsxxU03HvARVotYdjI",
+    authDomain: "ces-diaconia-dev.firebaseapp.com",
+    projectId: "ces-diaconia-dev",
+    storageBucket: "ces-diaconia-dev.firebasestorage.app",
+    messagingSenderId: "823919336681",
+    appId: "1:823919336681:web:ea26257e1eb002424e2478"
+};
+
+var firebaseConfigProd = {
+    apiKey: "AIzaSyDqlZ5pukg4NAg2mqMjAzAcRJCIeNN_K24",
+    authDomain: "diaconia-a38f1.firebaseapp.com",
+    projectId: "diaconia-a38f1",
+    storageBucket: "diaconia-a38f1.firebasestorage.app",
+    messagingSenderId: "489746524173",
+    appId: "1:489746524173:web:f0eead38951fb738364d44"
+};
+
+// 1. Detectar o ambiente com base no domínio
+let selectedConfig = firebaseConfigProd;
+let useLegacyNamespace = false;
+
+const hostname = window.location.hostname;
+if (hostname === 'catedral-connect-267b2.web.app' || hostname === 'catedral-connect-267b2.firebaseapp.com') {
+    selectedConfig = firebaseConfigProd; // CONECTAR AO NOVO PROJETO (diaconia-a38f1)
+    useLegacyNamespace = false; // USAR COLEÇÕES LIMPAS (SEM NAMESPACE)
+    console.log("Diaconia rodando no domínio Legado, mas conectando ao novo Firebase de PRODUÇÃO (diaconia-a38f1) com coleções limpas.");
+} else if (hostname === 'ces-diaconia-dev.web.app' || hostname === 'localhost' || hostname === '127.0.0.1') {
+    selectedConfig = firebaseConfigDev;
+    console.log("Diaconia rodando no AMBIENTE DE DESENVOLVIMENTO (Dev) com coleções limpas.");
+} else {
+    selectedConfig = firebaseConfigProd;
+    console.log("Diaconia rodando no AMBIENTE DE PRODUÇÃO (Prod) com coleções limpas.");
+}
+
+// 2. Inicializar o Firebase
 if (typeof firebase !== 'undefined') {
     if (firebase.apps.length === 0) {
-        firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(selectedConfig);
         console.log("Firebase inicializado para CES Diaconia!");
     } else {
         console.log("Firebase já inicializado.");
     }
 
-    // Nota: Este app usa autenticação customizada por nome via Firestore.
-    // Firebase Auth NÃO é utilizado — removido para evitar sessões fantasma no IndexedDB.
+    // Configurar persistência de sessão para evitar "sessões fantasma" em IndexedDB
+    if (typeof firebase.auth === 'function') {
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e => {
+            console.warn("Erro ao configurar persistência de sessão:", e);
+        });
+    }
 
     window.db = firebase.firestore();
-    window.firebaseConfig = firebaseConfig;
+    window.firebaseConfig = selectedConfig;
 
-    // --- NAMESPACING DE DADOS ---
-    // Todas as coleções do app serão prefixadas com 'diaconia_escala_'
-    // para isolar os dados e não conflitar com outros projetos CES.
-    window.DB_PREFIX = 'diaconia_escala_';
-    const originalCollection = window.db.collection;
-    window.db.collection = function(name) {
-        const finalName = name.startsWith(window.DB_PREFIX) ? name : window.DB_PREFIX + name;
-        return originalCollection.call(this, finalName);
-    };
-    console.log("Firestore Namespacing Ativo com prefixo: " + window.DB_PREFIX);
+    // --- NAMESPACING DE DADOS (Compatibilidade com Projeto Legado) ---
+    if (useLegacyNamespace) {
+        window.DB_PREFIX = 'diaconia_escala_';
+        const originalCollection = window.db.collection;
+        window.db.collection = function(name) {
+            const finalName = name.startsWith(window.DB_PREFIX) ? name : window.DB_PREFIX + name;
+            return originalCollection.call(this, finalName);
+        };
+        console.log("Firestore Namespacing Ativo com prefixo: " + window.DB_PREFIX);
+    } else {
+        console.log("Firestore Operando com Coleções Limpas (Sem prefixo).");
+    }
 } else {
     console.error("SDK do Firebase não encontrado. Carregue os SDKs antes deste script.");
 }

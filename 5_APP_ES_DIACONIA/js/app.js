@@ -17,9 +17,9 @@ const App = {
     // Static lists for Sectors and their Roles
     sectorsData: {
         'entrada': {
-            nome: "Entrada",
+            nome: "Portaria",
             desc: "Portaria e Recepção Externa",
-            funcoes: ["Entrada"],
+            funcoes: ["Portaria"],
             cor: "#127369",
             themeClass: "theme-diaconia",
             icon: "fa-solid fa-door-open"
@@ -51,10 +51,18 @@ const App = {
         'acolhimento': {
             nome: "Acolhimento",
             desc: "Recepção interna e integração de visitantes",
-            funcoes: ["Acolhimento"],
+            funcoes: ["Conduzir ao Acolhimento", "Recepcionar", "Servir", "Preparar a mesa"],
             cor: "#D9A752",
             themeClass: "theme-acolhimento",
             icon: "fa-solid fa-heart"
+        },
+        'escala_livre': {
+            nome: "Escala Livre",
+            desc: "Escala geral livre sem setor definido",
+            funcoes: ["Escala Livre"],
+            cor: "#6B7280",
+            themeClass: "theme-diaconia",
+            icon: "fa-solid fa-users"
         }
     },
 
@@ -73,6 +81,18 @@ const App = {
                 const sector = this.sectorsData[sectorId];
                 return sector ? sector.funcoes : [];
             }
+            return [];
+        }
+
+        if (modeloEscala === 'Escala Livre') {
+            if (sectorId === 'escala_livre') {
+                return ["Escala Livre"];
+            }
+            return [];
+        }
+
+        // Para os demais modelos, nao exibir o setor virtual escala_livre
+        if (sectorId === 'escala_livre') {
             return [];
         }
         
@@ -120,7 +140,22 @@ const App = {
         
         // Wait for Firebase database to run first verification/seeding
         if (typeof DbService !== 'undefined') {
-            await DbService.checkAndSeedDatabase();
+            // Garantir sessão ativa para as regras de segurança antes de inicializar o banco
+            try {
+                if (!firebase.auth().currentUser) {
+                    console.log("[Segurança] Iniciando sessão anônima de inicialização...");
+                    await firebase.auth().signInAnonymously();
+                }
+            } catch (authErr) {
+                console.warn("[Segurança] Não foi possível iniciar sessão anônima na inicialização:", authErr);
+            }
+
+            // Executar semeação inicial
+            try {
+                await DbService.checkAndSeedDatabase();
+            } catch (e) {
+                console.error("Erro na semeação do banco de dados:", e);
+            }
             
             // Ensure compatibility migration for legacy products
             try {
@@ -165,6 +200,13 @@ const App = {
                 console.log("Setores sincronizados com o Firestore com sucesso!");
             } catch (e) {
                 console.log("Erro ao sincronizar setores no Firestore:", e);
+            }
+
+            // Reativar membros com afastamento expirado
+            try {
+                await this.checkAndReactivateReturnedMembers();
+            } catch (e) {
+                console.error("Erro ao reativar membros no início:", e);
             }
         } else {
             console.error("DbService not loaded!");
@@ -264,6 +306,10 @@ const App = {
 
             // Valida se o usuário ainda está ativo no Firestore
             try {
+                if (!firebase.auth().currentUser) {
+                    console.log("[Segurança] Iniciando sessão anônima para validação...");
+                    await firebase.auth().signInAnonymously();
+                }
                 const userDoc = await db.collection('membros').doc(sessionData.id).get();
                 if (!userDoc.exists || userDoc.data().status !== 'ativo') {
                     console.log('[Sessão] Usuário não encontrado ou inativo. Exigindo novo login.');
@@ -336,7 +382,9 @@ const App = {
 
         // Map sector and function to area detail nodeId to automatically open the detail page
         let nodeId = null;
-        if (setorId === 'acolhimento') {
+        if (setorId === 'escala_livre') {
+            nodeId = 'escala_livre';
+        } else if (setorId === 'acolhimento') {
             nodeId = 'acolhimento';
         } else if (setorId === 'entrada' || setorId === 'check_in') {
             nodeId = 'recepcao';
@@ -448,7 +496,7 @@ const App = {
 
         // Register Service Worker
         try {
-            this._swRegistration = await navigator.serviceWorker.register('/sw-notifications.js?v=3.6.34', { scope: '/' });
+            this._swRegistration = await navigator.serviceWorker.register('/sw-notifications.js?v=3.6.35', { scope: '/' });
             console.log('[Notificações] Service Worker registrado:', this._swRegistration.scope);
         } catch (err) {
             console.warn('[Notificações] Falha ao registrar Service Worker:', err);
@@ -1525,7 +1573,7 @@ const App = {
         }
 
         try {
-            const isDiaconiaOrAcolhimento = ['entrada', 'check_in', 'apoio_templo_ronda_dir', 'apoio_templo_ronda_esq', 'acolhimento'].includes(this.activeSectorId);
+            const isDiaconiaOrAcolhimento = ['entrada', 'check_in', 'apoio_templo_ronda_dir', 'apoio_templo_ronda_esq', 'acolhimento', 'escala_livre'].includes(this.activeSectorId);
             const sectorToFetch = null;
             const escalas = await DbService.getEscalas(sectorToFetch, dateRange.start, dateRange.end);
 
@@ -1957,6 +2005,7 @@ const App = {
         const rondaDireitoScales = [];
         const rondaEsquerdoScales = [];
         const acolhimentoScales = [];
+        const escalaLivreScales = [];
 
         evtActive.escalas.forEach(escala => {
             if (escala.statusPresenca === 'Recusada') {
@@ -1975,7 +2024,9 @@ const App = {
             const func = (escala.funcao || '').toLowerCase();
             const obs = (escala.observacoes || '').toLowerCase();
 
-            if (sectorId === 'acolhimento' || func.includes('acolhimento')) {
+            if (sectorId === 'escala_livre' || func.includes('escala livre')) {
+                escalaLivreScales.push(escala);
+            } else if (sectorId === 'acolhimento' || func.includes('acolhimento') || func.includes('conduzir') || func.includes('recepcionar') || func.includes('servir') || func.includes('preparar')) {
                 acolhimentoScales.push(escala);
             } else if (sectorId === 'entrada' || func.includes('entrada') || func.includes('portaria')) {
                 portariaScales.push(escala);
@@ -2014,11 +2065,22 @@ const App = {
             }
         });
 
-        // Abbreviate card names to look aesthetic (v3.6.22 - Unified cards)
-        const recepcaoCardHtml = this.renderAreaCard([...portariaScales, ...checkinScales], 'Recepção', 'fa-solid fa-id-card', 'recepcao', 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=400&q=80', '#3B82F6', membrosMap);
-        const temploCardHtml = this.renderAreaCard([...apoioDireitoScales, ...apoioEsquerdoScales], 'Templo', 'fa-solid fa-place-of-worship', 'templo', 'https://images.unsplash.com/photo-1545232979-8bf34eb9757b?auto=format&fit=crop&w=400&q=80', '#14B8A6', membrosMap);
-        const rondaCardHtml = this.renderAreaCard([...rondaDireitoScales, ...rondaEsquerdoScales], 'Ronda', 'fa-solid fa-shield-halved', 'ronda', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=400&q=80', '#F59E0B', membrosMap);
-        const acolhimentoCardHtml = this.renderAreaCard(acolhimentoScales, 'Acolhimento', 'fa-solid fa-hands-holding-child', 'acolhimento', 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=800&q=80', '#EC4899', membrosMap);
+        // Verificar se o culto é no modelo Escala Livre
+        const cultoAtivo = this.cultosData.find(c => c.id === evtActive.cultoId);
+        const isEscalaLivre = cultoAtivo && cultoAtivo.modeloEscala === 'Escala Livre';
+
+        // Gerar cards do organograma
+        let areaCardsHtml = '';
+        if (isEscalaLivre) {
+            // Exibir apenas o cartão único de Escala Livre em largura total
+            areaCardsHtml = this.renderAreaCard(escalaLivreScales, 'Escala Livre', 'fa-solid fa-users', 'escala_livre', 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80', '#6B7280', membrosMap, true);
+        } else {
+            const recepcaoCardHtml = this.renderAreaCard([...portariaScales, ...checkinScales], 'Recepção', 'fa-solid fa-id-card', 'recepcao', 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=400&q=80', '#3B82F6', membrosMap);
+            const temploCardHtml = this.renderAreaCard([...apoioDireitoScales, ...apoioEsquerdoScales], 'Templo', 'fa-solid fa-place-of-worship', 'templo', 'https://images.unsplash.com/photo-1545232979-8bf34eb9757b?auto=format&fit=crop&w=400&q=80', '#14B8A6', membrosMap);
+            const rondaCardHtml = this.renderAreaCard([...rondaDireitoScales, ...rondaEsquerdoScales], 'Ronda', 'fa-solid fa-shield-halved', 'ronda', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=400&q=80', '#F59E0B', membrosMap);
+            const acolhimentoCardHtml = this.renderAreaCard(acolhimentoScales, 'Acolhimento', 'fa-solid fa-hands-holding-child', 'acolhimento', 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=800&q=80', '#EC4899', membrosMap);
+            areaCardsHtml = `${recepcaoCardHtml}${temploCardHtml}${rondaCardHtml}${acolhimentoCardHtml}`;
+        }
 
         // Next service calculation for bottom summary card
         let nextServiceLabel = 'Nenhum serviço';
@@ -2084,10 +2146,7 @@ const App = {
             
             <div class="org-daily-container" id="org-daily-swipe-area">
                 <div class="org-areas-grid">
-                    ${recepcaoCardHtml}
-                    ${temploCardHtml}
-                    ${rondaCardHtml}
-                    ${acolhimentoCardHtml}
+                    ${areaCardsHtml}
                 </div>
                 
                 ${summaryBlockHtml}
@@ -2132,7 +2191,8 @@ const App = {
             // Unified mappings (v3.6.22)
             'recepcao': 'Controle de portaria e check-in de membros',
             'templo': 'Suporte, organização e acomodação no templo',
-            'ronda': 'Ronda periódica e segurança externa/interna'
+            'ronda': 'Ronda periódica e segurança externa/interna',
+            'escala_livre': 'Atuar onde houver necessidade seguindo a supervisão'
         };
         const desc = descMap[nodeId] || '';
 
@@ -2329,6 +2389,20 @@ const App = {
                 'Relatar qualquer movimentação atípica'
             ],
             instrucoes: 'Permaneça em movimento constante e mantenha contato com o Supervisor Geral.'
+        },
+        'escala_livre': {
+            objetivo: 'Atuar com excelência onde houver necessidade durante o culto, seguindo a orientação da supervisão.',
+            local: 'Templo e Áreas Gerais',
+            supervisor: 'Supervisor Geral',
+            chegada: '17:30',
+            traje: 'Social',
+            checklist: [
+                'Apresentar-se ao Supervisor ao chegar',
+                'Estar disponível para qualquer função designada',
+                'Manter postura e disciplina durante o culto',
+                'Comunicar ao Supervisor qualquer intercorrência'
+            ],
+            instrucoes: 'Você está em escala livre. Siga as instruções do Supervisor Geral e sirva com excelência onde for necessário.'
         }
     },
 
@@ -2375,7 +2449,9 @@ const App = {
 
                     if (escala.statusPresenca === 'Recusada') return;
 
-                    if (nodeId === 'acolhimento' && (sectorId === 'acolhimento' || func.includes('acolhimento'))) {
+                    if (nodeId === 'escala_livre' && (sectorId === 'escala_livre' || func.includes('escala livre'))) {
+                        areaScales.push(escala);
+                    } else if (nodeId === 'acolhimento' && (sectorId === 'acolhimento' || func.includes('acolhimento'))) {
                         areaScales.push(escala);
                     } else if (nodeId === 'recepcao' && (sectorId === 'entrada' || sectorId === 'check_in' || func.includes('entrada') || func.includes('check') || func.includes('portaria') || func.includes('recep'))) {
                         areaScales.push(escala);
@@ -2440,7 +2516,8 @@ const App = {
                     // Unified mappings (v3.6.22)
                     'recepcao': 'Recepção',
                     'templo': 'Templo',
-                    'ronda': 'Ronda'
+                    'ronda': 'Ronda',
+                    'escala_livre': 'Escala Livre'
                 };
                 const areaTitle = titleMap[nodeId] || nodeId;
 
@@ -2456,7 +2533,8 @@ const App = {
                     // Unified mappings (v3.6.22)
                     'recepcao': 'fa-solid fa-id-card',
                     'templo': 'fa-solid fa-place-of-worship',
-                    'ronda': 'fa-solid fa-shield-halved'
+                    'ronda': 'fa-solid fa-shield-halved',
+                    'escala_livre': 'fa-solid fa-users'
                 };
                 const iconClass = iconMap[nodeId] || 'fa-solid fa-circle';
 
@@ -2931,11 +3009,19 @@ const App = {
         
         // 1. Verificar afastamento temporário / férias
         if (m.statusOperacional && m.statusOperacional !== 'Disponível') {
-            if (data && m.afastamentoInicio && m.afastamentoFim) {
-                if (data >= m.afastamentoInicio && data <= m.afastamentoFim) {
+            const checkDate = data || new Date().toISOString().split('T')[0];
+            if (m.afastamentoInicio && m.afastamentoFim) {
+                if (checkDate >= m.afastamentoInicio && checkDate <= m.afastamentoFim) {
                     return false; // Afastado no período
                 }
-            } else if (m.statusOperacional === 'Inativo Temporário') {
+                if (checkDate > m.afastamentoFim) {
+                    const autoRetorno = m.afastamentoRetornoAutomativo === 'Sim' || m.afastamentoRetornoAutomativo === true;
+                    if (!autoRetorno) {
+                        return false; // Período expirou mas aguarda confirmação da supervisão
+                    }
+                }
+            } else {
+                // Sem datas definidas ou inativo temporário
                 return false;
             }
         }
@@ -2951,22 +3037,32 @@ const App = {
         if (data) {
             const dateObj = new Date(data + 'T12:00:00'); // Evita timezone offset
             const dayOfWeek = dateObj.getDay(); // 0 = Domingo, 1 = Segunda, etc.
-            const disp = m.disponibilidade || 'Todos';
+            
+            const dispRaw = m.disponibilidade || 'Todos';
+            const dispNorm = dispRaw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
+            // É considerado "Todos" se contiver as palavras chaves de disponibilidade geral
+            const isTodos = dispNorm.includes('todos') || 
+                            dispNorm.includes('todo culto') || 
+                            dispNorm.includes('dias de culto') ||
+                            dispNorm.includes('sempre disponivel') ||
+                            dispNorm.includes('disponivel para escala') ||
+                            dispNorm.includes('consultar primeiro');
             
             if (dayOfWeek === 0) { // Domingo
                 const hour = parseInt((horarioInicio || '09:00').split(':')[0], 10);
                 const isMorning = hour < 13;
                 if (isMorning) {
-                    if (disp !== 'Todos' && disp !== 'Domingo Manhã') {
+                    if (!isTodos && dispRaw !== 'Domingo Manhã') {
                         return false;
                     }
                 } else {
-                    if (disp !== 'Todos' && disp !== 'Domingo Noite') {
+                    if (!isTodos && dispRaw !== 'Domingo Noite') {
                         return false;
                     }
                 }
             } else { // Dia de semana
-                if (disp !== 'Todos' && disp !== 'Eventos Especiais') {
+                if (!isTodos && dispRaw !== 'Eventos Especiais') {
                     return false;
                 }
             }
@@ -3127,164 +3223,219 @@ const App = {
     },
 
     async renderPremiumCalendar(isAdminMode = false) {
-        console.log("DEBUG: renderPremiumCalendar called with isAdminMode:", isAdminMode);
+        console.log("DEBUG: [renderPremiumCalendar] INÍCIO DA FUNÇÃO - isAdminMode:", isAdminMode);
         let container = null;
         let baseDate = null;
         
-        if (isAdminMode) {
-            container = document.getElementById('admin-calendar-container');
-            if (!this.adminCalendarDate) {
-                this.adminCalendarDate = new Date();
-            }
-            baseDate = new Date(this.adminCalendarDate);
-        } else {
-            container = document.getElementById('member-scales-list');
-            baseDate = new Date(this.memberCurrentDate);
-        }
-        
-        if (!container) return;
-        
-        const year = baseDate.getFullYear();
-        const month = baseDate.getMonth();
-        const monthLabel = baseDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        
-        // Fetch all cultos for the calendar month (expanding range to avoid time zone cutting)
-        const fetchStart = new Date(year, month - 1, 1);
-        const fetchEnd = new Date(year, month + 2, 0);
-        
-        const startStr = this.formatLocalISOString(fetchStart).split('T')[0];
-        const endStr = this.formatLocalISOString(fetchEnd).split('T')[0];
-        
-        let cultos = [];
         try {
-            cultos = await DbService.getCultos(startStr, endStr);
-        } catch (e) {
-            console.error("Error fetching cultos for calendar:", e);
-        }
-        
-        // Group cultos by day number (only if they belong to the currently viewed month and year)
-        const cultosByDay = {};
-        cultos.forEach(c => {
-            const dateParts = c.data.split('-');
-            const cYear = parseInt(dateParts[0], 10);
-            const cMonth = parseInt(dateParts[1], 10) - 1; // 0-indexed
-            const dayNum = parseInt(dateParts[2], 10);
-            
-            if (cYear === year && cMonth === month) {
-                if (!cultosByDay[dayNum]) {
-                    cultosByDay[dayNum] = [];
+            if (isAdminMode) {
+                container = document.getElementById('admin-calendar-container');
+                if (!this.adminCalendarDate) {
+                    this.adminCalendarDate = new Date();
                 }
-                cultosByDay[dayNum].push(c);
+                baseDate = new Date(this.adminCalendarDate);
+            } else {
+                container = document.getElementById('member-scales-list');
+                baseDate = new Date(this.memberCurrentDate);
             }
-        });
-        
-        // Calcule o primeiro dia e a quantidade de dias correta do mês visualizado
-        const firstDayOfCurrentMonth = new Date(year, month, 1);
-        const lastDayOfCurrentMonth = new Date(year, month + 1, 0);
-        
-        const firstDayIndex = firstDayOfCurrentMonth.getDay();
-        const totalDays = lastDayOfCurrentMonth.getDate();
-        
-        let gridHtml = '';
-        
-        // Empty cells before the first day
-        for (let i = 0; i < firstDayIndex; i++) {
-            gridHtml += `<div class="calendar-cell-full empty"></div>`;
-        }
-        
-        // Days of the month
-        for (let day = 1; day <= totalDays; day++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const dayOfWeek = new Date(year, month, day).getDay();
             
-            // Map day of week to CSS classes
-            const dayClasses = ['day-dom', 'day-seg', 'day-ter', 'day-qua', 'day-qui', 'day-sex', 'day-sab'];
-            const dayClass = dayClasses[dayOfWeek];
+            console.log("DEBUG: [renderPremiumCalendar] ID do container encontrado:", container ? container.id : 'NENHUM_CONTAINER');
             
-            const dayCultos = cultosByDay[day] || [];
-            let cultosHtml = '';
+            if (!container) {
+                console.log("DEBUG: [renderPremiumCalendar] Container é nulo/undefined, retornando.");
+                return;
+            }
             
-            dayCultos.forEach(c => {
-                const formattedHour = (() => {
-                    if (!c.horarioInicio) return '';
-                    const parts = c.horarioInicio.split(':');
-                    const h = parseInt(parts[0], 10);
-                    const m = parseInt(parts[1], 10);
-                    return m === 0 ? `${h}H` : `${h}H${String(m).padStart(2, '0')}`;
-                })();
+            if (isAdminMode) {
+                container.innerHTML = `<div style="padding: 20px; color: var(--slate-gray); text-align: center;"><i class="fa-solid fa-spinner fa-spin" style="margin-right: 8px;"></i>Carregando calendário administrativo...</div>`;
+            }
+            
+            const year = baseDate.getFullYear();
+            const month = baseDate.getMonth();
+            const monthLabel = baseDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            
+            // Fetch all cultos for the calendar month (expanding range to avoid time zone cutting)
+            const fetchStart = new Date(year, month - 1, 1);
+            const fetchEnd = new Date(year, month + 2, 0);
+            
+            const startStr = this.formatLocalISOString(fetchStart).split('T')[0];
+            const endStr = this.formatLocalISOString(fetchEnd).split('T')[0];
+            
+            let cultos = [];
+            try {
+                cultos = await DbService.getCultos(startStr, endStr);
+                console.log("DEBUG: [renderPremiumCalendar] quantidade de cultos:", cultos ? cultos.length : 0);
+            } catch (e) {
+                console.error("DEBUG: [renderPremiumCalendar] Erro ao obter cultos:", e);
+            }
+            
+            let escalas = [];
+            try {
+                escalas = await DbService.getEscalas();
+                console.log("DEBUG: [renderPremiumCalendar] quantidade de escalas:", escalas ? escalas.length : 0);
+            } catch (e) {
+                console.error("DEBUG: [renderPremiumCalendar] Erro ao obter escalas:", e);
+            }
+            
+            // Group cultos by day number (only if they belong to the currently viewed month and year)
+            const cultosByDay = {};
+            if (cultos && Array.isArray(cultos)) {
+                cultos.forEach(c => {
+                    if (!c.data) {
+                        console.warn("DEBUG: [renderPremiumCalendar] Culto sem data encontrado:", c);
+                        return;
+                    }
+                    const dateParts = c.data.split('-');
+                    if (dateParts.length < 3) {
+                        console.warn("DEBUG: [renderPremiumCalendar] Culto com formato de data inválido:", c.data);
+                        return;
+                    }
+                    const cYear = parseInt(dateParts[0], 10);
+                    const cMonth = parseInt(dateParts[1], 10) - 1; // 0-indexed
+                    const dayNum = parseInt(dateParts[2], 10);
+                    
+                    if (cYear === year && cMonth === month) {
+                        if (!cultosByDay[dayNum]) {
+                            cultosByDay[dayNum] = [];
+                        }
+                        cultosByDay[dayNum].push(c);
+                    }
+                });
+            } else {
+                console.warn("DEBUG: [renderPremiumCalendar] cultos não é um array válido:", cultos);
+            }
+            
+            // Calcule o primeiro dia e a quantidade de dias correta do mês visualizado
+            const firstDayOfCurrentMonth = new Date(year, month, 1);
+            const lastDayOfCurrentMonth = new Date(year, month + 1, 0);
+            
+            const firstDayIndex = firstDayOfCurrentMonth.getDay();
+            const totalDays = lastDayOfCurrentMonth.getDate();
+            
+            let gridHtml = '';
+            
+            // Empty cells before the first day
+            for (let i = 0; i < firstDayIndex; i++) {
+                gridHtml += `<div class="calendar-cell-full empty"></div>`;
+            }
+            
+            // Days of the month
+            for (let day = 1; day <= totalDays; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayOfWeek = new Date(year, month, day).getDay();
                 
-                let clickHandler = '';
-                if (isAdminMode) {
-                    clickHandler = `onclick="event.stopPropagation(); App.selectAdminCulto('${c.id}')"`;
-                } else {
-                    const eventKey = `${c.data}_${c.id}_${c.horarioInicio}`;
-                    clickHandler = `onclick="event.stopPropagation(); App.selectMemberOrganogramEvent('${eventKey}')"`;
-                }
+                // Map day of week to CSS classes
+                const dayClasses = ['day-dom', 'day-seg', 'day-ter', 'day-qua', 'day-qui', 'day-sex', 'day-sab'];
+                const dayClass = dayClasses[dayOfWeek];
                 
-                // Add active style if selected
-                let activeStyle = '';
-                if (isAdminMode && c.id === this.adminSelectedCultoId) {
-                    activeStyle = 'box-shadow: 0 0 0 2px var(--teal-primary) !important; font-weight: 800;';
-                }
+                const dayCultos = cultosByDay[day] || [];
+                let cultosHtml = '';
                 
-                cultosHtml += `
-                    <div class="calendar-event-pill" ${clickHandler} style="${activeStyle}" title="${c.nome} - ${c.horarioInicio}">
-                        ${formattedHour}: ${c.nome}
+                dayCultos.forEach(c => {
+                    const formattedHour = (() => {
+                        if (!c.horarioInicio) return '';
+                        const parts = c.horarioInicio.split(':');
+                        const h = parseInt(parts[0], 10);
+                        const m = parseInt(parts[1], 10);
+                        return m === 0 ? `${h}H` : `${h}H${String(m).padStart(2, '0')}`;
+                    })();
+                    
+                    let clickHandler = '';
+                    if (isAdminMode) {
+                        clickHandler = `onclick="event.stopPropagation(); App.selectAdminCulto('${c.id}')"`;
+                    } else {
+                        const eventKey = `${c.data}_${c.id}_${c.horarioInicio}`;
+                        clickHandler = `onclick="event.stopPropagation(); App.selectMemberOrganogramEvent('${eventKey}')"`;
+                    }
+                    
+                    // Add active style if selected
+                    let activeStyle = '';
+                    if (isAdminMode && c.id === this.adminSelectedCultoId) {
+                        activeStyle = 'box-shadow: 0 0 0 2px var(--teal-primary) !important; font-weight: 800;';
+                    }
+                    
+                    cultosHtml += `
+                        <div class="calendar-event-pill" ${clickHandler} style="${activeStyle}" title="${c.nome} - ${c.horarioInicio}">
+                            ${formattedHour}: ${c.nome}
+                        </div>
+                    `;
+                });
+                
+                gridHtml += `
+                    <div class="calendar-cell-full ${dayClass}">
+                        <span class="day-num">${day}</span>
+                        <div class="calendar-events-container">
+                            ${cultosHtml}
+                        </div>
                     </div>
                 `;
-            });
+            }
             
-            gridHtml += `
-                <div class="calendar-cell-full ${dayClass}">
-                    <span class="day-num">${day}</span>
-                    <div class="calendar-events-container">
-                        ${cultosHtml}
-                    </div>
+            const prevMonthClick = isAdminMode 
+                ? `onclick="App.changeAdminCalendarMonth(-1)"`
+                : `onclick="App.changeMemberCalendarMonth(-1)"`;
+                
+            const nextMonthClick = isAdminMode
+                ? `onclick="App.changeAdminCalendarMonth(1)"`
+                : `onclick="App.changeMemberCalendarMonth(1)"`;
+                
+            const backButtonHtml = isAdminMode ? '' : `
+                <div class="calendar-back-action-bar">
+                    <button class="calendar-back-btn" onclick="App.refreshActiveScaleView()">
+                        <i class="fa-solid fa-arrow-left"></i> Voltar
+                    </button>
                 </div>
             `;
-        }
-        
-        const prevMonthClick = isAdminMode 
-            ? `onclick="App.changeAdminCalendarMonth(-1)"`
-            : `onclick="App.changeMemberCalendarMonth(-1)"`;
             
-        const nextMonthClick = isAdminMode
-            ? `onclick="App.changeAdminCalendarMonth(1)"`
-            : `onclick="App.changeMemberCalendarMonth(1)"`;
-            
-        const backButtonHtml = isAdminMode ? '' : `
-            <div class="calendar-back-action-bar">
-                <button class="calendar-back-btn" onclick="App.refreshActiveScaleView()">
-                    <i class="fa-solid fa-arrow-left"></i> Voltar
-                </button>
-            </div>
-        `;
-        
-        const calendarHtml = `
-            <div class="premium-full-calendar animate-fade-in">
-                <div class="calendar-month-nav">
-                    <button ${prevMonthClick}><i class="fa-solid fa-chevron-left"></i></button>
-                    <h4>${monthLabel.toUpperCase()}</h4>
-                    <button ${nextMonthClick}><i class="fa-solid fa-chevron-right"></i></button>
-                </div>
-                
-                <div class="calendar-grid-full">
-                    <div class="calendar-header-day">Dom</div>
-                    <div class="calendar-header-day">Seg</div>
-                    <div class="calendar-header-day">Ter</div>
-                    <div class="calendar-header-day">Qua</div>
-                    <div class="calendar-header-day">Qui</div>
-                    <div class="calendar-header-day">Sex</div>
-                    <div class="calendar-header-day">Sáb</div>
+            const calendarHtml = `
+                <div class="premium-full-calendar animate-fade-in">
+                    <div class="calendar-month-nav">
+                        <button ${prevMonthClick}><i class="fa-solid fa-chevron-left"></i></button>
+                        <h4>${monthLabel.toUpperCase()}</h4>
+                        <button ${nextMonthClick}><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
                     
-                    ${gridHtml}
+                    <div class="calendar-grid-full">
+                        <div class="calendar-header-day">Dom</div>
+                        <div class="calendar-header-day">Seg</div>
+                        <div class="calendar-header-day">Ter</div>
+                        <div class="calendar-header-day">Qua</div>
+                        <div class="calendar-header-day">Qui</div>
+                        <div class="calendar-header-day">Sex</div>
+                        <div class="calendar-header-day">Sáb</div>
+                        
+                        ${gridHtml}
+                    </div>
+                    
+                    ${backButtonHtml}
                 </div>
-                
-                ${backButtonHtml}
-            </div>
-        `;
-        
-        container.innerHTML = calendarHtml;
+            `;
+            
+            console.log("DEBUG: [renderPremiumCalendar] antes de montar o HTML");
+            container.innerHTML = calendarHtml;
+            console.log("DEBUG: [renderPremiumCalendar] depois de inserir o HTML");
+            
+            // Log computed dimensions and styles to check if they are hidden
+            const rect = container.getBoundingClientRect();
+            const computedStyle = window.getComputedStyle(container);
+            console.log("DEBUG: [renderPremiumCalendar] Container dimensions:", rect.width, "x", rect.height, "visible:", computedStyle.display, "visibility:", computedStyle.visibility, "opacity:", computedStyle.opacity);
+            
+            const parent = document.getElementById('admin-calendar-view-container');
+            if (parent) {
+                const pRect = parent.getBoundingClientRect();
+                const pStyle = window.getComputedStyle(parent);
+                console.log("DEBUG: [renderPremiumCalendar] Parent dimensions:", pRect.width, "x", pRect.height, "visible:", pStyle.display, "visibility:", pStyle.visibility, "opacity:", pStyle.opacity);
+            }
+            
+            const subEscalas = document.getElementById('admin-sub-escalas');
+            if (subEscalas) {
+                const sRect = subEscalas.getBoundingClientRect();
+                const sStyle = window.getComputedStyle(subEscalas);
+                console.log("DEBUG: [renderPremiumCalendar] Sub-view dimensions:", sRect.width, "x", sRect.height, "visible:", sStyle.display, "visibility:", sStyle.visibility, "opacity:", sStyle.opacity);
+            }
+        } catch (e) {
+            console.error("DEBUG: [renderPremiumCalendar] CATCH COM ERRO COMPLETO:", e);
+        }
     },
 
     renderScaleActionsForNode(scales) {
@@ -3753,6 +3904,8 @@ const App = {
             this.loadAdminRelatorios();
         } else if (this.adminActiveTab === 'avisos') {
             this.loadAdminAvisos();
+        } else if (this.adminActiveTab === 'afastamentos') {
+            this.loadAndRenderAdminAfastamentos();
         }
     },
 
@@ -3776,6 +3929,7 @@ const App = {
             case 'dashboard': return 'Painel Geral';
             case 'setores': return 'Estrutura de Setores';
             case 'membros': return 'Membros da Equipe';
+            case 'afastamentos': return 'Gestão de Afastamentos';
             case 'escalas': return 'Controle de Escalas';
             case 'reposicoes': return 'Solicitações de Reposição';
             case 'produtos': return 'Produtos Cadastrados';
@@ -3948,6 +4102,46 @@ const App = {
                         Ver e Atender
                     </button>
                 `;
+            }
+
+            // 6. Calculate absence alerts for dashboard
+            const adminDashboardAfastamentosAlertas = document.getElementById('admin-dashboard-afastamentos-alertas');
+            if (adminDashboardAfastamentosAlertas) {
+                const feriasCount = membros.filter(m => m.statusOperacional === 'Férias').length;
+                const outrosAfastadosCount = membros.filter(m => m.statusOperacional && m.statusOperacional !== 'Disponível' && m.statusOperacional !== 'Férias').length;
+                
+                let retornandoEm5Dias = 0;
+                const hoje = new Date();
+                hoje.setHours(0,0,0,0);
+                const limiteFim = new Date(hoje);
+                limiteFim.setDate(hoje.getDate() + 5);
+
+                membros.forEach(m => {
+                    if (m.statusOperacional && m.statusOperacional !== 'Disponível' && m.afastamentoFim) {
+                        const fim = new Date(m.afastamentoFim + 'T00:00:00');
+                        if (fim >= hoje && fim <= limiteFim) {
+                            retornandoEm5Dias++;
+                        }
+                    }
+                });
+
+                let alertasHTML = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+                alertasHTML += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.03);">
+                        <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-umbrella-beach" style="color: #10B981;"></i> Obreiros em Férias</span>
+                        <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10B981; font-weight: 700; border-radius: 6px; padding: 2px 8px;">${feriasCount}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.03);">
+                        <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-person-walking-luggage" style="color: #F59E0B;"></i> Outros Afastamentos</span>
+                        <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #F59E0B; font-weight: 700; border-radius: 6px; padding: 2px 8px;">${outrosAfastadosCount}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0;">
+                        <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-arrows-spin" style="color: #6366F1;"></i> Retornos nos próximos 5 dias</span>
+                        <span class="badge" style="background: rgba(99, 102, 241, 0.1); color: #6366F1; font-weight: 700; border-radius: 6px; padding: 2px 8px;">${retornandoEm5Dias}</span>
+                    </div>
+                `;
+                alertasHTML += '</div>';
+                adminDashboardAfastamentosAlertas.innerHTML = alertasHTML;
             }
 
         } catch (e) {
@@ -4131,9 +4325,18 @@ const App = {
 
                 const repositorBadge = m.eRepositor ? ' <span class="badge" style="background:#5F388C; color:white; font-size:0.7rem; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:5px;">Comprador</span>' : '';
 
+                const statusOpBadge = (() => {
+                    const s = m.statusOperacional;
+                    if (!s || s === 'Disponível') return '';
+                    const opColors = { 'Férias':'#10B981','Afastado':'#F59E0B','Licença Médica':'#EF4444','Viagem / Intercâmbio':'#6366F1','Inativo Temporário':'#6B7280' };
+                    const opIcons = { 'Férias':'🏖️','Afastado':'⚠️','Licença Médica':'🏥','Viagem / Intercâmbio':'✈️','Inativo Temporário':'🚫' };
+                    const cor = opColors[s] || '#6B7280';
+                    return `<span style="background:${cor}18; color:${cor}; padding:2px 7px; border-radius:5px; font-size:0.7rem; font-weight:700; margin-left:5px;">${opIcons[s] || '⚫'} ${s}</span>`;
+                })();
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><b>${m.nome}</b></td>
+                    <td><b>${m.nome}</b>${statusOpBadge}</td>
                     <td>${m.email}</td>
                     <td>${perfilBadge}</td>
                     <td>${setorNome}</td>
@@ -4142,6 +4345,7 @@ const App = {
                     <td>
                         <div class="action-buttons">
                             <button class="btn-table-action" onclick="App.handleEditMembro('${m.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn-table-action" onclick="App.openAfastamentoRapidoModal('${m.id}', '${m.nome.replace(/'/g, "\\'")}')" title="Afastar Temporariamente" style="color:#F59E0B;"><i class="fa-solid fa-person-walking-luggage"></i></button>
                             <button class="btn-table-action delete" onclick="App.handleDeleteMembro('${m.id}', '${m.nome}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     </td>
@@ -4159,6 +4363,15 @@ const App = {
         document.getElementById('membro-form-id').value = '';
         document.getElementById('membro-form').reset();
         
+        // Reset operational status and absence fields
+        document.getElementById('membro-status-operacional').value = 'Disponível';
+        document.getElementById('membro-afastamento-inicio').value = '';
+        document.getElementById('membro-afastamento-fim').value = '';
+        document.getElementById('membro-afastamento-motivo').value = '';
+        document.getElementById('membro-afastamento-obs').value = '';
+        document.getElementById('membro-afastamento-retorno').value = 'Sim';
+        this.toggleAfastamentoDatesFields('Disponível');
+        
         // Reset birthdate field
         const birthdateEl = document.getElementById('membro-data-nascimento');
         if (birthdateEl) birthdateEl.value = '';
@@ -4172,13 +4385,26 @@ const App = {
         // Reset advanced fields to defaults
         document.getElementById('membro-sexo').value = 'Masculino';
         document.getElementById('membro-disponibilidade').value = 'Todos';
-        document.getElementById('membro-funcao-principal').value = '';
-        document.getElementById('membro-funcao-secundaria').value = '';
+        if (document.getElementById('membro-funcao-principal')) {
+            document.getElementById('membro-funcao-principal').value = '';
+        }
+        if (document.getElementById('membro-funcao-principal-custom')) {
+            document.getElementById('membro-funcao-principal-custom').value = '';
+            document.getElementById('membro-funcao-principal-custom').style.display = 'none';
+        }
+        if (document.getElementById('membro-funcao-secundaria')) {
+            document.getElementById('membro-funcao-secundaria').value = '';
+        }
+        if (document.getElementById('membro-funcao-secundaria-custom')) {
+            document.getElementById('membro-funcao-secundaria-custom').value = '';
+            document.getElementById('membro-funcao-secundaria-custom').style.display = 'none';
+        }
         document.getElementById('membro-participa-substituicao').value = 'Sim';
         document.getElementById('membro-prioridade').value = 'Normal';
         
         // Render empty checkboxes
         this.renderMembroSetoresCheckboxes([]);
+        this.updateMembroFuncoesOptions([], '', '');
         
         document.getElementById('membro-setor-funcao-fields').style.display = 'flex';
         document.getElementById('modal-membro-form').classList.add('active');
@@ -4186,6 +4412,108 @@ const App = {
 
     closeMembroFormModal() {
         document.getElementById('modal-membro-form').classList.remove('active');
+    },
+
+    updateMembroFuncoesOptions(selectedSectors = [], currentPrincipal = '', currentSecundaria = '') {
+        const selectPrincipal = document.getElementById('membro-funcao-principal');
+        const selectSecundaria = document.getElementById('membro-funcao-secundaria');
+        const customPrincipal = document.getElementById('membro-funcao-principal-custom');
+        const customSecundaria = document.getElementById('membro-funcao-secundaria-custom');
+
+        if (!selectPrincipal || !selectSecundaria) return;
+
+        // Gather all standard functions from selected sectors
+        let availableFunctions = [];
+        if (selectedSectors.length > 0) {
+            selectedSectors.forEach(secId => {
+                const sector = this.sectorsData[secId];
+                if (sector && sector.funcoes) {
+                    availableFunctions.push(...sector.funcoes);
+                }
+            });
+        } else {
+            // If no sectors are selected, show functions from all sectors
+            Object.values(this.sectorsData).forEach(sector => {
+                if (sector.funcoes) {
+                    availableFunctions.push(...sector.funcoes);
+                }
+            });
+        }
+        
+        // Remove duplicates
+        availableFunctions = Array.from(new Set(availableFunctions));
+
+        // Helper to populate a select
+        const populateSelect = (selectEl, customEl, currentValue) => {
+            selectEl.innerHTML = '<option value="">Nenhuma</option>';
+            
+            // Add functions
+            availableFunctions.forEach(fun => {
+                const opt = document.createElement('option');
+                opt.value = fun;
+                opt.textContent = fun;
+                selectEl.appendChild(opt);
+            });
+
+            // Add "Outra" option
+            const optOutra = document.createElement('option');
+            optOutra.value = "outro";
+            optOutra.textContent = "Outra (Digitar...)";
+            selectEl.appendChild(optOutra);
+
+            // Determine what value to set
+            if (!currentValue) {
+                selectEl.value = "";
+                customEl.value = "";
+                customEl.style.display = "none";
+            } else if (availableFunctions.includes(currentValue)) {
+                selectEl.value = currentValue;
+                customEl.value = "";
+                customEl.style.display = "none";
+            } else {
+                selectEl.value = "outro";
+                customEl.value = currentValue;
+                customEl.style.display = "block";
+            }
+        };
+
+        populateSelect(selectPrincipal, customPrincipal, currentPrincipal);
+        populateSelect(selectSecundaria, customSecundaria, currentSecundaria);
+
+        // Update general function suggestions
+        const datalistGeral = document.getElementById('membro-funcao-sugestoes');
+        if (datalistGeral) {
+            datalistGeral.innerHTML = '';
+            availableFunctions.forEach(fun => {
+                const opt = document.createElement('option');
+                opt.value = fun;
+                datalistGeral.appendChild(opt);
+            });
+        }
+    },
+
+    handleFuncaoPrincipalChange(val) {
+        const customEl = document.getElementById('membro-funcao-principal-custom');
+        if (val === 'outro') {
+            customEl.style.display = 'block';
+            customEl.required = true;
+            customEl.focus();
+        } else {
+            customEl.style.display = 'none';
+            customEl.required = false;
+        }
+    },
+    
+    handleFuncaoSecundariaChange(val) {
+        const customEl = document.getElementById('membro-funcao-secundaria-custom');
+        if (val === 'outro') {
+            customEl.style.display = 'block';
+            customEl.required = true;
+            customEl.focus();
+        } else {
+            customEl.style.display = 'none';
+            customEl.required = false;
+        }
     },
 
     handleMembroPerfilChange(perfil) {
@@ -4232,6 +4560,20 @@ const App = {
                     wrapper.style.background = 'transparent';
                     wrapper.style.border = '1px solid rgba(0,0,0,0.05)';
                 }
+                
+                // Dynamically update function options based on checked sectors
+                const checkedBoxes = document.querySelectorAll('#membro-setores-checkboxes input[type="checkbox"]:checked');
+                const selected = Array.from(checkedBoxes).map(cb => cb.value);
+                
+                const valP = document.getElementById('membro-funcao-principal').value;
+                const currentP = valP === 'outro' ?
+                    document.getElementById('membro-funcao-principal-custom').value : valP;
+                    
+                const valS = document.getElementById('membro-funcao-secundaria').value;
+                const currentS = valS === 'outro' ?
+                    document.getElementById('membro-funcao-secundaria-custom').value : valS;
+                
+                this.updateMembroFuncoesOptions(selected, currentP, currentS);
             };
 
             const span = document.createElement('span');
@@ -4265,6 +4607,16 @@ const App = {
             document.getElementById('membro-perfil').value = m.perfil;
             document.getElementById('membro-status').value = m.status;
 
+            // Populate operational status and absence fields
+            const opStatus = m.statusOperacional || 'Disponível';
+            document.getElementById('membro-status-operacional').value = opStatus;
+            document.getElementById('membro-afastamento-inicio').value = m.afastamentoInicio || '';
+            document.getElementById('membro-afastamento-fim').value = m.afastamentoFim || '';
+            document.getElementById('membro-afastamento-motivo').value = m.afastamentoMotivo || '';
+            document.getElementById('membro-afastamento-obs').value = m.afastamentoObsSupervisao || '';
+            document.getElementById('membro-afastamento-retorno').value = m.afastamentoRetornoAutomativo || 'Sim';
+            this.toggleAfastamentoDatesFields(opStatus);
+
             this.handleMembroPerfilChange(m.perfil);
 
             if (m.perfil !== 'admin') {
@@ -4280,8 +4632,7 @@ const App = {
                 // Advanced fields
                 document.getElementById('membro-sexo').value = m.sexo || 'Masculino';
                 document.getElementById('membro-disponibilidade').value = m.disponibilidade || 'Todos';
-                document.getElementById('membro-funcao-principal').value = m.funcaoPrincipal || '';
-                document.getElementById('membro-funcao-secundaria').value = m.funcaoSecundaria || '';
+                this.updateMembroFuncoesOptions(selectedSectors, m.funcaoPrincipal || '', m.funcaoSecundaria || '');
                 document.getElementById('membro-participa-substituicao').value = m.participaSubstituicao || 'Sim';
                 document.getElementById('membro-prioridade').value = m.prioridade || 'Normal';
             }
@@ -4332,10 +4683,49 @@ const App = {
             
             sexo = document.getElementById('membro-sexo').value;
             disponibilidade = document.getElementById('membro-disponibilidade').value;
-            funcaoPrincipal = document.getElementById('membro-funcao-principal').value.trim();
-            funcaoSecundaria = document.getElementById('membro-funcao-secundaria').value.trim();
+            
+            const selectValP = document.getElementById('membro-funcao-principal').value;
+            funcaoPrincipal = selectValP === 'outro' ?
+                document.getElementById('membro-funcao-principal-custom').value.trim() : selectValP.trim();
+                
+            const selectValS = document.getElementById('membro-funcao-secundaria').value;
+            funcaoSecundaria = selectValS === 'outro' ?
+                document.getElementById('membro-funcao-secundaria-custom').value.trim() : selectValS.trim();
+                
             participaSubstituicao = document.getElementById('membro-participa-substituicao').value;
             prioridade = document.getElementById('membro-prioridade').value;
+        }
+
+        const statusOperacional = document.getElementById('membro-status-operacional').value;
+        const afastamentoInicio = document.getElementById('membro-afastamento-inicio').value;
+        const afastamentoFim = document.getElementById('membro-afastamento-fim').value;
+        const afastamentoMotivo = document.getElementById('membro-afastamento-motivo').value.trim();
+        const afastamentoObsSupervisao = document.getElementById('membro-afastamento-obs').value.trim();
+        const afastamentoRetornoAutomativo = document.getElementById('membro-afastamento-retorno').value;
+
+        if (statusOperacional !== 'Disponível') {
+            if (!afastamentoInicio || !afastamentoFim || !afastamentoMotivo) {
+                this.showAlert('Por favor, preencha as datas e o motivo do afastamento.');
+                return;
+            }
+            if (afastamentoFim < afastamentoInicio) {
+                this.showAlert('A data final prevista não pode ser anterior à data inicial.');
+                return;
+            }
+            // Check future scales
+            if (id) {
+                const hojeStr = new Date().toISOString().split('T')[0];
+                try {
+                    const escalas = await DbService.getEscalas();
+                    const escalasFuturas = escalas.filter(esc => esc.membroId === id && esc.data >= hojeStr);
+                    if (escalasFuturas.length > 0) {
+                        const confirmar = confirm(`Atenção: O membro possui ${escalasFuturas.length} escala(s) futura(s) agendada(s) (a partir de hoje). Ao confirmar o afastamento, essas escalas precisarão ser revisadas ou substituídas. Deseja continuar?`);
+                        if (!confirmar) return;
+                    }
+                } catch (err) {
+                    console.error("Erro ao verificar escalas futuras:", err);
+                }
+            }
         }
 
         try {
@@ -4343,7 +4733,26 @@ const App = {
             const birthdateEl = document.getElementById('membro-data-nascimento');
             const dataNascimento = birthdateEl ? birthdateEl.value : '';
 
-            await DbService.saveMembro(id ? id : null, {
+            // Check if operational status changed or dates changed to append to history
+            let statusChangedOrNewAfastamento = false;
+            if (statusOperacional !== 'Disponível') {
+                if (id) {
+                    const membros = await DbService.getMembros();
+                    const m = membros.find(item => item.id === id);
+                    if (m) {
+                        if (m.statusOperacional !== statusOperacional ||
+                            m.afastamentoInicio !== afastamentoInicio ||
+                            m.afastamentoFim !== afastamentoFim ||
+                            m.afastamentoMotivo !== afastamentoMotivo) {
+                            statusChangedOrNewAfastamento = true;
+                        }
+                    }
+                } else {
+                    statusChangedOrNewAfastamento = true;
+                }
+            }
+
+            const membroData = {
                 nome,
                 email,
                 senha,
@@ -4360,13 +4769,37 @@ const App = {
                 funcaoPrincipal,
                 funcaoSecundaria,
                 participaSubstituicao,
-                prioridade
-            });
+                prioridade,
+                statusOperacional,
+                afastamentoInicio: statusOperacional === 'Disponível' ? '' : afastamentoInicio,
+                afastamentoFim: statusOperacional === 'Disponível' ? '' : afastamentoFim,
+                afastamentoMotivo: statusOperacional === 'Disponível' ? '' : afastamentoMotivo,
+                afastamentoObsSupervisao: statusOperacional === 'Disponível' ? '' : afastamentoObsSupervisao,
+                afastamentoRetornoAutomativo: statusOperacional === 'Disponível' ? 'Sim' : afastamentoRetornoAutomativo
+            };
+
+            const savedId = await DbService.saveMembro(id ? id : null, membroData);
+
+            if (statusChangedOrNewAfastamento && savedId) {
+                // Also trigger saveAfastamento to log in history
+                await DbService.saveAfastamento(savedId, {
+                    statusOperacional,
+                    afastamentoInicio,
+                    afastamentoFim,
+                    afastamentoMotivo,
+                    afastamentoObsSupervisao,
+                    afastamentoRetornoAutomativo
+                });
+            }
 
             this.closeMembroFormModal();
             this.showToast('Membro salvo com sucesso!', 'success');
             this.renderMembrosTable();
+            if (this.adminActiveTab === 'afastamentos') {
+                this.loadAndRenderAdminAfastamentos();
+            }
         } catch (e) {
+            console.error(e);
             this.showAlert('Erro ao gravar membro.');
         }
     },
@@ -4464,6 +4897,16 @@ const App = {
 
     // --- TAB: ESCALAS (ADMIN) ---
     async loadAdminEscalas() {
+        // Mostra spinner imediatamente para evitar tela em branco durante awaits
+        const calendarEl = document.getElementById('admin-calendar-container');
+        if (calendarEl) {
+            calendarEl.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 60px 20px; gap: 16px;">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--teal-primary);"></i>
+                    <p style="color:var(--slate-gray); font-size:0.9rem; margin:0;">Carregando calendário...</p>
+                </div>`;
+        }
+
         // Executa migração de dados legados
         await this.autoMigrateLegacyScales();
         
@@ -4494,8 +4937,11 @@ const App = {
             if (detailContainer) detailContainer.style.display = 'none';
         } catch (e) {
             console.error("Erro ao carregar cultos:", e);
+            // Exibe mensagem de erro no container correto
+            const calViewContainer = document.getElementById('admin-calendar-view-container');
+            if (calViewContainer) calViewContainer.style.display = 'block';
             const calContainer = document.getElementById('admin-calendar-container');
-            if (calContainer) calContainer.innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Erro ao carregar o calendário do banco.</div>';
+            if (calContainer) calContainer.innerHTML = '<div style="color:red; text-align:center; padding: 20px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Erro ao carregar o calendário do banco.</div>';
         }
     },
 
@@ -4535,81 +4981,109 @@ const App = {
     },
 
     async selectAdminCulto(cultoId) {
-        this.adminSelectedCultoId = cultoId;
-        
-        // Esconde o calendário e exibe a tela de escalas do culto selecionado
-        const calContainer = document.getElementById('admin-calendar-view-container');
-        const detailContainer = document.getElementById('admin-selected-culto-section');
-        if (calContainer && detailContainer) {
-            calContainer.style.display = 'none';
-            detailContainer.style.display = 'block';
-        }
-        
-        // Highlight selected event pill in calendar
-        document.querySelectorAll('.calendar-event-pill').forEach(pill => {
-            pill.style.boxShadow = '';
-            pill.style.fontWeight = '700';
-        });
-        const activePills = document.querySelectorAll(`[onclick*="selectAdminCulto('${cultoId}')"]`);
-        activePills.forEach(pill => {
-            pill.style.boxShadow = '0 0 0 2px var(--teal-primary) !important';
-            pill.style.fontWeight = '800';
-        });
+        console.log("DEBUG: [selectAdminCulto] INÍCIO - chamado com cultoId:", cultoId);
+        try {
+            this.adminSelectedCultoId = cultoId;
+            
+            // Esconde o calendário e exibe a tela de escalas do culto selecionado
+            const calContainer = document.getElementById('admin-calendar-view-container');
+            const detailContainer = document.getElementById('admin-selected-culto-section');
+            if (calContainer && detailContainer) {
+                console.log("DEBUG: [selectAdminCulto] Trocando visibilidade dos containers. calContainer = none, detailContainer = block");
+                calContainer.style.display = 'none';
+                detailContainer.style.display = 'block';
+            } else {
+                console.warn("DEBUG: [selectAdminCulto] calContainer ou detailContainer não encontrado no DOM!");
+            }
+            
+            // Highlight selected event pill in calendar
+            console.log("DEBUG: [selectAdminCulto] Atualizando destaque das pílulas no calendário");
+            document.querySelectorAll('.calendar-event-pill').forEach(pill => {
+                pill.style.boxShadow = '';
+                pill.style.fontWeight = '700';
+            });
+            const activePills = document.querySelectorAll(`[onclick*="selectAdminCulto('${cultoId}')"]`);
+            activePills.forEach(pill => {
+                pill.style.boxShadow = '0 0 0 2px var(--teal-primary) !important';
+                pill.style.fontWeight = '800';
+            });
 
-        // Atualizar classe ativa nos cards
-        document.querySelectorAll('.culto-card').forEach(card => {
-            card.classList.remove('active');
-            const circle = card.querySelector('.selection-circle');
-            if (circle) {
-                circle.classList.remove('active');
-                circle.innerHTML = '';
+            // Atualizar classe ativa nos cards
+            console.log("DEBUG: [selectAdminCulto] Atualizando visualização dos cards");
+            document.querySelectorAll('.culto-card').forEach(card => {
+                card.classList.remove('active');
+                const circle = card.querySelector('.selection-circle');
+                if (circle) {
+                    circle.classList.remove('active');
+                    circle.innerHTML = '';
+                }
+            });
+            
+            const activeCard = document.getElementById(`culto-card-${cultoId}`);
+            if (activeCard) {
+                activeCard.classList.add('active');
+                const circle = activeCard.querySelector('.selection-circle');
+                if (circle) {
+                    circle.classList.add('active');
+                    circle.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+                }
             }
-        });
-        
-        const activeCard = document.getElementById(`culto-card-${cultoId}`);
-        if (activeCard) {
-            activeCard.classList.add('active');
-            const circle = activeCard.querySelector('.selection-circle');
-            if (circle) {
-                circle.classList.add('active');
-                circle.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            
+            // Buscar dados do culto ativo
+            if (!this.cultosData) {
+                console.warn("DEBUG: [selectAdminCulto] this.cultosData é undefined/null. Buscando do banco...");
+                this.cultosData = await DbService.getCultos();
             }
+            
+            const c = this.cultosData.find(item => item.id === cultoId);
+            if (!c) {
+                console.warn("DEBUG: [selectAdminCulto] Culto não encontrado em this.cultosData para o ID:", cultoId);
+                return;
+            }
+            
+            console.log("DEBUG: [selectAdminCulto] Culto localizado com sucesso:", c.nome, c.data);
+            
+            const dateParts = c.data.split('-');
+            const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            
+            const elName = document.getElementById('admin-active-culto-name');
+            const elDate = document.getElementById('admin-active-culto-date');
+            const elTime = document.getElementById('admin-active-culto-time');
+            
+            if (elName) elName.innerText = c.nome;
+            if (elDate) elDate.innerText = formattedDate;
+            if (elTime) elTime.innerText = `${c.horarioInicio} às ${c.horarioFim}`;
+            
+            const statusBadge = document.getElementById('admin-active-culto-status-badge');
+            if (statusBadge) {
+                statusBadge.innerText = c.status;
+                statusBadge.className = '';
+                if (c.status === 'Confirmado') {
+                    statusBadge.className = 'badge badge-active';
+                } else {
+                    statusBadge.className = 'badge badge-inactive';
+                }
+            }
+            
+            // Fechar dropdown de ações do culto
+            const elActionsMenu = document.getElementById('active-culto-actions-menu');
+            if (elActionsMenu) elActionsMenu.style.display = 'none';
+            
+            // Atualizar textos do menu de ações dependendo do tipo
+            const actionEdit = document.getElementById('action-edit-culto');
+            const actionDelete = document.getElementById('action-delete-culto');
+            if (actionEdit && actionDelete) {
+                const isEspecial = c.tipo === 'especial';
+                actionEdit.innerHTML = `<i class="fa-solid fa-pen" style="margin-right: 5px;"></i> Editar ${isEspecial ? 'Evento' : 'Culto'}`;
+                actionDelete.innerHTML = `<i class="fa-solid fa-trash" style="margin-right: 5px;"></i> Excluir ${isEspecial ? 'Evento' : 'Culto'}`;
+            }
+            
+            // Carregar e renderizar escalas deste culto
+            console.log("DEBUG: [selectAdminCulto] chamando loadAndRenderAdminEscalas");
+            await this.loadAndRenderAdminEscalas();
+        } catch (e) {
+            console.error("DEBUG: [selectAdminCulto] CATCH COM ERRO COMPLETO:", e);
         }
-        
-        // Buscar dados do culto ativo
-        const c = this.cultosData.find(item => item.id === cultoId);
-        if (!c) return;
-        
-        const dateParts = c.data.split('-');
-        const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
-        
-        document.getElementById('admin-active-culto-name').innerText = c.nome;
-        document.getElementById('admin-active-culto-date').innerText = formattedDate;
-        document.getElementById('admin-active-culto-time').innerText = `${c.horarioInicio} às ${c.horarioFim}`;
-        
-        const statusBadge = document.getElementById('admin-active-culto-status-badge');
-        statusBadge.innerText = c.status;
-        statusBadge.className = '';
-        if (c.status === 'Confirmado') {
-            statusBadge.className = 'badge badge-active';
-        } else {
-            statusBadge.className = 'badge badge-inactive';
-        }
-        
-        // Fechar dropdown de ações do culto
-        document.getElementById('active-culto-actions-menu').style.display = 'none';
-        
-        // Atualizar textos do menu de ações dependendo do tipo
-        const actionEdit = document.getElementById('action-edit-culto');
-        const actionDelete = document.getElementById('action-delete-culto');
-        if (actionEdit && actionDelete) {
-            const isEspecial = c.tipo === 'especial';
-            actionEdit.innerHTML = `<i class="fa-solid fa-pen" style="margin-right: 5px;"></i> Editar ${isEspecial ? 'Evento' : 'Culto'}`;
-            actionDelete.innerHTML = `<i class="fa-solid fa-trash" style="margin-right: 5px;"></i> Excluir ${isEspecial ? 'Evento' : 'Culto'}`;
-        }
-        
-        // Carregar e renderizar escalas deste culto
-        this.loadAndRenderAdminEscalas();
     },
 
     toggleActiveCultoActionsDropdown(event) {
@@ -4629,13 +5103,25 @@ const App = {
     },
 
     async loadAndRenderAdminEscalas() {
+        console.log("DEBUG: [loadAndRenderAdminEscalas] INÍCIO - adminSelectedCultoId:", this.adminSelectedCultoId);
         const container = document.getElementById('admin-escalas-sectors-accordion');
+        if (!container) {
+            console.warn("DEBUG: [loadAndRenderAdminEscalas] Container admin-escalas-sectors-accordion não encontrado no DOM.");
+            return;
+        }
+        
         container.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--teal-primary);"></i><p style="margin-top:10px; font-size:0.9rem;">Buscando escalas...</p></div>';
         
-        if (!this.adminSelectedCultoId) return;
+        if (!this.adminSelectedCultoId) {
+            console.log("DEBUG: [loadAndRenderAdminEscalas] Nenhum culto selecionado (this.adminSelectedCultoId é nulo/undefined), abortando renderização.");
+            return;
+        }
         
         try {
+            console.log("DEBUG: [loadAndRenderAdminEscalas] Buscando escalas para cultoId:", this.adminSelectedCultoId);
             const escalas = await DbService.getEscalas(null, null, null, this.adminSelectedCultoId);
+            console.log("DEBUG: [loadAndRenderAdminEscalas] Escalas retornadas do DB. Quantidade:", escalas ? escalas.length : 0);
+            
             container.innerHTML = '';
             
             let totalFunctions = 0;
@@ -4643,9 +5129,15 @@ const App = {
             let totalPending = 0;
             let totalConfirmed = 0;
             
+            if (!this.cultosData) {
+                console.log("DEBUG: [loadAndRenderAdminEscalas] this.cultosData nulo, buscando do banco...");
+                this.cultosData = await DbService.getCultos();
+            }
+            
             const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
             const cultoTipo = c ? c.tipo : 'regular';
             
+            console.log("DEBUG: [loadAndRenderAdminEscalas] Renderizando acordeão de setores...");
             for (const sectorId in this.sectorsData) {
                 if (sectorId === 'limpeza' || sectorId === 'manutencao') continue;
                 const sector = this.sectorsData[sectorId];
@@ -4653,6 +5145,10 @@ const App = {
                 
                 const funcoes = this.getSectorFunctions(sectorId, cultoTipo);
                 const totalSectorFuncs = funcoes.length;
+                
+                if (totalSectorFuncs === 0 && sectorEscalas.length === 0) {
+                    continue;
+                }
                 
                 let preenchidas = 0;
                 funcoes.forEach(func => {
@@ -4762,11 +5258,25 @@ const App = {
                                 `;
                             }
                             
+                            let obsContent = escalaFunc.observacoes || '-';
+                            if (escalaFunc.observacoes && escalaFunc.observacoes.includes('🚨 Sem substituto')) {
+                                obsContent = `
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <span style="max-width:160px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-size:0.8rem; font-weight:500;" title="${escalaFunc.observacoes}">${escalaFunc.observacoes}</span>
+                                        <button onclick="App.clearEscalaObservacoes('${escalaFunc.id}')" title="Excluir mensagem de aviso" style="background:none; border:none; color:#EF4444; padding:2px; font-size:0.95rem; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:opacity 0.2s;" class="hover-opacity-btn">
+                                            <i class="fa-solid fa-circle-xmark"></i>
+                                        </button>
+                                    </div>
+                                `;
+                            } else {
+                                obsContent = `<div style="max-width:180px; font-size:0.8rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${escalaFunc.observacoes || ''}">${escalaFunc.observacoes || '-'}</div>`;
+                            }
+
                             tr.innerHTML = `
                                 <td style="font-weight:600; vertical-align:middle;">${funcColHtml}</td>
                                 <td style="vertical-align:middle;"><b>${escalaFunc.membroNome}</b></td>
                                 <td style="vertical-align:middle;">${pBadge}</td>
-                                <td style="vertical-align:middle;"><div style="max-width:180px; font-size:0.8rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${escalaFunc.observacoes || ''}">${escalaFunc.observacoes || '-'}</div></td>
+                                <td style="vertical-align:middle;">${obsContent}</td>
                                 <td style="vertical-align:middle;">
                                     <div class="action-buttons">
                                         <button class="btn-table-action" onclick="App.handleEditEscala('${escalaFunc.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
@@ -4827,22 +5337,29 @@ const App = {
                 container.appendChild(accordion);
             }
             
-            document.getElementById('summary-total-functions').innerText = totalFunctions;
-            document.getElementById('summary-total-scheduled').innerText = totalScheduled;
-            document.getElementById('summary-total-pending').innerText = totalPending;
-            document.getElementById('summary-total-confirmed').innerText = totalConfirmed;
+            const elTotalFunc = document.getElementById('summary-total-functions');
+            const elTotalSched = document.getElementById('summary-total-scheduled');
+            const elTotalPend = document.getElementById('summary-total-pending');
+            const elTotalConf = document.getElementById('summary-total-confirmed');
+            
+            if (elTotalFunc) elTotalFunc.innerText = totalFunctions;
+            if (elTotalSched) elTotalSched.innerText = totalScheduled;
+            if (elTotalPend) elTotalPend.innerText = totalPending;
+            if (elTotalConf) elTotalConf.innerText = totalConfirmed;
             
             const publishBtn = document.querySelector('.publish-scale-btn');
-            if (c && c.status === 'Confirmado') {
-                publishBtn.innerText = 'Escala Publicada';
-                publishBtn.disabled = true;
-                publishBtn.style.opacity = '0.6';
-                publishBtn.style.cursor = 'not-allowed';
-            } else {
-                publishBtn.innerText = 'Publicar Escala';
-                publishBtn.disabled = false;
-                publishBtn.style.opacity = '1';
-                publishBtn.style.cursor = 'pointer';
+            if (publishBtn) {
+                if (c && c.status === 'Confirmado') {
+                    publishBtn.innerText = 'Escala Publicada';
+                    publishBtn.disabled = true;
+                    publishBtn.style.opacity = '0.6';
+                    publishBtn.style.cursor = 'not-allowed';
+                } else {
+                    publishBtn.innerText = 'Publicar Escala';
+                    publishBtn.disabled = false;
+                    publishBtn.style.opacity = '1';
+                    publishBtn.style.cursor = 'pointer';
+                }
             }
         } catch (e) {
             console.error("Erro ao carregar escalas do culto:", e);
@@ -4925,7 +5442,7 @@ const App = {
         document.getElementById('modal-escala-form').classList.remove('active');
     },
 
-    async handleEscalaSetorChange(sectorId) {
+    async handleEscalaSetorChange(sectorId, currentMemberId = '') {
         const fSelect = document.getElementById('escala-funcao');
         fSelect.innerHTML = '<option value="" disabled selected>Escolha a função</option>';
         
@@ -4944,6 +5461,17 @@ const App = {
             const membros = await DbService.getMembros();
             const sectorMembers = membros.filter(m => {
                 if (m.status !== 'ativo') return false;
+                if (m.perfil === 'admin') return false; // Supervisor/Admin não pode entrar em nenhuma escala
+                
+                // Allow the currently selected member even if they are not available
+                if (m.id === currentMemberId) return true;
+
+                // Exclude if not available on the scale date
+                const dateVal = document.getElementById('escala-data').value;
+                const timeVal = document.getElementById('escala-horainicio').value;
+                if (!App.isMembroDisponivel(m, dateVal, timeVal)) return false;
+
+                if (sectorId === 'escala_livre') return true;
                 if (Array.isArray(m.setores)) {
                     return m.setores.includes(sectorId);
                 }
@@ -4988,7 +5516,7 @@ const App = {
             document.getElementById('escala-cultoid').value = e.cultoId || '';
             
             document.getElementById('escala-setor').value = e.setorId;
-            await this.handleEscalaSetorChange(e.setorId);
+            await this.handleEscalaSetorChange(e.setorId, e.membroId);
             
             document.getElementById('escala-funcao').value = e.funcao;
             document.getElementById('escala-membro').value = e.membroId;
@@ -5136,7 +5664,26 @@ const App = {
         }
     },
     
+    async clearEscalaObservacoes(id) {
+        try {
+            await DbService.saveEscala(id, { observacoes: "" });
+            this.showToast('Aviso removido com sucesso!', 'success');
+            this.loadAndRenderAdminEscalas();
+        } catch (e) {
+            console.error("Erro ao limpar observações da escala:", e);
+            this.showAlert('Erro ao remover o aviso.');
+        }
+    },
+    
     // --- CULTOS OPERATIONS ---
+    toggleVagasEscalaLivre() {
+        const val = document.getElementById('culto-modelo-escala').value;
+        const group = document.getElementById('grupo-vagas-escala-livre');
+        if (group) {
+            group.style.display = (val === 'Escala Livre') ? 'block' : 'none';
+        }
+    },
+
     openCultoFormModal(cultoId = null) {
         document.getElementById('culto-form').reset();
         document.getElementById('culto-form-id').value = '';
@@ -5152,15 +5699,18 @@ const App = {
                 document.getElementById('culto-tipo').value = c.tipo;
                 document.getElementById('culto-status').value = c.status;
                 document.getElementById('culto-modelo-escala').value = c.modeloEscala || 'Manter Existente';
+                document.getElementById('culto-vagas-escala-livre').value = c.vagasEscalaLivre || 2;
                 
                 document.getElementById('btn-culto-delete').style.display = 'block';
             }
         } else {
             document.getElementById('culto-data').value = this.formatLocalISOString(new Date()).split('T')[0];
             document.getElementById('culto-modelo-escala').value = 'Manter Existente';
+            document.getElementById('culto-vagas-escala-livre').value = 2;
             document.getElementById('btn-culto-delete').style.display = 'none';
         }
         
+        this.toggleVagasEscalaLivre();
         this.updateCultoFormLabels();
         document.getElementById('modal-culto-form').classList.add('active');
     },
@@ -5198,6 +5748,7 @@ const App = {
         const tipo = document.getElementById('culto-tipo').value;
         const status = document.getElementById('culto-status').value;
         const modeloEscala = document.getElementById('culto-modelo-escala').value;
+        const vagasEscalaLivre = parseInt(document.getElementById('culto-vagas-escala-livre').value, 10) || 2;
         
         try {
             const cultoPayload = {
@@ -5207,7 +5758,8 @@ const App = {
                 horarioFim,
                 tipo,
                 status,
-                modeloEscala
+                modeloEscala,
+                vagasEscalaLivre: modeloEscala === 'Escala Livre' ? vagasEscalaLivre : null
             };
             
             const savedId = await DbService.saveCulto(id ? id : null, cultoPayload);
@@ -5666,7 +6218,7 @@ const App = {
                 filterSelect.appendChild(opt);
             }
         }
-        const selectedSectorId = filterSelect ? filterSelect.value : 'limpeza';
+        const selectedSectorId = (filterSelect && filterSelect.value) ? filterSelect.value : 'limpeza';
 
         this.loadAdminStockHistory(selectedSectorId);
 
@@ -5994,6 +6546,7 @@ const App = {
 
             historyBody.innerHTML = '';
             historico.forEach(s => {
+                if (!s.data) return; // Pula registros com campo 'data' ausente
                 const dateParts = s.data.split('-');
                 const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
                 const sector = this.sectorsData[s.setorId];
@@ -6026,6 +6579,15 @@ const App = {
 
         } catch (e) {
             console.error("Relatorios rendering error:", e);
+            // Exibe mensagem de erro nos 3 painéis para não ficarem presos no spinner
+            const errMsg = '<p style="text-align:center; color:#EF4444; padding:20px; font-size:0.9rem;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Erro ao carregar dados. Verifique a conexão.</p>';
+            const errRow = '<tr><td colspan="6" style="color:#EF4444; text-align:center; padding:20px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Erro ao carregar histórico.</td></tr>';
+            const sL = document.getElementById('report-list-served');
+            const nL = document.getElementById('report-list-not-served');
+            const hB = document.getElementById('admin-history-table-body');
+            if (sL) sL.innerHTML = errMsg;
+            if (nL) nL.innerHTML = errMsg;
+            if (hB) hB.innerHTML = errRow;
         }
     },
 
@@ -6623,7 +7185,7 @@ const App = {
         
         document.getElementById('escala-setor').value = sectorId;
         
-        await App.handleEscalaSetorChange(sectorId);
+        await App.handleEscalaSetorChange(sectorId, membroId);
         
         const fSelect = document.getElementById('escala-funcao');
         let matchedFuncao = '';
@@ -7155,16 +7717,23 @@ const App = {
         let slots = [];
         if (model === 'Culto Completo') {
             slots = [
-                { setorId: 'entrada', funcao: 'Entrada' },
-                { setorId: 'entrada', funcao: 'Entrada' },
+                { setorId: 'entrada', funcao: 'Portaria' },
+                { setorId: 'check_in', funcao: 'Check-in' },
                 { setorId: 'check_in', funcao: 'Check-in' },
                 { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
                 { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
                 { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
                 { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
-                { setorId: 'acolhimento', funcao: 'Acolhimento' },
-                { setorId: 'acolhimento', funcao: 'Acolhimento' }
+                { setorId: 'acolhimento', funcao: 'Conduzir ao Acolhimento' },
+                { setorId: 'acolhimento', funcao: 'Recepcionar' },
+                { setorId: 'acolhimento', funcao: 'Servir' },
+                { setorId: 'acolhimento', funcao: 'Preparar a mesa' }
             ];
+        } else if (model === 'Escala Livre') {
+            const numVagas = culto.vagasEscalaLivre || 2;
+            for (let i = 0; i < numVagas; i++) {
+                slots.push({ setorId: 'escala_livre', funcao: 'Escala Livre' });
+            }
         } else if (model === 'Culto Menor') {
             slots = [
                 { setorId: 'check_in', funcao: 'Check-in' },
@@ -7191,6 +7760,27 @@ const App = {
             }
         });
 
+        // Calcular domingo anterior relativo à data do culto
+        const getPreviousSundayStr = (dateStr) => {
+            const d = new Date(dateStr + 'T12:00:00');
+            const day = d.getDay();
+            const daysToSubtract = day === 0 ? 7 : day;
+            const prevSunday = new Date(d.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
+            const yyyy = prevSunday.getFullYear();
+            const mm = String(prevSunday.getMonth() + 1).padStart(2, '0');
+            const dd = String(prevSunday.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+        const prevSundayStr = getPreviousSundayStr(culto.data);
+
+        // Mapear membros escalados no domingo anterior
+        const membersOnPrevSunday = new Set();
+        escalas.forEach(e => {
+            if (e.data === prevSundayStr && e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                membersOnPrevSunday.add(e.membroId);
+            }
+        });
+
         const assignments = [];
         const scheduledMemberIds = new Set();
 
@@ -7199,17 +7789,52 @@ const App = {
                 if (m.perfil === 'admin') return false;
                 if (m.status !== 'ativo') return false;
                 
-                const mSectors = m.setores || (m.setor ? [m.setor] : []);
-                if (!mSectors.includes(slot.setorId)) return false;
+                // Excluir de escala automática se precisar consultar primeiro
+                const mDisp = (m.disponibilidade || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                if (mDisp.includes('consultar primeiro')) return false;
                 
                 if (!App.isMembroDisponivel(m, culto.data, culto.horarioInicio)) return false;
                 if (scheduledMemberIds.has(m.id)) return false;
 
+                // Bypass setor e funcao se for Escala Livre
+                if (slot.setorId === 'escala_livre') {
+                    return true;
+                }
+                
+                const mSectors = m.setores || (m.setor ? [m.setor] : []);
+                if (!mSectors.includes(slot.setorId)) return false;
+
                 const fPrincipal = (m.funcaoPrincipal || '').toLowerCase().trim();
                 const fSecundaria = (m.funcaoSecundaria || '').toLowerCase().trim();
                 const fSlot = slot.funcao.toLowerCase().trim();
-                return fPrincipal.includes(fSlot) || fSecundaria.includes(fSlot);
+                
+                const principalMatch = fPrincipal && (fPrincipal.includes(fSlot) || fSlot.includes(fPrincipal));
+                const secundariaMatch = fSecundaria && (fSecundaria.includes(fSlot) || fSlot.includes(fSecundaria));
+                
+                const isAcolhimentoBypass = slot.setorId === 'acolhimento' && 
+                    (fPrincipal.includes('acolhimento') || fSecundaria.includes('acolhimento'));
+                const isPortariaBypass = slot.setorId === 'entrada' && 
+                    (fPrincipal.includes('portaria') || fPrincipal.includes('entrada') || 
+                     fSecundaria.includes('portaria') || fSecundaria.includes('entrada'));
+                
+                return principalMatch || secundariaMatch || isAcolhimentoBypass || isPortariaBypass;
             });
+
+            // Evitar obreiros que serviram no domingo anterior, a menos que queiram servir sempre (Disponibilidade Geral ou Função / Obs)
+            let primaryEligible = eligible.filter(m => {
+                const wasOnPrevSunday = membersOnPrevSunday.has(m.id);
+                if (!wasOnPrevSunday) return true;
+
+                const mDisp = (m.disponibilidade || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const mObs = (m.funcao || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const querTodoCulto = mDisp.includes('todos cultos') || mDisp.includes('todo culto') || mDisp.includes('dias de culto') ||
+                                      mObs.includes('todos cultos') || mObs.includes('todo culto') || mObs.includes('dias de culto');
+                return querTodoCulto;
+            });
+
+            if (primaryEligible.length > 0) {
+                eligible = primaryEligible;
+            }
 
             // Regra de Gênero (Entrada e Apoio)
             const needsGenderCheck = ['entrada', 'apoio'].some(x => slot.funcao.toLowerCase().includes(x));
@@ -7264,7 +7889,23 @@ const App = {
                 };
             });
 
-            candidatesWithScore.sort((a, b) => b.score - a.score);
+            // Ordenação por rodízio justo (nunca serviu primeiro, depois quem serviu há mais tempo, desempate por score)
+            candidatesWithScore.sort((a, b) => {
+                const hasA = !!lastScaledMap[a.member.id];
+                const hasB = !!lastScaledMap[b.member.id];
+                if (!hasA && hasB) return -1;
+                if (hasA && !hasB) return 1;
+
+                if (hasA && hasB) {
+                    const dateA = lastScaledMap[a.member.id];
+                    const dateB = lastScaledMap[b.member.id];
+                    if (dateA !== dateB) {
+                        return dateA.localeCompare(dateB);
+                    }
+                }
+
+                return b.score - a.score;
+            });
 
             if (candidatesWithScore.length > 0) {
                 const best = candidatesWithScore[0];
@@ -7325,23 +7966,73 @@ const App = {
             const refusedMember = membros.find(m => m.id === refusedMemberId);
             const refusedMemberNome = refusedMember ? refusedMember.nome : 'Voluntário';
 
+            // Calcular domingo anterior relativo à data do culto recusado
+            const getPreviousSundayStr = (dateStr) => {
+                const d = new Date(dateStr + 'T12:00:00');
+                const day = d.getDay();
+                const daysToSubtract = day === 0 ? 7 : day;
+                const prevSunday = new Date(d.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
+                const yyyy = prevSunday.getFullYear();
+                const mm = String(prevSunday.getMonth() + 1).padStart(2, '0');
+                const dd = String(prevSunday.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            };
+            const prevSundayStr = getPreviousSundayStr(escalaRefused.data);
+
+            // Mapear membros escalados no domingo anterior
+            const membersOnPrevSunday = new Set();
+            escalas.forEach(e => {
+                if (e.data === prevSundayStr && e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                    membersOnPrevSunday.add(e.membroId);
+                }
+            });
+
             // 1. Filtrar membros elegíveis disponíveis
             let eligible = membros.filter(m => {
                 if (m.perfil === 'admin') return false;
                 if (m.status !== 'ativo') return false;
+                
+                // Excluir de escala automática se precisar consultar primeiro
+                const mDisp = (m.disponibilidade || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                if (mDisp.includes('consultar primeiro')) return false;
+
                 if (m.id === refusedMemberId) return false;
                 if ((m.participaSubstituicao || 'Sim') !== 'Sim') return false;
+
+                if (!App.isMembroDisponivel(m, escalaRefused.data, escalaRefused.horarioInicio)) return false;
+
+                // Bypass setor e funcao se for Escala Livre
+                if (escalaRefused.setorId === 'escala_livre') {
+                    return true;
+                }
 
                 const mSectors = m.setores || (m.setor ? [m.setor] : []);
                 if (!mSectors.includes(escalaRefused.setorId)) return false;
 
-                if (!App.isMembroDisponivel(m, escalaRefused.data, escalaRefused.horarioInicio)) return false;
-
                 const fPrincipal = (m.funcaoPrincipal || '').toLowerCase().trim();
                 const fSecundaria = (m.funcaoSecundaria || '').toLowerCase().trim();
                 const fSlot = escalaRefused.funcao.toLowerCase().trim();
-                return fPrincipal.includes(fSlot) || fSecundaria.includes(fSlot);
+                
+                const principalMatch = fPrincipal && (fPrincipal.includes(fSlot) || fSlot.includes(fPrincipal));
+                const secundariaMatch = fSecundaria && (fSecundaria.includes(fSlot) || fSlot.includes(fSecundaria));
+                return principalMatch || secundariaMatch;
             });
+
+            // Evitar obreiros que serviram no domingo anterior, a menos que queiram servir sempre (Disponibilidade Geral ou Função / Obs)
+            let primaryEligible = eligible.filter(m => {
+                const wasOnPrevSunday = membersOnPrevSunday.has(m.id);
+                if (!wasOnPrevSunday) return true;
+
+                const mDisp = (m.disponibilidade || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const mObs = (m.funcao || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const querTodoCulto = mDisp.includes('todos cultos') || mDisp.includes('todo culto') || mDisp.includes('dias de culto') ||
+                                      mObs.includes('todos cultos') || mObs.includes('todo culto') || mObs.includes('dias de culto');
+                return querTodoCulto;
+            });
+
+            if (primaryEligible.length > 0) {
+                eligible = primaryEligible;
+            }
 
             // Aplica regra de gênero na substituição se necessário (apenas em Entrada, Recepção, Apoio Interno)
             const needsGenderCheck = ['entrada', 'recep', 'apoio'].some(x => escalaRefused.funcao.toLowerCase().includes(x));
@@ -7368,7 +8059,7 @@ const App = {
             // 2. Calcular scores e ordenar
             const lastScaledMap = {};
             escalas.forEach(e => {
-                if (e.membroId && e.statusPresenca !== 'Recusado') {
+                if (e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
                     if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
                         lastScaledMap[e.membroId] = e.data;
                     }
@@ -7392,7 +8083,23 @@ const App = {
                 };
             });
 
-            candidatesWithScore.sort((a, b) => b.score - a.score);
+            // Ordenação por rodízio justo (nunca serviu primeiro, depois quem serviu há mais tempo, desempate por score)
+            candidatesWithScore.sort((a, b) => {
+                const hasA = !!lastScaledMap[a.member.id];
+                const hasB = !!lastScaledMap[b.member.id];
+                if (!hasA && hasB) return -1;
+                if (hasA && !hasB) return 1;
+
+                if (hasA && hasB) {
+                    const dateA = lastScaledMap[a.member.id];
+                    const dateB = lastScaledMap[b.member.id];
+                    if (dateA !== dateB) {
+                        return dateA.localeCompare(dateB);
+                    }
+                }
+
+                return b.score - a.score;
+            });
 
             if (candidatesWithScore.length > 0) {
                 const substitute = candidatesWithScore[0].member;
@@ -7474,15 +8181,17 @@ const App = {
         const btnEngagement = document.getElementById('btn-report-engagement');
         const btnRotation = document.getElementById('btn-report-rotation');
         const btnHealth = document.getElementById('btn-report-health');
+        const btnBalance = document.getElementById('btn-report-balance');
         
         const secEngagement = document.getElementById('reports-engagement-section');
         const secRotation = document.getElementById('reports-rotation-section');
         const secHealth = document.getElementById('reports-health-section');
+        const secBalance = document.getElementById('reports-balance-section');
 
-        if (!btnEngagement || !btnRotation || !btnHealth || !secEngagement || !secRotation || !secHealth) return;
+        if (!btnEngagement || !btnRotation || !btnHealth || !btnBalance || !secEngagement || !secRotation || !secHealth || !secBalance) return;
 
         // Reset all buttons style
-        [btnEngagement, btnRotation, btnHealth].forEach(btn => {
+        [btnEngagement, btnRotation, btnHealth, btnBalance].forEach(btn => {
             btn.className = 'btn-secondary';
             btn.style.background = 'transparent';
             btn.style.color = 'var(--navy-dark)';
@@ -7492,6 +8201,7 @@ const App = {
         secEngagement.style.display = 'none';
         secRotation.style.display = 'none';
         secHealth.style.display = 'none';
+        secBalance.style.display = 'none';
 
         if (tab === 'engagement') {
             btnEngagement.className = 'btn-primary';
@@ -7508,15 +8218,14 @@ const App = {
             btnHealth.className = 'btn-primary';
             btnHealth.style.background = 'var(--teal-primary)';
             btnHealth.style.color = '#fff';
-            
-            btnEngagement.className = 'btn-secondary';
-            btnEngagement.style.background = 'transparent';
-            btnEngagement.style.color = 'var(--navy-dark)';
-            
-            secEngagement.style.display = 'none';
             secHealth.style.display = 'block';
-
             this.loadAndRenderHealthMetrics();
+        } else if (tab === 'balance') {
+            btnBalance.className = 'btn-primary';
+            btnBalance.style.background = 'var(--teal-primary)';
+            btnBalance.style.color = '#fff';
+            secBalance.style.display = 'block';
+            this.renderDashboardEquilibrio();
         }
     },
 
@@ -7545,10 +8254,11 @@ const App = {
             for (const sectorId in this.sectorsData) {
                 const sector = this.sectorsData[sectorId];
                 
-                // Get all active members belonging to this sector
+                // Get all active available members belonging to this sector
                 let sectorMembers = membros.filter(m => {
                     if (m.perfil === 'admin') return false;
                     if (m.status !== 'ativo') return false;
+                    if (m.statusOperacional && m.statusOperacional !== 'Disponível') return false;
                     
                     const mSectors = m.setores || (m.setor ? [m.setor] : []);
                     return mSectors.includes(sectorId);
@@ -7688,6 +8398,375 @@ const App = {
             App.hideLoading();
             console.error(e);
             this.showAlert("Erro ao processar arquivamento manual.");
+        }
+    },
+
+    toggleAfastamentoDatesFields(statusOp) {
+        const fields = document.getElementById('afastamento-dates-fields');
+        if (!fields) return;
+        if (!statusOp || statusOp === 'Disponível') {
+            fields.style.display = 'none';
+            document.getElementById('membro-afastamento-inicio').required = false;
+            document.getElementById('membro-afastamento-fim').required = false;
+            document.getElementById('membro-afastamento-motivo').required = false;
+        } else {
+            fields.style.display = 'flex';
+            document.getElementById('membro-afastamento-inicio').required = true;
+            document.getElementById('membro-afastamento-fim').required = true;
+            document.getElementById('membro-afastamento-motivo').required = true;
+        }
+    },
+
+    openAfastamentoRapidoModal(membroId, membroNome) {
+        document.getElementById('afastamento-rapido-membro-id').value = membroId;
+        document.getElementById('afastamento-rapido-membro-nome').innerText = `Afastar Obreiro: ${membroNome}`;
+        
+        document.getElementById('afastamento-rapido-form').reset();
+        
+        const hoje = new Date().toISOString().split('T')[0];
+        document.getElementById('afastamento-rapido-inicio').value = hoje;
+        
+        const umaSemana = new Date();
+        umaSemana.setDate(umaSemana.getDate() + 7);
+        const fim = umaSemana.toISOString().split('T')[0];
+        document.getElementById('afastamento-rapido-fim').value = fim;
+
+        document.getElementById('modal-afastamento-rapido').classList.add('active');
+    },
+
+    closeAfastamentoRapidoModal() {
+        document.getElementById('modal-afastamento-rapido').classList.remove('active');
+    },
+
+    async handleAfastamentoRapidoSave() {
+        const id = document.getElementById('afastamento-rapido-membro-id').value;
+        const statusOperacional = document.getElementById('afastamento-rapido-status').value;
+        const afastamentoInicio = document.getElementById('afastamento-rapido-inicio').value;
+        const afastamentoFim = document.getElementById('afastamento-rapido-fim').value;
+        const afastamentoMotivo = document.getElementById('afastamento-rapido-motivo').value.trim();
+        const afastamentoObsSupervisao = document.getElementById('afastamento-rapido-obs').value.trim();
+        const afastamentoRetornoAutomativo = document.getElementById('afastamento-rapido-retorno').value;
+
+        if (!statusOperacional || !afastamentoInicio || !afastamentoFim || !afastamentoMotivo) {
+            this.showAlert('Por favor, preencha todos os campos obrigatórios.');
+            return;
+        }
+
+        if (afastamentoFim < afastamentoInicio) {
+            this.showAlert('A data final prevista não pode ser anterior à data inicial.');
+            return;
+        }
+
+        const hojeStr = new Date().toISOString().split('T')[0];
+        try {
+            const escalas = await DbService.getEscalas();
+            const escalasFuturas = escalas.filter(esc => esc.membroId === id && esc.data >= hojeStr);
+            if (escalasFuturas.length > 0) {
+                const confirmar = confirm(`Atenção: O obreiro possui ${escalasFuturas.length} escala(s) futura(s) agendada(s) (a partir de hoje). Ao confirmar o afastamento, essas escalas precisarão ser revisadas ou substituídas. Deseja continuar?`);
+                if (!confirmar) return;
+            }
+        } catch (err) {
+            console.error("Erro ao verificar escalas futuras:", err);
+        }
+
+        try {
+            await DbService.saveAfastamento(id, {
+                statusOperacional,
+                afastamentoInicio,
+                afastamentoFim,
+                afastamentoMotivo,
+                afastamentoObsSupervisao,
+                afastamentoRetornoAutomativo
+            });
+
+            this.closeAfastamentoRapidoModal();
+            this.showToast('Afastamento registrado com sucesso!', 'success');
+            
+            this.renderMembrosTable();
+            if (this.adminActiveTab === 'afastamentos') {
+                this.loadAndRenderAdminAfastamentos();
+            }
+        } catch (e) {
+            this.showAlert('Erro ao registrar afastamento.');
+        }
+    },
+
+    async checkAndReactivateReturnedMembers() {
+        try {
+            const membros = await DbService.getMembros();
+            const hojeStr = new Date().toISOString().split('T')[0];
+            const promises = [];
+
+            membros.forEach(m => {
+                if (m.statusOperacional && m.statusOperacional !== 'Disponível') {
+                    if (m.afastamentoFim && hojeStr > m.afastamentoFim) {
+                        const autoRetorno = m.afastamentoRetornoAutomativo === 'Sim' || m.afastamentoRetornoAutomativo === true || !m.afastamentoRetornoAutomativo;
+                        if (autoRetorno) {
+                            console.log(`Reativando membro automaticamente: ${m.nome}`);
+                            promises.push(DbService.saveMembro(m.id, {
+                                statusOperacional: 'Disponível',
+                                afastamentoInicio: '',
+                                afastamentoFim: '',
+                                afastamentoMotivo: '',
+                                afastamentoObsSupervisao: '',
+                                afastamentoRetornoAutomativo: 'Sim'
+                            }));
+                        }
+                    }
+                }
+            });
+
+            if (promises.length > 0) {
+                await Promise.all(promises);
+                console.log(`${promises.length} membro(s) reativado(s) automaticamente.`);
+                this.renderMembrosTable();
+            }
+        } catch (e) {
+            console.error("Erro na reativação automática de membros:", e);
+        }
+    },
+
+    async loadAndRenderAdminAfastamentos() {
+        const body = document.getElementById('admin-afastamentos-table-body');
+        const histBody = document.getElementById('admin-afastamentos-historico-table-body');
+
+        if (!body || !histBody) return;
+
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando afastamentos ativos...</td></tr>';
+        histBody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando histórico...</td></tr>';
+
+        try {
+            const membros = await DbService.getMembros();
+            const historico = await DbService.getHistoricoAfastamentos();
+
+            const activeAbs = membros.filter(m => m.statusOperacional && m.statusOperacional !== 'Disponível');
+            body.innerHTML = '';
+            
+            if (activeAbs.length === 0) {
+                body.innerHTML = '<tr><td colspan="9" style="text-align:center; color: var(--slate-gray);">Nenhum obreiro afastado no momento.</td></tr>';
+            } else {
+                const hoje = new Date();
+                hoje.setHours(0,0,0,0);
+
+                activeAbs.forEach(m => {
+                    let diasRestantesStr = '-';
+                    if (m.afastamentoFim) {
+                        const fim = new Date(m.afastamentoFim + 'T00:00:00');
+                        const diffTime = fim.getTime() - hoje.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        if (diffDays < 0) {
+                            diasRestantesStr = `<span style="color:#EF4444; font-weight:700;">Expirado (${Math.abs(diffDays)}d)</span>`;
+                        } else if (diffDays === 0) {
+                            diasRestantesStr = `<span style="color:#F59E0B; font-weight:700;">Último Dia (Hoje)</span>`;
+                        } else {
+                            diasRestantesStr = `<b>${diffDays}</b> dia(s)`;
+                        }
+                    }
+
+                    const opColors = { 'Férias':'#10B981','Afastado':'#F59E0B','Licença Médica':'#EF4444','Viagem / Intercâmbio':'#6366F1','Inativo Temporário':'#6B7280' };
+                    const cor = opColors[m.statusOperacional] || '#6B7280';
+                    const badge = `<span style="background:${cor}15; color:${cor}; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">${m.statusOperacional}</span>`;
+
+                    const dataInicioFmt = m.afastamentoInicio ? m.afastamentoInicio.split('-').reverse().join('/') : '-';
+                    const dataFimFmt = m.afastamentoFim ? m.afastamentoFim.split('-').reverse().join('/') : '-';
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><b>${m.nome}</b></td>
+                        <td>${badge}</td>
+                        <td>${dataInicioFmt}</td>
+                        <td>${dataFimFmt}</td>
+                        <td>${diasRestantesStr}</td>
+                        <td>${m.afastamentoMotivo || '-'}</td>
+                        <td><span style="font-size:0.8rem; color:var(--slate-gray);">${m.afastamentoObsSupervisao || '-'}</span></td>
+                        <td>${m.afastamentoRetornoAutomativo || 'Sim'}</td>
+                        <td style="text-align: right;">
+                            <button class="btn-table-action" onclick="App.handleManualReactivation('${m.id}')" title="Reativar Obreiro e voltar para Disponível" style="color:#10B981; padding: 4px 8px; border: 1px solid #10B981; border-radius: 6px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px; background: transparent; cursor: pointer;">
+                                <i class="fa-solid fa-user-check"></i> Reativar
+                            </button>
+                        </td>
+                    `;
+                    body.appendChild(tr);
+                });
+            }
+
+            histBody.innerHTML = '';
+            if (historico.length === 0) {
+                histBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--slate-gray);">Nenhum histórico registrado.</td></tr>';
+            } else {
+                historico.forEach(h => {
+                    const dataInicioFmt = h.afastamentoInicio ? h.afastamentoInicio.split('-').reverse().join('/') : '-';
+                    const dataFimFmt = h.afastamentoFim ? h.afastamentoFim.split('-').reverse().join('/') : '-';
+                    
+                    let dataRegFmt = '-';
+                    if (h.dataRegistro) {
+                        try {
+                            const dateObj = new Date(h.dataRegistro);
+                            const d = String(dateObj.getDate()).padStart(2, '0');
+                            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                            const y = dateObj.getFullYear();
+                            const hr = String(dateObj.getHours()).padStart(2, '0');
+                            const min = String(dateObj.getMinutes()).padStart(2, '0');
+                            dataRegFmt = `${d}/${m}/${y} ${hr}:${min}`;
+                        } catch (e) {
+                            dataRegFmt = h.dataRegistro;
+                        }
+                    }
+
+                    const opColors = { 'Férias':'#10B981','Afastado':'#F59E0B','Licença Médica':'#EF4444','Viagem / Intercâmbio':'#6366F1','Inativo Temporário':'#6B7280' };
+                    const cor = opColors[h.statusOperacional] || '#6B7280';
+                    const badge = `<span style="background:${cor}15; color:${cor}; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:700;">${h.statusOperacional || 'Afastado'}</span>`;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><b>${h.membroNome || 'Desconhecido'}</b></td>
+                        <td>${badge}</td>
+                        <td>${dataInicioFmt}</td>
+                        <td>${dataFimFmt}</td>
+                        <td>${h.afastamentoMotivo || '-'}</td>
+                        <td><span style="font-size:0.8rem; color:var(--slate-gray);">${h.afastamentoObsSupervisao || '-'}</span></td>
+                        <td>${dataRegFmt}</td>
+                    `;
+                    histBody.appendChild(tr);
+                });
+            }
+        } catch (e) {
+            console.error("Erro ao carregar painel de afastamentos:", e);
+            body.innerHTML = '<tr><td colspan="9" style="color:red; text-align:center;">Erro ao carregar dados.</td></tr>';
+            histBody.innerHTML = '<tr><td colspan="7" style="color:red; text-align:center;">Erro ao carregar dados.</td></tr>';
+        }
+    },
+
+    async handleManualReactivation(membroId) {
+        if (confirm('Tem certeza que deseja reativar este obreiro e encerrar o afastamento temporário dele agora?')) {
+            try {
+                await DbService.saveMembro(membroId, {
+                    statusOperacional: 'Disponível',
+                    afastamentoInicio: '',
+                    afastamentoFim: '',
+                    afastamentoMotivo: '',
+                    afastamentoObsSupervisao: '',
+                    afastamentoRetornoAutomativo: 'Sim'
+                });
+                this.showToast('Membro reativado com sucesso!', 'success');
+                this.renderMembrosTable();
+                this.loadAndRenderAdminAfastamentos();
+            } catch (e) {
+                this.showAlert('Erro ao reativar obreiro.');
+            }
+        }
+    },
+
+    async renderDashboardEquilibrio() {
+        const maisEscaladosBody = document.getElementById('equilibrio-mais-escalados-body');
+        const menosEscaladosBody = document.getElementById('equilibrio-menos-escalados-body');
+        const alertsContainer = document.getElementById('equilibrio-participation-alerts');
+
+        if (!maisEscaladosBody || !menosEscaladosBody || !alertsContainer) return;
+
+        maisEscaladosBody.innerHTML = '<tr><td colspan="3" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</td></tr>';
+        menosEscaladosBody.innerHTML = '<tr><td colspan="3" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</td></tr>';
+        alertsContainer.innerHTML = '';
+
+        try {
+            const membros = await DbService.getMembros();
+            const escalas = await DbService.getEscalas();
+
+            const availableMembros = membros.filter(m => m.perfil !== 'admin' && m.status === 'ativo' && (!m.statusOperacional || m.statusOperacional === 'Disponível'));
+
+            const memberScaleCounts = {};
+            availableMembros.forEach(m => {
+                memberScaleCounts[m.id] = 0;
+            });
+
+            escalas.forEach(esc => {
+                if (esc.membroId && memberScaleCounts[esc.membroId] !== undefined) {
+                    memberScaleCounts[esc.membroId]++;
+                }
+            });
+
+            const list = availableMembros.map(m => {
+                let setorNome = '-';
+                const mSetores = m.setores || (m.setor ? [m.setor] : []);
+                if (mSetores.length > 0) {
+                    setorNome = mSetores.map(sId => this.sectorsData[sId]?.nome || sId).join(', ');
+                } else {
+                    setorNome = 'Sem Setor';
+                }
+
+                return {
+                    id: m.id,
+                    nome: m.nome,
+                    setorNome,
+                    count: memberScaleCounts[m.id] || 0
+                };
+            });
+
+            const sortedMais = [...list].sort((a, b) => b.count - a.count);
+            const sortedMenos = [...list].sort((a, b) => a.count - b.count);
+
+            maisEscaladosBody.innerHTML = '';
+            sortedMais.slice(0, 5).forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${item.nome}</b></td>
+                    <td>${item.setorNome}</td>
+                    <td style="text-align: center;"><span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10B981; font-weight: 700;">${item.count}</span></td>
+                `;
+                maisEscaladosBody.appendChild(tr);
+            });
+
+            menosEscaladosBody.innerHTML = '';
+            sortedMenos.slice(0, 5).forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${item.nome}</b></td>
+                    <td>${item.setorNome}</td>
+                    <td style="text-align: center;"><span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #EF4444; font-weight: 700;">${item.count}</span></td>
+                `;
+                menosEscaladosBody.appendChild(tr);
+            });
+
+            const lowAlerts = list.filter(item => item.count < 2);
+            if (lowAlerts.length === 0) {
+                alertsContainer.innerHTML = `
+                    <div style="background: rgba(16, 185, 129, 0.08); color: #10B981; border: 1px dashed #10B981; border-radius: 8px; padding: 12px; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Excelente! Todos os obreiros disponíveis estão participando ativamente das escalas (mínimo de 2 escalas).</span>
+                    </div>
+                `;
+            } else {
+                lowAlerts.forEach(item => {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.style.background = 'rgba(245, 158, 11, 0.08)';
+                    alertDiv.style.color = '#F59E0B';
+                    alertDiv.style.border = '1px dashed #F59E0B';
+                    alertDiv.style.borderRadius = '8px';
+                    alertDiv.style.padding = '12px';
+                    alertDiv.style.fontSize = '0.85rem';
+                    alertDiv.style.display = 'flex';
+                    alertDiv.style.alignItems = 'center';
+                    alertDiv.style.gap = '8px';
+
+                    if (item.count === 0) {
+                        alertDiv.innerHTML = `
+                            <i class="fa-solid fa-circle-exclamation" style="color:#EF4444;"></i>
+                            <span><b>${item.nome}</b> (${item.setorNome}) está disponível mas <b>nunca foi escalado</b> no sistema.</span>
+                        `;
+                    } else {
+                        alertDiv.innerHTML = `
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span><b>${item.nome}</b> (${item.setorNome}) possui baixa participação: apenas <b>${item.count} escala</b> agendada.</span>
+                        `;
+                    }
+                    alertsContainer.appendChild(alertDiv);
+                });
+            }
+
+        } catch (e) {
+            console.error("Erro ao carregar dashboard de equilíbrio:", e);
+            maisEscaladosBody.innerHTML = '<tr><td colspan="3" style="color:red; text-align:center;">Erro ao carregar dados.</td></tr>';
+            menosEscaladosBody.innerHTML = '<tr><td colspan="3" style="color:red; text-align:center;">Erro ao carregar dados.</td></tr>';
         }
     }
 };

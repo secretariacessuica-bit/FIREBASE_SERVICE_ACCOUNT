@@ -1,19 +1,26 @@
 // CES Diaconia - Database & CRUD Module (Firestore SDK v8 compat)
 
 const DbService = {
-    // --- CACHE SYSTEM (Fase 2.1) ---
-    _cache: {
-        membros: null,
-        setores: null,
-        produtos: null,
-        escalas: null,
-        timestamps: {
-            membros: 0,
-            setores: 0,
-            produtos: 0,
-            escalas: 0
+    // --- DATE CONVERSION UTILITY ---
+    safeToDate(val, defaultVal = null) {
+        if (!val) return defaultVal;
+        if (typeof val.toDate === 'function') {
+            return val.toDate();
         }
+        if (val instanceof Date) {
+            return val;
+        }
+        if (typeof val.seconds === 'number') {
+            return new Date(val.seconds * 1000 + Math.floor((val.nanoseconds || 0) / 1000000));
+        }
+        const parsed = new Date(val);
+        if (!isNaN(parsed.getTime())) {
+            return parsed;
+        }
+        return defaultVal;
     },
+
+    // --- CACHE SYSTEM (Fase 2.1 - Otimizada com SessionStorage) ---
     _cacheTTL: 300000, // 5 minutos em milissegundos
     cacheStats: {
         leiturasEconomizadas: 0,
@@ -21,25 +28,76 @@ const DbService = {
         ultimaAtualizacao: null
     },
 
+    _salvarNoCache(chave, dados) {
+        try {
+            sessionStorage.setItem(`diaconia_cache_${chave}`, JSON.stringify(dados));
+            const cachedTimestamps = sessionStorage.getItem('diaconia_cache_timestamps');
+            const timestamps = cachedTimestamps ? JSON.parse(cachedTimestamps) : {};
+            timestamps[chave] = Date.now();
+            sessionStorage.setItem('diaconia_cache_timestamps', JSON.stringify(timestamps));
+        } catch (e) {
+            console.warn("Falha ao salvar no cache:", e);
+        }
+    },
+
+    _obterDoCache(chave) {
+        try {
+            const dataStr = sessionStorage.getItem(`diaconia_cache_${chave}`);
+            return dataStr ? JSON.parse(dataStr) : null;
+        } catch (e) {
+            return null;
+        }
+    },
+
     isCacheValido(chave) {
-        const agora = Date.now();
-        return this._cache[chave] !== null && (agora - this._cache.timestamps[chave] < this._cacheTTL);
+        try {
+            const cachedTimestamps = sessionStorage.getItem('diaconia_cache_timestamps');
+            if (!cachedTimestamps) return false;
+            const timestamps = JSON.parse(cachedTimestamps);
+            const ts = timestamps[chave] || 0;
+            const agora = Date.now();
+            return (agora - ts < this._cacheTTL) && sessionStorage.getItem(`diaconia_cache_${chave}`) !== null;
+        } catch (e) {
+            return false;
+        }
     },
 
     limparCache(chave) {
-        if (chave) {
-            console.log(`[Cache] Invalidando cache para a chave: ${chave}`);
-            this._cache[chave] = null;
-            this._cache.timestamps[chave] = 0;
-        } else {
-            console.log("[Cache] Invalidando todo o cache");
-            Object.keys(this._cache).forEach(k => {
-                if (k !== 'timestamps') {
-                    this._cache[k] = null;
-                    this._cache.timestamps[k] = 0;
-                }
-            });
+        try {
+            if (chave) {
+                console.log(`[Cache] Invalidando cache para a chave: ${chave}`);
+                sessionStorage.removeItem(`diaconia_cache_${chave}`);
+                const cachedTimestamps = sessionStorage.getItem('diaconia_cache_timestamps');
+                const timestamps = cachedTimestamps ? JSON.parse(cachedTimestamps) : {};
+                timestamps[chave] = 0;
+                sessionStorage.setItem('diaconia_cache_timestamps', JSON.stringify(timestamps));
+            } else {
+                console.log("[Cache] Invalidando todo o cache");
+                sessionStorage.removeItem('diaconia_cache_membros');
+                sessionStorage.removeItem('diaconia_cache_setores');
+                sessionStorage.removeItem('diaconia_cache_produtos');
+                sessionStorage.removeItem('diaconia_cache_escalas');
+                sessionStorage.removeItem('diaconia_cache_cultos');
+                sessionStorage.removeItem('diaconia_cache_timestamps');
+            }
+        } catch (e) {
+            console.error("Erro ao limpar cache:", e);
         }
+    },
+
+    // --- CRYPTO HELPERS (Salted SHA-256 via Web Crypto API) ---
+    generateSalt() {
+        const array = new Uint8Array(16);
+        window.crypto.getRandomValues(array);
+        return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+    },
+
+    async hashPassword(password, salt) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password + salt);
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     },
 
     // --- INITIAL SEED METHOD ---
@@ -52,15 +110,23 @@ const DbService = {
                 console.log("Database empty! Seeding initial data...");
                 
                 // 1. Seed Admin Principal (CES Diaconia Lausanne)
+                const adminSalt = this.generateSalt();
+                const adminHash = await this.hashPassword("Ces120222.", adminSalt);
+                
                 await db.collection('membros').doc('admin_default').set({
                     nome: "Wanderson Rossini",
+                    nomeNormalizado: "wanderson rossini",
                     email: "admin@diaconia.com",
-                    senha: "Ces120222.",
                     perfil: "admin",
                     setor: null,
                     funcao: "Administrador",
                     status: "ativo",
                     criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                await db.collection('credenciais').doc('admin_default').set({
+                    passwordHash: adminHash,
+                    passwordSalt: adminSalt
                 });
 
                 // 4. Seed Sectors
@@ -151,80 +217,195 @@ const DbService = {
     // --- AUTENTICAï¿½ï¿½O POR NOME (Firestore-based) ---
     async authenticateUser(nomeDigitado, password) {
         try {
-            // Fetch all active members and compare normalized names locally
-            // (Firestore doesn't support case-insensitive or accent-insensitive queries)
+            const nomeNorm = this.normalizeStr(nomeDigitado);
+            
+            // Garantir sessão ativa para passar pelas regras de segurança
+            if (!firebase.auth().currentUser) {
+                console.log("[Segurança] Iniciando sessão anônima temporária...");
+                await firebase.auth().signInAnonymously();
+            }
+
+            // Buscar membro ativo pelo nome normalizado
             const snap = await db.collection('membros')
+                .where('nomeNormalizado', '==', nomeNorm)
                 .where('status', '==', 'ativo')
+                .limit(1)
                 .get();
 
-            if (snap.empty) {
-                return { success: false, error: "Nenhum membro ativo encontrado." };
-            }
-
-            const nomeNorm = this.normalizeStr(nomeDigitado);
             let matchedDoc = null;
+            let mData = null;
 
-            snap.forEach(doc => {
-                const data = doc.data();
-                const docNomeNorm = this.normalizeStr(data.nome);
-                if (docNomeNorm === nomeNorm) {
-                    matchedDoc = { doc, data };
-                }
-            });
+            if (!snap.empty) {
+                matchedDoc = snap.docs[0];
+                mData = matchedDoc.data();
+            } else {
+                // Fallback legado temporário: buscar varrendo todos os membros ativos
+                const allActiveSnap = await db.collection('membros')
+                    .where('status', '==', 'ativo')
+                    .get();
+
+                allActiveSnap.forEach(doc => {
+                    const docData = doc.data();
+                    if (this.normalizeStr(docData.nome) === nomeNorm) {
+                        matchedDoc = doc;
+                        mData = docData;
+                    }
+                });
+            }
 
             if (!matchedDoc) {
-                return { success: false, error: "Nome nï¿½o encontrado. Verifique se digitou o nome completo corretamente." };
+                return { success: false, error: 'Nome não encontrado. Verifique se digitou o nome completo.' };
             }
 
-            if (matchedDoc.data.senha !== password) {
-                return { success: false, error: "Senha incorreta. Entre em contato com o Supervisor Geral caso nï¿½o lembre sua senha." };
+            const membroId = matchedDoc.id;
+            const credRef = db.collection('credenciais').doc(membroId);
+            const credSnap = await credRef.get();
+
+            let passwordMatch = false;
+            let needsMigration = false;
+
+            if (credSnap.exists) {
+                const credData = credSnap.data();
+                const computedHash = await this.hashPassword(password, credData.passwordSalt);
+                if (computedHash === credData.passwordHash) {
+                    passwordMatch = true;
+                }
+            } else if (mData.senha) {
+                // Senha legado em texto plano
+                if (mData.senha === password) {
+                    passwordMatch = true;
+                    needsMigration = true;
+                }
             }
 
-            const doc = matchedDoc.doc;
-            const data = matchedDoc.data;
+            if (!passwordMatch) {
+                return { success: false, error: 'Senha incorreta.' };
+            }
+
+            // Realizar migração híbrida segura no client-side
+            if (needsMigration) {
+                const salt = this.generateSalt();
+                const hash = await this.hashPassword(password, salt);
+
+                const batch = db.batch();
+                // 1. Criar credencial com hash e salt
+                batch.set(credRef, {
+                    passwordHash: hash,
+                    passwordSalt: salt
+                });
+                // 2. Remover senha em texto plano e gravar nomeNormalizado
+                batch.update(db.collection('membros').doc(membroId), {
+                    nomeNormalizado: nomeNorm,
+                    senha: firebase.firestore.FieldValue.delete()
+                });
+                await batch.commit();
+                console.log(`[Segurança] Membro '${mData.nome}' migrado com sucesso client-side!`);
+            } else if (!mData.nomeNormalizado && mData.nome) {
+                // Apenas atualizar nome normalizado se estiver ausente
+                await db.collection('membros').doc(membroId).update({
+                    nomeNormalizado: nomeNorm
+                });
+            }
+
+            // Simular claims/perfil do usuário na sessão ativa do frontend
+            const sessionUser = {
+                id: membroId,
+                nome: mData.nome,
+                email: mData.email,
+                perfil: mData.perfil || 'membro',
+                setor: mData.setor,
+                setores: mData.setores || (mData.setor ? [mData.setor] : []),
+                funcao: mData.funcao,
+                fotoUrl: mData.fotoUrl || null,
+                eRepositor: mData.eRepositor || false
+            };
+
+            this.limparCache();
+
             return {
                 success: true,
-                user: {
-                    id: doc.id,
-                    nome: data.nome,
-                    email: data.email,
-                    perfil: data.perfil,
-                    setor: data.setor,
-                    setores: data.setores || (data.setor ? [data.setor] : []),
-                    funcao: data.funcao,
-                    fotoUrl: data.fotoUrl || null,
-                    eRepositor: data.eRepositor || false
-                }
+                user: sessionUser
             };
         } catch (e) {
-            console.error("Erro na autenticaï¿½ï¿½o:", e);
-            return { success: false, error: "Erro de conexï¿½o com o banco de dados." };
+            console.error("Erro na autenticação client-side:", e);
+            return { success: false, error: "Erro de conexão com o banco de dados." };
         }
     },
 
     // --- MEMBROS CRUD ---
     async getMembros() {
         if (this.isCacheValido('membros')) {
-            this.cacheStats.leiturasEconomizadas += this._cache.membros.length || 1;
-            return this._cache.membros;
+            const data = this._obterDoCache('membros');
+            if (data) {
+                this.cacheStats.leiturasEconomizadas += data.length || 1;
+                return data;
+            }
         }
         const snap = await db.collection('membros').orderBy('nome').get();
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        this._cache.membros = data;
-        this._cache.timestamps.membros = Date.now();
+        this._salvarNoCache('membros', data);
         this.cacheStats.leiturasReais += data.length;
         this.cacheStats.ultimaAtualizacao = new Date();
         return data;
     },
 
     async saveMembro(id, data) {
-        if (id) {
-            await db.collection('membros').doc(id).update(data);
-        } else {
-            data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
-            await db.collection('membros').add(data);
+        let returnId = id;
+        
+        // 1. Garantir nomeNormalizado
+        if (data.nome) {
+            data.nomeNormalizado = this.normalizeStr(data.nome);
         }
+
+        // Extrair campos de senha
+        let inputPassword = data.senha;
+        delete data.senha; // Nunca manter senha no objeto do membro
+
+        if (id) {
+            // Edição de membro
+            data.senha = firebase.firestore.FieldValue.delete();
+            await db.collection('membros').doc(id).update(data);
+            returnId = id;
+        } else {
+            // Cadastro de novo membro
+            data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+            const docRef = await db.collection('membros').add(data);
+            returnId = docRef.id;
+        }
+
+        // 2. Se houver uma nova senha informada (ou for cadastro novo), salvar de forma segura no client-side
+        if (inputPassword && inputPassword.trim() !== '') {
+            try {
+                console.log(`[Segurança] Salvando credenciais do membro no client-side...`);
+                const salt = this.generateSalt();
+                const hash = await this.hashPassword(inputPassword, salt);
+                
+                await db.collection('credenciais').doc(returnId).set({
+                    passwordHash: hash,
+                    passwordSalt: salt
+                });
+            } catch (e) {
+                console.error("Erro ao salvar credenciais do obreiro:", e);
+                throw e;
+            }
+        } else if (!id) {
+            // Novo cadastro sem senha informada (usar senha padrão de segurança)
+            try {
+                console.log(`[Segurança] Gerando credencial padrão para o novo obreiro...`);
+                const salt = this.generateSalt();
+                const hash = await this.hashPassword("Ces120222.", salt);
+                
+                await db.collection('credenciais').doc(returnId).set({
+                    passwordHash: hash,
+                    passwordSalt: salt
+                });
+            } catch (e) {
+                console.error("Erro ao definir credencial padrão de novo obreiro:", e);
+            }
+        }
+
         this.limparCache('membros');
+        return returnId;
     },
 
     async deleteMembro(id) {
@@ -235,13 +416,15 @@ const DbService = {
     // --- SETORES ---
     async getSetores() {
         if (this.isCacheValido('setores')) {
-            this.cacheStats.leiturasEconomizadas += this._cache.setores.length || 1;
-            return this._cache.setores;
+            const data = this._obterDoCache('setores');
+            if (data) {
+                this.cacheStats.leiturasEconomizadas += data.length || 1;
+                return data;
+            }
         }
         const snap = await db.collection('setores').get();
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        this._cache.setores = data;
-        this._cache.timestamps.setores = Date.now();
+        this._salvarNoCache('setores', data);
         this.cacheStats.leiturasReais += data.length;
         this.cacheStats.ultimaAtualizacao = new Date();
         return data;
@@ -255,13 +438,15 @@ const DbService = {
     // --- PRODUTOS CRUD ---
     async getProdutos() {
         if (this.isCacheValido('produtos')) {
-            this.cacheStats.leiturasEconomizadas += this._cache.produtos.length || 1;
-            return this._cache.produtos;
+            const data = this._obterDoCache('produtos');
+            if (data) {
+                this.cacheStats.leiturasEconomizadas += data.length || 1;
+                return data;
+            }
         }
         const snap = await db.collection('produtos').orderBy('nome').get();
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        this._cache.produtos = data;
-        this._cache.timestamps.produtos = Date.now();
+        this._salvarNoCache('produtos', data);
         this.cacheStats.leiturasReais += data.length;
         this.cacheStats.ultimaAtualizacao = new Date();
         return data;
@@ -310,28 +495,34 @@ const DbService = {
         if (setorId) {
             query = query.where('setorId', '==', setorId);
         }
-        const snap = await query.orderBy('dataMovimentacao', 'desc').limit(50).get();
-        return snap.docs.map(doc => {
+        const snap = await query.get();
+        const list = snap.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
                 ...data,
-                dataMovimentacao: data.dataMovimentacao ? data.dataMovimentacao.toDate() : new Date()
+                dataMovimentacao: this.safeToDate(data.dataMovimentacao, new Date())
             };
         });
+        // Ordena em JS (evita índice composto no Firestore)
+        list.sort((a, b) => b.dataMovimentacao - a.dataMovimentacao);
+        return list.slice(0, 50);
     },
 
     // --- REPOSIï¿½ï¿½ES CRUD ---
     async getReposicoes() {
-        const snap = await db.collection('reposicoes').orderBy('dataSolicitacao', 'desc').get();
-        return snap.docs.map(doc => {
+        const snap = await db.collection('reposicoes').get();
+        const list = snap.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
                 ...data,
-                dataSolicitacao: data.dataSolicitacao ? data.dataSolicitacao.toDate() : new Date()
+                dataSolicitacao: this.safeToDate(data.dataSolicitacao, new Date())
             };
         });
+        // Ordenação em JS (evita necessidade de índice composto no Firestore)
+        list.sort((a, b) => b.dataSolicitacao - a.dataSolicitacao);
+        return list;
     },
 
     async addReposicao(data) {
@@ -352,7 +543,7 @@ const DbService = {
             return {
                 id: doc.id,
                 ...data,
-                data: data.data ? data.data.toDate() : new Date()
+                data: this.safeToDate(data.data, new Date())
             };
         });
 
@@ -380,10 +571,24 @@ const DbService = {
 
     // --- CULTOS CRUD ---
     async getCultos(dataInicio = null, dataFim = null) {
-        let query = db.collection('cultos');
-        const snap = await query.get();
-        let list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let rawList = [];
+        if (this.isCacheValido('cultos')) {
+            const cached = this._obterDoCache('cultos');
+            if (cached) {
+                rawList = cached;
+                this.cacheStats.leiturasEconomizadas += rawList.length || 1;
+            }
+        }
         
+        if (rawList.length === 0) {
+            const snap = await db.collection('cultos').get();
+            rawList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this._salvarNoCache('cultos', rawList);
+            this.cacheStats.leiturasReais += rawList.length;
+            this.cacheStats.ultimaAtualizacao = new Date();
+        }
+
+        let list = [...rawList];
         if (dataInicio && dataFim) {
             list = list.filter(item => item.data >= dataInicio && item.data <= dataFim);
         }
@@ -391,7 +596,9 @@ const DbService = {
         // Ordenar por data e horarioInicio
         list.sort((a, b) => {
             if (a.data !== b.data) return a.data.localeCompare(b.data);
-            return a.horarioInicio.localeCompare(b.horarioInicio);
+            const tA = a.horarioInicio || '00:00';
+            const tB = b.horarioInicio || '00:00';
+            return tA.localeCompare(tB);
         });
         
         return list;
@@ -412,11 +619,13 @@ const DbService = {
                     await batch.commit();
                 }
             }
+            this.limparCache('cultos');
             this.limparCache('escalas');
             return id;
         } else {
             data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
             const docRef = await db.collection('cultos').add(data);
+            this.limparCache('cultos');
             this.limparCache('escalas');
             return docRef.id;
         }
@@ -434,6 +643,7 @@ const DbService = {
             });
             await batch.commit();
         }
+        this.limparCache('cultos');
         this.limparCache('escalas');
     },
 
@@ -441,13 +651,17 @@ const DbService = {
     async getEscalas(setorId = null, dataInicio = null, dataFim = null, cultoId = null) {
         let rawList = [];
         if (this.isCacheValido('escalas')) {
-            rawList = this._cache.escalas;
-            this.cacheStats.leiturasEconomizadas += rawList.length || 1;
-        } else {
+            const cached = this._obterDoCache('escalas');
+            if (cached) {
+                rawList = cached;
+                this.cacheStats.leiturasEconomizadas += rawList.length || 1;
+            }
+        }
+
+        if (rawList.length === 0) {
             const snap = await db.collection('escalas').get();
             rawList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            this._cache.escalas = rawList;
-            this._cache.timestamps.escalas = Date.now();
+            this._salvarNoCache('escalas', rawList);
             this.cacheStats.leiturasReais += rawList.length;
             this.cacheStats.ultimaAtualizacao = new Date();
         }
@@ -557,8 +771,8 @@ const DbService = {
             return {
                 id: doc.id,
                 ...data,
-                iniciadoEm: data.iniciadoEm ? data.iniciadoEm.toDate() : null,
-                finalizadoEm: data.finalizadoEm ? data.finalizadoEm.toDate() : null
+                iniciadoEm: this.safeToDate(data.iniciadoEm, null),
+                finalizadoEm: this.safeToDate(data.finalizadoEm, null)
             };
         });
 
@@ -589,17 +803,18 @@ const DbService = {
     async getNotificacoesUsuario(usuarioId) {
         const snap = await db.collection('notificacoes')
             .where('paraUsuarioId', '==', usuarioId)
-            .orderBy('data', 'desc')
-            .limit(30)
             .get();
-        return snap.docs.map(doc => {
+        const list = snap.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
                 ...data,
-                data: data.data ? data.data.toDate() : new Date()
+                data: this.safeToDate(data.data, new Date())
             };
         });
+        // Ordena em JS (evita índice composto no Firestore)
+        list.sort((a, b) => b.data - a.data);
+        return list.slice(0, 30);
     },
 
     async marcarNotificacoesComoLidas(usuarioId) {
@@ -651,7 +866,7 @@ const DbService = {
             return {
                 id: doc.id,
                 ...data,
-                criadoEm: data.criadoEm ? data.criadoEm.toDate() : new Date()
+                criadoEm: this.safeToDate(data.criadoEm, new Date())
             };
         });
         list.sort((a, b) => b.criadoEm - a.criadoEm);
@@ -692,17 +907,24 @@ const DbService = {
             return {
                 id: doc.id,
                 ...data,
-                dataHora: data.dataHora ? data.dataHora.toDate() : new Date()
+                dataHora: this.safeToDate(data.dataHora, new Date())
             };
         });
     },
 
-    // --- HISTï¿½RICO DE AFASTAMENTOS ---
+    // --- HISTÓRICO DE AFASTAMENTOS ---
     async saveAfastamento(membroId, data) {
-        data.dataRegistro = firebase.firestore.FieldValue.serverTimestamp();
+        data.dataRegistro = new Date().toISOString();
         await db.collection('membros').doc(membroId).update({
-            afastamento: data
+            statusOperacional: data.statusOperacional,
+            afastamentoInicio: data.afastamentoInicio || '',
+            afastamentoFim: data.afastamentoFim || '',
+            afastamentoMotivo: data.afastamentoMotivo || '',
+            afastamentoObsSupervisao: data.afastamentoObsSupervisao || '',
+            afastamentoRetornoAutomativo: data.afastamentoRetornoAutomativo || 'Sim',
+            afastamentosHistorico: firebase.firestore.FieldValue.arrayUnion(data)
         });
+        this.limparCache('membros');
     },
 
     async getHistoricoAfastamentos() {
@@ -710,13 +932,26 @@ const DbService = {
         const list = [];
         snap.docs.forEach(doc => {
             const m = doc.data();
-            if (m.afastamento) {
+            if (m.afastamentosHistorico && Array.isArray(m.afastamentosHistorico)) {
+                m.afastamentosHistorico.forEach(af => {
+                    list.push({
+                        membroId: doc.id,
+                        membroNome: m.nome,
+                        ...af
+                    });
+                });
+            } else if (m.afastamento) {
                 list.push({
                     membroId: doc.id,
                     membroNome: m.nome,
                     ...m.afastamento
                 });
             }
+        });
+        list.sort((a, b) => {
+            const dateA = a.dataRegistro || '';
+            const dateB = b.dataRegistro || '';
+            return dateB.localeCompare(dateA);
         });
         return list;
     },
@@ -865,7 +1100,7 @@ const DbService = {
             if (snap.empty) return null;
             const data = snap.docs[0].data();
             return {
-                executadoEm: data.executadoEm ? data.executadoEm.toDate() : null,
+                executadoEm: this.safeToDate(data.executadoEm, null),
                 total: data.totalDocumentosArquivados,
                 status: data.status
             };

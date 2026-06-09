@@ -2,7 +2,9 @@
   "projects": {
     "default": "catedral-connect-bf717",
     "lausanne": "catedral-connect-6c55e",
-    "diaconia-project": "catedral-connect-267b2"
+    "diaconia-project": "catedral-connect-267b2",
+    "diaconia-dev": "ces-diaconia-dev",
+    "diaconia-prod": "diaconia-a38f1"
   },
   "targets": {
     "catedral-connect-bf717": {
@@ -26,6 +28,20 @@
       "hosting": {
         "diaconia": [
           "catedral-connect-267b2"
+        ]
+      }
+    },
+    "ces-diaconia-dev": {
+      "hosting": {
+        "diaconia": [
+          "ces-diaconia-dev"
+        ]
+      }
+    },
+    "diaconia-a38f1": {
+      "hosting": {
+        "diaconia": [
+          "diaconia-a38f1"
         ]
       }
     }

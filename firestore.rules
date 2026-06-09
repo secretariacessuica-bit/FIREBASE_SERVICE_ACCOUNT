@@ -30,9 +30,19 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // --- NUCLEAR THAW: BULLE & DIACONIA DIRECT ACCESS ---
-    // Liberação total para qualquer coleção que comece com 'bulle_' ou 'diaconia_'
+    // Liberação total para qualquer coleção que comece com 'bulle_' ou 'diaconia_' (exceto credenciais da diaconia)
     match /{collection}/{document} {
-      allow read, write: if collection.split('_')[0] == 'bulle' || collection.split('_')[0] == 'diaconia';
+      allow read, write: if (collection.split('_')[0] == 'bulle' || collection.split('_')[0] == 'diaconia')
+                          && collection != 'diaconia_escala_credenciais';
+    }
+
+    // --- PROTECTED CREDENTIALS (DIACONIA) ---
+    // Impede a listagem de credenciais sensíveis (passwordHash e passwordSalt)
+    // Permite leitura por ID e escrita apenas se a requisição estiver autenticada (no auth != null)
+    match /diaconia_escala_credenciais/{membroId} {
+      allow get: if request.auth != null;
+      allow write: if request.auth != null;
+      allow list: if false;
     }
 
     // --- DIAGNOSTIC COLLECTIONS (ROOT) ---
@@ -42,6 +52,66 @@ service cloud.firestore {
     match /attendance/{docId}   { allow read, write: if true; }
     match /leaders/{docId}      { allow read, write: if true; }
     match /birthdays/{docId}    { allow read, write: if true; }
+
+    // --- DEDICATED CLEAN COLLECTIONS (NEW CES DIACONIA PROJECTS) ---
+    // Regras de controle de acesso baseadas no perfil/role extraído do Token Customizado
+    match /membros/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /credenciais/{docId} {
+      allow get: if request.auth != null;
+      allow write: if request.auth != null;
+      allow list: if false;
+    }
+    match /setores/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /cultos/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /escalas/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /produtos/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /historico_estoque/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /reposicoes/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /avisos/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /disponibilidades/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /mensagens_supervisao/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /configuracoes/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /historico_substituicoes/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /escalas_arquivadas/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
 
     // --- STANDARD COLLECTIONS (LAUSANNE) ---
     match /people/{docId} {

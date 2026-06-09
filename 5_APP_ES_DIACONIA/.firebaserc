@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "catedral-connect-267b2"
+    "default": "ces-diaconia-dev",
+    "prod": "diaconia-a38f1",
+    "legacy": "catedral-connect-267b2"
   }
 }
