@@ -154,7 +154,7 @@
                         <i class="fa-solid fa-house"></i>
                         <span>Início</span>
                     </button>
-                    <button onclick="App.showAlert('Em breve nesta tela')" class="nav-action-btn" title="Minhas Escalas">
+                    <button onclick="App.openMinhasEscalasModal()" class="nav-action-btn" title="Minhas Escalas">
                         <i class="fa-regular fa-calendar-days"></i>
                         <span>Escalas</span>
                     </button>
@@ -1915,6 +1915,21 @@
             <h4 id="alert-title" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Aviso</h4>
             <p id="alert-message" style="font-size: 0.9rem; color: var(--slate-gray); margin-bottom: 20px;">Mensagem de aviso aqui.</p>
             <button onclick="App.closeAlert()" class="btn-primary" style="padding: 10px 0;">OK</button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         FASE 2: MODAL MINHAS ESCALAS (Premium)
+         ========================================== -->
+    <div class="premium-modal glass-modal" id="modal-minhas-escalas" style="z-index: 2500;">
+        <div class="modal-content" style="max-width: 500px; height: 90vh; display: flex; flex-direction: column; padding: 0; background: #F8FAFC; overflow: hidden; border-radius: 24px 24px 0 0; margin-top: auto;">
+            <div class="modal-header" style="padding: 20px 24px; background: white; border-bottom: 1px solid #E2E8F0; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0; font-size: 1.25rem; color: var(--navy-dark); font-weight: 800;"><i class="fa-solid fa-calendar-days" style="color: var(--teal-primary); margin-right: 8px;"></i> Minhas Escalas</h3>
+                <button onclick="document.getElementById('modal-minhas-escalas').classList.remove('active')" style="background:none; border:none; font-size: 1.5rem; color: #94A3B8; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 24px; overflow-y: auto; flex: 1;" id="minhas-escalas-list-container">
+                <!-- Injected via JS -->
+            </div>
         </div>
     </div>
 

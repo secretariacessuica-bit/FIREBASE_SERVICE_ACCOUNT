@@ -7662,6 +7662,91 @@ const App = {
         }
     },
 
+    async openMinhasEscalasModal() {
+        if (!this.currentUser) return;
+        
+        const container = document.getElementById('minhas-escalas-list-container');
+        if (!container) return;
+        
+        container.innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--teal-primary);"></i><p style="margin-top:15px; color:var(--slate-gray); font-weight: 600;">Buscando suas escalas...</p></div>';
+        document.getElementById('modal-minhas-escalas').classList.add('active');
+        
+        try {
+            const escalas = await DbService.getEscalasDoMembro(this.currentUser.id);
+            
+            const now = new Date();
+            const parseScaleDate = (dataStr, horaStr) => {
+                const parts = dataStr.split('/');
+                if (parts.length === 3) {
+                    const hParts = (horaStr || '00:00').split(':');
+                    return new Date(parts[2], parts[1] - 1, parts[0], hParts[0], hParts[1]);
+                }
+                return new Date(0);
+            };
+            
+            const sortedEscalas = escalas.filter(e => {
+                const scaleDate = parseScaleDate(e.data, '23:59'); // Keep if today
+                return scaleDate >= new Date(now.setHours(0,0,0,0));
+            }).sort((a, b) => {
+                return parseScaleDate(a.data, a.horarioInicio) - parseScaleDate(b.data, b.horarioInicio);
+            });
+            
+            if (sortedEscalas.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding: 50px 20px; background: white; border-radius: 16px; border: 1px dashed #CBD5E1;">
+                        <i class="fa-solid fa-calendar-xmark" style="font-size: 2.5rem; color: #94A3B8; margin-bottom: 15px;"></i>
+                        <h4 style="color: var(--navy-primary); font-size: 1.1rem; margin-bottom: 5px;">Nenhuma escala agendada</h4>
+                        <p style="color: var(--slate-gray); font-size: 0.9rem;">Você não possui serviços previstos para os próximos dias.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div style="display: flex; flex-direction: column; gap: 16px;">';
+            
+            sortedEscalas.forEach(e => {
+                const isConfirmed = e.status === 'confirmado';
+                const statusBadge = isConfirmed 
+                    ? `<span style="background: rgba(16, 185, 129, 0.15); color: #059669; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3);"><i class="fa-solid fa-check" style="margin-right: 4px;"></i> Confirmada</span>`
+                    : `<span style="background: rgba(245, 158, 11, 0.15); color: #D97706; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.3);"><i class="fa-solid fa-hourglass-half" style="margin-right: 4px;"></i> Pendente</span>`;
+                
+                const parts = e.data.split('/');
+                const dateObj = parseScaleDate(e.data, e.horarioInicio);
+                const isToday = dateObj.toDateString() === new Date().toDateString();
+                const dayLabel = isToday ? '<span style="color: #EF4444; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">HOJE</span>' : '';
+                
+                html += `
+                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #E2E8F0; display: flex; gap: 15px; align-items: stretch;">
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 65px; border-right: 1px dashed #E2E8F0; padding-right: 15px;">
+                            ${dayLabel}
+                            <span style="font-size: 1.8rem; font-weight: 900; color: var(--navy-primary); line-height: 1;">${parts[0] || '?'}</span>
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--slate-gray); text-transform: uppercase;">Mês ${parts[1] || '?'}</span>
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                <h4 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--navy-dark);">${e.cultoNome || 'Serviço'}</h4>
+                                ${statusBadge}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 15px; color: var(--slate-gray); font-size: 0.85rem; font-weight: 500; margin-bottom: 10px;">
+                                <span><i class="fa-regular fa-clock" style="color: var(--teal-primary); margin-right: 4px;"></i> ${e.horarioInicio || '--'} às ${e.horarioFim || '--'}</span>
+                            </div>
+                            <div style="background: #F8FAFC; padding: 8px 12px; border-radius: 8px; border: 1px solid #F1F5F9; font-size: 0.85rem; color: var(--navy-primary); font-weight: 600; display: inline-block; align-self: flex-start;">
+                                <i class="fa-solid fa-user-tag" style="color: #64748B; margin-right: 6px;"></i> ${e.funcao || 'Voluntário'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+        } catch (error) {
+            console.error("Error loading user scales:", error);
+            container.innerHTML = '<div style="text-align:center; padding: 20px; color: #EF4444;"><i class="fa-solid fa-triangle-exclamation" style="margin-bottom: 10px; font-size: 1.5rem;"></i><br>Erro ao carregar escalas. Tente novamente.</div>';
+        }
+    },
+
     openSectorSelectorModal() {
         const modal = document.getElementById('modal-sector-selector');
         if (modal) modal.style.display = 'block';
