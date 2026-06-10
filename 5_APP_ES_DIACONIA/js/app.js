@@ -616,6 +616,13 @@ const App = {
     async runNotificationChecks() {
         if (!this.currentUser) return;
         
+        // Evita incomodar o sono das pessoas: apenas executa notificações entre 08h e 20h
+        const horaAtual = new Date().getHours();
+        if (horaAtual < 8 || horaAtual >= 20) {
+            console.log('[Notificações] Silenciadas pelo horário (permitido apenas das 08h às 20h). Hora atual:', horaAtual);
+            return;
+        }
+        
         // 1. Check pending scales (notifies once per day)
         await this.checkAndNotifyPendingScales();
 
