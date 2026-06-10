@@ -703,6 +703,11 @@ const DbService = {
         this.limparCache('escalas');
     },
 
+    async getEscalasDoMembro(membroId) {
+        const escalas = await this.getEscalas();
+        return escalas.filter(e => e.membroId === membroId);
+    },
+
     async updatePresenca(id, statusPresenca) {
         const updateData = { statusPresenca };
         if (statusPresenca === 'Recusada') {
