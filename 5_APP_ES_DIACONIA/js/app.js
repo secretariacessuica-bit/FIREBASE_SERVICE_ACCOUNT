@@ -63,6 +63,14 @@ const App = {
             cor: "#6B7280",
             themeClass: "theme-diaconia",
             icon: "fa-solid fa-users"
+        },
+        'limpeza': {
+            nome: "Limpeza",
+            desc: "Limpeza e Conservação",
+            funcoes: ["Limpeza geral", "Salão e banheiros", "Áreas externas", "Reposição de produtos"],
+            cor: "#14b8a6",
+            themeClass: "theme-limpeza",
+            icon: "fa-solid fa-broom"
         }
     },
 
@@ -7103,7 +7111,7 @@ const App = {
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <button class="btn-primary" style="padding: 6px 12px; font-size: 0.78rem; width: auto; background: #3b82f6;" onclick="App.handleMarkMessageRead('${msg.id}')">
-                            <i class="fa-solid fa-check"></i> Marcar como Lida
+                            <i class="fa-solid fa-box-archive"></i> Arquivar
                         </button>
                     </div>
                 `;
