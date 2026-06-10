@@ -338,6 +338,15 @@ const App = {
     // --- NAVIGATION ROUTER ---
     navigateTo(viewId) {
         console.log("DEBUG: navigateTo called with viewId:", viewId, "showingMonthlyCalendar:", this.showingMonthlyCalendar);
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
+        if (viewId === 'view-member') {
+            const isAdmin = this.currentUser && this.currentUser.perfil === 'admin';
+            if (!isAdmin) {
+                console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa de navegar para view-member bloqueada para obreiro.');
+                this.showToast('Esta tela foi descontinuada. Use a nova Home Premium.', 'warning');
+                return;
+            }
+        }
         if (viewId !== 'view-member') {
             this.showingMonthlyCalendar = false;
             this.forceShowFullScales = false;
@@ -368,10 +377,11 @@ const App = {
         }
     },
     navigateToNextService(escalaId, dataStr, cultoId, horarioInicio, setorId, funcao, observacoes) {
-        if (!setorId) return;
-        this.activeSectorId = setorId;
-        this.memberActiveTab = 'escala';
-        
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
+        console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa bloqueada de acessar navigateToNextService.');
+        this.showToast('Os detalhes da escala legada foram desativados.', 'warning');
+        return;
+
         // Build and select the event key so the organograma focuses on this specific culto
         const eventKey = `${dataStr}_${cultoId || 'sem-culto'}_${horarioInicio || '00:00'}`;
         this.memberSelectedEventKey = eventKey;
@@ -1491,6 +1501,7 @@ const App = {
     // VIEW 3: MEMBER PORTAL
     // ==========================================================================
     loadAndRenderMemberPortal() {
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         console.log("DEBUG: loadAndRenderMemberPortal called, activeSectorId:", this.activeSectorId);
         const sector = this.sectorsData[this.activeSectorId];
         if (!sector) return;
@@ -1521,6 +1532,7 @@ const App = {
     },
 
     switchMemberTab(tabName, el = null) {
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         console.log("DEBUG: switchMemberTab called with tabName:", tabName, "el:", el ? "not null" : "null", "showingMonthlyCalendar before:", this.showingMonthlyCalendar);
         if (el) {
             this.showingMonthlyCalendar = false;
@@ -1561,6 +1573,7 @@ const App = {
     },
 
     switchMemberPeriod(period, el) {
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         this.memberPeriod = period;
         document.querySelectorAll('.segment-item').forEach(item => item.classList.remove('active'));
         el.classList.add('active');
@@ -1568,12 +1581,14 @@ const App = {
     },
 
     adjustMemberWeek(offset) {
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         const days = this.memberPeriod === 'week' ? 7 : 30;
         this.memberCurrentDate.setDate(this.memberCurrentDate.getDate() + (offset * days));
         this.loadAndRenderMemberScales();
     },
 
     async loadAndRenderMemberScales() {
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         console.log("DEBUG: loadAndRenderMemberScales called, showingMonthlyCalendar:", this.showingMonthlyCalendar);
         if (this.showingMonthlyCalendar) {
             this.showMonthlyCalendar();
@@ -3187,28 +3202,17 @@ const App = {
     },
 
     openMonthlyCalendar() {
-        console.log("DEBUG: openMonthlyCalendar called, setting showingMonthlyCalendar to true");
-        this.showingMonthlyCalendar = true;
-        // If active sector is not set, default to user's sector or first sector in the list
-        if (!this.activeSectorId && this.currentUser) {
-            const userSetores = this.currentUser.setores || [];
-            if (this.currentUser.setor) {
-                this.activeSectorId = this.currentUser.setor;
-            } else if (userSetores.length > 0) {
-                this.activeSectorId = userSetores[0];
-            } else {
-                // Get the first sector key in sectorsData
-                const keys = Object.keys(this.sectorsData || {});
-                if (keys.length > 0) {
-                    this.activeSectorId = keys[0];
-                }
-            }
-        }
-        this.navigateTo('view-member');
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
+        console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa bloqueada de acessar o calendário mensal legado.');
+        this.showToast('O calendário legado foi desativado.', 'warning');
+        return;
     },
 
     showMonthlyCalendar() {
-        console.log("DEBUG: showMonthlyCalendar called");
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
+        console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa de renderizar o calendário legado.');
+        return;
+
         const nextHighlight = document.getElementById('next-service-highlight');
         if (nextHighlight) {
             nextHighlight.style.display = 'none';
@@ -3883,6 +3887,7 @@ const App = {
 
     // Load member stats on profile tab
     async loadMemberProfileStats() {
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         try {
             const escalas = await DbService.getEscalas(this.activeSectorId);
             const userEscalas = escalas.filter(e => e.membroId === this.currentUser.id);
@@ -7904,11 +7909,14 @@ const App = {
     },
 
     openSectorSelectorModal() {
-        const modal = document.getElementById('modal-sector-selector');
-        if (modal) modal.style.display = 'block';
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
+        console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa bloqueada de abrir o modal-sector-selector.');
+        this.showToast('Este seletor foi desativado. Use a nova Home Premium.', 'warning');
+        return;
     },
 
     closeSectorSelectorModal() {
+        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         const modal = document.getElementById('modal-sector-selector');
         if (modal) modal.style.display = 'none';
     },
