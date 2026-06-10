@@ -7565,10 +7565,10 @@ const App = {
         avisos.forEach(a => {
             const dateStr = a.data ? a.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
             html += `
-                <div style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 4px;">
-                    <h4 style="margin: 0 0 4px 0; color: #14b8a6; font-size: 0.95rem; font-weight: 750;">${a.titulo}</h4>
-                    <p style="margin: 0 0 6px 0; color: #f8fafc; font-size: 0.84rem; line-height: 1.4;">${a.conteudo || a.texto || ''}</p>
-                    <span style="color: #64748b; font-size: 0.72rem; font-weight: 600;"><i class="fa-regular fa-clock" style="margin-right: 4px;"></i>${dateStr}</span>
+                <div style="border-bottom: 1px solid #E2E8F0; padding-bottom: 12px; margin-bottom: 4px;">
+                    <h4 style="margin: 0 0 4px 0; color: var(--navy-dark); font-size: 1.05rem; font-weight: 800;"><i class="fa-solid fa-bullhorn" style="color: var(--teal-primary); margin-right: 6px;"></i>${a.titulo}</h4>
+                    <p style="margin: 0 0 6px 0; color: var(--slate-gray); font-size: 0.95rem; line-height: 1.4;">${a.conteudo || a.texto || ''}</p>
+                    <span style="color: #94A3B8; font-size: 0.8rem; font-weight: 600;"><i class="fa-regular fa-clock" style="margin-right: 4px;"></i>${dateStr}</span>
                 </div>
             `;
         });
@@ -7594,14 +7594,14 @@ const App = {
         members.forEach(m => {
             const day = this.getMemberBirthDayLocal(m).toString().padStart(2, '0');
             html += `
-                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #0f766e; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.72rem; overflow: hidden;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--teal-primary), var(--navy-primary)); color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.72rem; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             ${m.fotoUrl ? `<img src="${m.fotoUrl}" style="width:100%; height:100%; object-fit:cover;">` : m.nome.substring(0, 2).toUpperCase()}
                         </div>
-                        <span style="color: #f8fafc; font-size: 0.88rem; font-weight: 600;">${m.nome}</span>
+                        <span style="color: var(--navy-dark); font-size: 0.95rem; font-weight: 700;">${m.nome}</span>
                     </div>
-                    <span style="color: #14b8a6; font-size: 0.82rem; font-weight: 750;"><i class="fa-regular fa-calendar" style="margin-right: 4px;"></i>${day}/${currentMonthNumStr}</span>
+                    <span style="color: var(--teal-primary); font-size: 0.85rem; font-weight: 800; background: rgba(18, 115, 105, 0.1); padding: 4px 8px; border-radius: 6px;"><i class="fa-regular fa-calendar" style="margin-right: 4px;"></i>${day}/${currentMonthNumStr}</span>
                 </div>
             `;
         });
@@ -7752,6 +7752,7 @@ const App = {
         
         const headerContainer = document.getElementById('meu-perfil-header-container');
         const statsContainer = document.getElementById('meu-perfil-stats-container');
+        const toolsContainer = document.getElementById('meu-perfil-tools-container');
         
         if (!headerContainer || !statsContainer) return;
         
@@ -7763,6 +7764,29 @@ const App = {
             <h2 style="margin: 0 0 5px 0; color: var(--navy-dark); font-size: 1.3rem; font-weight: 800;">${this.currentUser.nome || 'Usuário'}</h2>
             <p style="margin: 0; color: var(--slate-gray); font-size: 0.9rem; font-weight: 500;">Membro Ativo</p>
         `;
+        
+        // FASE 3.5: Detecção de Limpeza / Conservação
+        if (toolsContainer) {
+            const checkLimpeza = (val) => {
+                if (!val) return false;
+                const normalized = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return normalized.includes('limpeza') || normalized.includes('conservacao');
+            };
+            const isLimpeza = checkLimpeza(this.currentUser.setor) || (Array.isArray(this.currentUser.setores) && this.currentUser.setores.some(checkLimpeza));
+            
+            if (isLimpeza) {
+                toolsContainer.innerHTML = `
+                    <h4 style="font-size: 1rem; color: var(--navy-dark); margin-bottom: 15px; font-weight: 700;">Ferramentas do Setor</h4>
+                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #E2E8F0; margin-bottom: 30px;">
+                        <button onclick="App.openPedirMaterialModal()" class="btn-primary" style="width: 100%; border-radius: 10px; padding: 12px; font-weight: 600; background: var(--navy-primary); border-color: var(--navy-primary); display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-broom" style="margin-right: 8px;"></i> Pedir Material</button>
+                    </div>
+                `;
+                toolsContainer.style.display = 'block';
+            } else {
+                toolsContainer.innerHTML = '';
+                toolsContainer.style.display = 'none';
+            }
+        }
         
         statsContainer.innerHTML = `
             <div style="background: white; border-radius: 16px; padding: 15px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; align-items: center;">
@@ -7823,6 +7847,59 @@ const App = {
             App.hideLoading();
             console.error("Error sending supervision message from profile:", e);
             App.showToast('Erro ao enviar mensagem. Tente novamente.', 'danger');
+        }
+    },
+
+    async openPedirMaterialModal() {
+        const container = document.getElementById('pedir-material-list-container');
+        if (!container) return;
+        
+        container.innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--teal-primary);"></i><p style="margin-top:15px; color:var(--slate-gray); font-weight: 600;">Buscando materiais...</p></div>';
+        document.getElementById('modal-pedir-material').classList.add('active');
+        
+        try {
+            const produtos = await DbService.getProdutos();
+            
+            const checkLimpeza = (val) => {
+                if (!val) return true;
+                const normalized = val.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return normalized.includes('limpeza') || normalized.includes('conservacao');
+            };
+            
+            const ativos = produtos.filter(p => p.status === 'ativo' && checkLimpeza(p.setorId || 'limpeza'));
+            
+            if (ativos.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding: 50px 20px; background: white; border-radius: 16px; border: 1px dashed #CBD5E1;">
+                        <i class="fa-solid fa-box-open" style="font-size: 2.5rem; color: #94A3B8; margin-bottom: 15px;"></i>
+                        <h4 style="color: var(--navy-primary); font-size: 1.1rem; margin-bottom: 5px;">Nenhum material</h4>
+                        <p style="color: var(--slate-gray); font-size: 0.9rem;">Não há materiais cadastrados no momento.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+            
+            ativos.forEach(p => {
+                const safeName = p.nome ? p.nome.replace(/'/g, "\\'") : 'Material';
+                html += `
+                    <div style="background: white; border-radius: 16px; padding: 15px 20px; border: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                        <div style="flex: 1; padding-right: 15px;">
+                            <h4 style="margin: 0 0 5px 0; font-size: 1rem; color: var(--navy-dark); font-weight: 700;">${p.nome}</h4>
+                            <span style="font-size: 0.8rem; color: var(--slate-gray);"><i class="fa-solid fa-layer-group" style="margin-right: 4px;"></i>${p.unidadeMedida || 'Unidade'}</span>
+                        </div>
+                        <button onclick="App.solicitarReposicao('${p.id}', '${safeName}')" class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem; border-radius: 8px; font-weight: 600; white-space: nowrap;"><i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Pedir</button>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+        } catch(e) {
+            console.error("Error loading cleaning materials:", e);
+            container.innerHTML = '<div style="text-align:center; padding: 20px; color: #EF4444;"><i class="fa-solid fa-triangle-exclamation" style="margin-bottom: 10px; font-size: 1.5rem;"></i><br>Erro ao carregar materiais.</div>';
         }
     },
 

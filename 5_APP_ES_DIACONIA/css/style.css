@@ -7492,14 +7492,14 @@ body.area-detail-active .side-nav-zone {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.9);
-    border: 1px solid rgba(0,0,0,0.05);
-    color: var(--navy-primary);
+    background: rgba(16, 64, 59, 0.75); /* Dark translucent */
+    border: none;
+    color: var(--white);
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     z-index: 10;
 }
 .carousel-arrow.prev-arrow { left: 8px; }
