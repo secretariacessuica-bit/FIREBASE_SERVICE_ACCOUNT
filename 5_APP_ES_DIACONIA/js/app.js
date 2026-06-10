@@ -3544,6 +3544,21 @@ const App = {
         }
     },
 
+    async confirmarPresencaDireto(escalaId, data) {
+        try {
+            App.showLoading();
+            await DbService.updatePresenca(escalaId, 'Confirmada');
+            App.hideLoading();
+            this.showToast(`Presença confirmada com sucesso!`, 'success');
+            this.loadAndRenderMemberScales();
+            setTimeout(() => this.runNotificationChecks(), 1000);
+        } catch (e) {
+            App.hideLoading();
+            console.error("Erro em confirmarPresencaDireto:", e);
+            this.showAlert('Erro ao confirmar presença no servidor.', 'Erro');
+        }
+    },
+
     async handleStartService(escalaId, funcao, data, horaIni, horaFim) {
         try {
             const servicoId = await DbService.iniciarServico(
