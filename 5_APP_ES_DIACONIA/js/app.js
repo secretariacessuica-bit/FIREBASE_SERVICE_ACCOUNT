@@ -5982,7 +5982,8 @@ const App = {
             await DbService.saveAviso({
                 titulo: `Escala Publicada - ${c.nome}`,
                 conteudo: `A escala de voluntários para o ${term} "${c.nome}" no dia ${formattedDate} (${c.horarioInicio} às ${c.horarioFim}) foi publicada. Por favor, acesse o painel e confirme sua presença!`,
-                autorNome: this.currentUser.nome
+                autorNome: this.currentUser.nome,
+                dataExpiracao: c.data
             });
             
             this.showToast('Escala publicada e aviso enviado aos membros!', 'success');
