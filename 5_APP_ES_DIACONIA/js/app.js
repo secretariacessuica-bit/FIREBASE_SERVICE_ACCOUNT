@@ -7227,15 +7227,27 @@ const App = {
         
         const fSelect = document.getElementById('escala-funcao');
         let matchedFuncao = '';
+        const searchFun = (funcao || '').trim().toLowerCase();
+        
         for (let option of fSelect.options) {
-            if (option.value.toLowerCase().includes((funcao || '').toLowerCase())) {
+            if (!option.value) continue;
+            const optVal = option.value.toLowerCase();
+            if (searchFun && (optVal.includes(searchFun) || searchFun.includes(optVal))) {
                 matchedFuncao = option.value;
                 break;
             }
         }
-        if (!matchedFuncao && fSelect.options.length > 1) {
-            matchedFuncao = fSelect.options[1].value;
+        
+        // Se nao encontrou match ou veio vazio/Voluntario genérico, tenta pegar a primeira opção válida
+        if (!matchedFuncao) {
+            for (let option of fSelect.options) {
+                if (option.value !== "") {
+                    matchedFuncao = option.value;
+                    break;
+                }
+            }
         }
+        
         if (matchedFuncao) {
             fSelect.value = matchedFuncao;
         }
