@@ -7388,16 +7388,56 @@ body.area-detail-active .side-nav-zone {
     padding: 10px;
     text-align: center;
     min-width: 65px;
+    flex-shrink: 0;
 }
 .scale-date-badge .month { font-size: 0.8rem; font-weight: 600; color: var(--teal-primary); text-transform: uppercase; }
 .scale-date-badge .day { font-size: 1.8rem; font-weight: 800; line-height: 1.1; }
 .scale-date-badge .weekday { font-size: 0.75rem; color: rgba(255,255,255,0.7); }
 
-.scale-info-row { display: flex; align-items: stretch; gap: 15px; z-index: 1; }
+.scale-info-row { 
+    display: flex; 
+    align-items: stretch; 
+    gap: 15px; 
+    z-index: 1; 
+    min-width: 0;
+    width: 100%;
+}
 
-.scale-details { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-.scale-details h4 { font-size: 1.2rem; margin: 0; color: white; font-weight: 700; }
-.scale-details p { font-size: 0.85rem; color: rgba(255,255,255,0.8); margin: 0; display: flex; align-items: center; gap: 6px; }
+.scale-details { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    gap: 6px; 
+    min-width: 0;
+    padding-right: 90px; /* Evita sobreposição com o badge absoluto */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.scale-details h4 { 
+    font-size: 1.15rem; 
+    margin: 0; 
+    color: white; 
+    font-weight: 700; 
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.scale-details p { 
+    font-size: 0.85rem; 
+    color: rgba(255,255,255,0.8); 
+    margin: 0; 
+    display: flex; 
+    align-items: flex-start; 
+    gap: 6px; 
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.scale-details p i {
+    margin-top: 3px;
+    flex-shrink: 0;
+}
 
 .scale-status-badge {
     position: absolute;
@@ -7409,6 +7449,8 @@ body.area-detail-active .side-nav-zone {
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    flex-shrink: 0;
+    z-index: 2;
 }
 .scale-status-badge.pending { background: rgba(245, 158, 11, 0.2); color: #FCD34D; border: 1px solid rgba(245, 158, 11, 0.4); }
 .scale-status-badge.confirmed { background: rgba(16, 185, 129, 0.2); color: #6EE7B7; border: 1px solid rgba(16, 185, 129, 0.4); }
@@ -7480,7 +7522,7 @@ body.area-detail-active .side-nav-zone {
     font-size: 1.6rem;
     flex-shrink: 0;
 }
-.slide-content { flex: 1; }
+.slide-content { flex: 1; min-width: 0; }
 .slide-tag { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: inline-block; color: var(--slate-gray); }
 .slide-title { font-size: 1.05rem; font-weight: 800; color: var(--navy-dark); margin: 0 0 4px 0; line-height: 1.2; }
 .slide-desc { font-size: 0.85rem; color: var(--navy-primary); margin: 0; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -7599,7 +7641,7 @@ body.area-detail-active .side-nav-zone {
 .premium-dark-slide {
     background: linear-gradient(135deg, #0B1121 0%, #1E293B 100%);
     border-radius: 16px;
-    padding: 20px;
+    padding: 20px 40px; /* Maior padding nas laterais para afastar das setas do carrossel */
     color: white;
     width: 100%;
     height: 100%;
@@ -7622,31 +7664,42 @@ body.area-detail-active .side-nav-zone {
     flex-direction: column;
     gap: 5px;
     z-index: 1;
+    min-width: 0;
 }
 .slide-title-dark {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 800;
     margin: 0;
     color: #F8FAFC;
-    line-height: 1.2;
-    letter-spacing: -0.5px;
+    line-height: 1.25;
+    letter-spacing: -0.3px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 .slide-subtitle-dark {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: #94A3B8;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 .slide-desc-dark {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     color: #CBD5E1;
     margin: 4px 0 0 0;
-    line-height: 1.4;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 .slide-action-link {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 800;
     color: var(--teal-primary, #14B8A6);
-    margin-top: 6px;
+    margin-top: 4px;
     letter-spacing: 1px;
 }
 .premium-carousel {
@@ -7654,11 +7707,11 @@ body.area-detail-active .side-nav-zone {
     background: transparent;
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
-.carousel-dots { bottom: 12px; }
+.carousel-dots { bottom: 10px; }
 
 /* Next Scale Card 15% Bigger & Better Badges */
 .premium-next-scale-card {
-    padding: 24px;
+    padding: 22px;
     min-height: 155px;
 }
 .scale-date-badge {
@@ -7686,4 +7739,72 @@ body.area-detail-active .side-nav-zone {
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
     padding: 6px 10px;
     border-radius: 8px;
+}
+
+/* Responsividade específica para telas pequenas */
+@media (max-width: 390px) {
+    .premium-next-scale-card {
+        padding: 16px;
+    }
+    .scale-info-row {
+        gap: 10px;
+    }
+    .scale-date-badge {
+        min-width: 60px;
+        padding: 8px;
+    }
+    .scale-date-badge .day {
+        font-size: 1.6rem;
+    }
+    .scale-details {
+        padding-right: 80px; /* Mantém espaço do badge */
+    }
+    .scale-details h4 {
+        font-size: 1rem;
+    }
+    .scale-details p {
+        font-size: 0.78rem;
+    }
+    .scale-status-badge {
+        top: 10px;
+        right: 10px;
+        font-size: 0.65rem;
+        padding: 4px 6px;
+    }
+    .premium-dark-slide {
+        padding: 16px 36px;
+    }
+    .slide-title-dark {
+        font-size: 0.95rem;
+    }
+    .slide-subtitle-dark {
+        font-size: 0.75rem;
+    }
+    .slide-desc-dark {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 340px) {
+    .scale-details {
+        padding-right: 0px; /* Desce o fluxo para evitar sobreposição em telas minúsculas */
+        margin-top: 25px; /* Abre espaço no topo para o badge absoluto */
+    }
+    .scale-info-row {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+    .premium-dark-slide {
+        padding: 12px 30px;
+    }
+    .slide-title-dark {
+        font-size: 0.88rem;
+    }
+    .slide-subtitle-dark {
+        font-size: 0.7rem;
+    }
+    .slide-desc-dark {
+        display: -webkit-box;
+        -webkit-line-clamp: 1; /* Apenas 1 linha para caber */
+    }
 }
