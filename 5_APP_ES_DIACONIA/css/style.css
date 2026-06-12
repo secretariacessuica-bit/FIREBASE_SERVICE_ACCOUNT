@@ -7916,3 +7916,182 @@ body.area-detail-active .side-nav-zone {
         -webkit-line-clamp: 1; /* Apenas 1 linha para caber no mini espaço */
     }
 }
+
+/* =========================================
+   MURAL DE AVISOS - READER MODE REFATURAÇÃO
+   ========================================= */
+#custom-alert-modal .modal-content {
+    background: #F6F7F8 !important;
+    border-radius: 32px !important;
+    padding: 30px !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3) !important;
+    max-width: 520px !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+#custom-alert-modal #alert-icon {
+    display: none !important; /* Remove emoji/ícone gigante do topo */
+}
+
+#custom-alert-modal #alert-title {
+    font-size: 42px !important;
+    font-weight: 700 !important;
+    color: var(--navy-dark) !important;
+    margin-bottom: 4px !important;
+    font-family: var(--font-primary) !important;
+    text-align: left !important;
+    letter-spacing: -1px !important;
+}
+
+/* Subtítulo dinâmico ou inserido para contextualização */
+#custom-alert-modal #alert-title::after {
+    content: "Fique por dentro das novidades da diaconia.";
+    display: block;
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--slate-gray);
+    margin-top: 6px;
+    letter-spacing: normal;
+}
+
+#custom-alert-modal #alert-message {
+    margin-bottom: 24px !important;
+    text-align: left !important;
+    width: 100% !important;
+}
+
+.mural-reader-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 8px;
+    margin-top: 20px;
+}
+
+/* Custom Reader Scrollbar */
+.mural-reader-container::-webkit-scrollbar {
+    width: 6px;
+}
+.mural-reader-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.mural-reader-container::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 10px;
+}
+.mural-reader-container::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+}
+
+.mural-reader-card {
+    background: #FFFFFF !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    border-radius: 22px !important;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+}
+
+.mural-accent-bar {
+    width: 4px;
+    background: #1F8A70;
+    flex-shrink: 0;
+}
+
+.mural-card-content {
+    flex: 1;
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.mural-card-tag {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--slate-gray);
+    letter-spacing: 1.2px;
+    margin-bottom: 12px;
+    display: inline-block;
+}
+
+.mural-card-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--navy-dark);
+    margin: 0 0 8px 0;
+    line-height: 1.25;
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.mural-card-subtitle {
+    font-size: 18px;
+    font-weight: 500;
+    color: #127369; /* Verde Petróleo */
+    margin: 0;
+    line-height: 1.3;
+}
+
+.mural-card-divider {
+    border: 0;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.08);
+    margin: 18px 0;
+    width: 100%;
+}
+
+.mural-card-body {
+    font-size: 20px;
+    line-height: 1.75;
+    font-weight: 400;
+    color: #2E3440;
+    margin: 0;
+    max-width: 95%;
+    text-wrap: pretty;
+}
+
+.mural-card-body p {
+    margin-bottom: 16px;
+}
+.mural-card-body p:last-child {
+    margin-bottom: 0;
+}
+
+.mural-card-date {
+    font-size: 15px;
+    color: var(--slate-gray);
+    font-weight: 400;
+}
+
+/* Estilo para o botão Fechar do Modal Alert */
+#custom-alert-modal .btn-primary {
+    width: 100% !important;
+    height: 56px !important;
+    border-radius: 16px !important;
+    background: #FFFFFF !important;
+    color: #127369 !important;
+    border: 2px solid #127369 !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+}
+
+#custom-alert-modal .btn-primary:hover {
+    background: rgba(18, 115, 105, 0.05) !important;
+}
+
+#custom-alert-modal .btn-primary:active {
+    transform: scale(0.98) !important;
+}

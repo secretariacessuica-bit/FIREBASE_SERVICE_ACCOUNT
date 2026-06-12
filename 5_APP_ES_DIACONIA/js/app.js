@@ -7605,14 +7605,25 @@ const App = {
             return;
         }
         
-        let html = '<div style="text-align: left; display: flex; flex-direction: column; gap: 15px; max-height: 350px; overflow-y: auto; padding-right: 5px;">';
+        let html = '<div class="mural-reader-container">';
         avisos.forEach(a => {
-            const dateStr = a.data ? a.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+            const dateStr = a.data ? a.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' • ' + a.data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
             html += `
-                <div style="border-bottom: 1px solid #E2E8F0; padding-bottom: 12px; margin-bottom: 4px;">
-                    <h4 style="margin: 0 0 4px 0; color: var(--navy-dark); font-size: 1.05rem; font-weight: 800;"><i class="fa-solid fa-bullhorn" style="color: var(--teal-primary); margin-right: 6px;"></i>${a.titulo}</h4>
-                    <p style="margin: 0 0 6px 0; color: var(--slate-gray); font-size: 0.95rem; line-height: 1.4;">${a.conteudo || a.texto || ''}</p>
-                    <span style="color: #94A3B8; font-size: 0.8rem; font-weight: 600;"><i class="fa-regular fa-clock" style="margin-right: 4px;"></i>${dateStr}</span>
+                <div class="mural-reader-card">
+                    <div class="mural-accent-bar"></div>
+                    <div class="mural-card-content">
+                        <span class="mural-card-tag">RESUMO</span>
+                        <h3 class="mural-card-title">${a.titulo}</h3>
+                        <h4 class="mural-card-subtitle">Celebração da Ceia do Senhor</h4>
+                        
+                        <hr class="mural-card-divider">
+                        
+                        <div class="mural-card-body">${a.conteudo || a.texto || ''}</div>
+                        
+                        <hr class="mural-card-divider">
+                        
+                        <span class="mural-card-date">${dateStr}</span>
+                    </div>
                 </div>
             `;
         });
