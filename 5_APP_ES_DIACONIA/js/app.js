@@ -1007,9 +1007,9 @@ const App = {
                                 </div>
                                 <div class="scale-details">
                                     <h4>${next.cultoNome || 'Culto'}</h4>
-                                    <p><i class="fa-solid fa-clock"></i> ${next.horarioInicio || '00:00'}</p>
-                                    <p><i class="fa-solid fa-location-dot"></i> Templo Central</p>
-                                    <p><i class="fa-solid fa-user-tag"></i> ${next.funcao} (${sectorName})</p>
+                                    <p>${next.horarioInicio || '00:00'}</p>
+                                    <p>Templo Central</p>
+                                    <p style="margin-top: 4px; font-weight: 500;">Função: ${next.funcao} (${sectorName})</p>
                                 </div>
                             </div>
                             
@@ -7512,11 +7512,6 @@ const App = {
         dotsContainer.innerHTML = '';
 
         this.carouselItems.forEach((item, index) => {
-            let iconStr = '📢';
-            if (item.type === 'event') iconStr = '📅';
-            if (item.type === 'birthday') iconStr = '🎉';
-            if (item.type === 'warning') iconStr = '⚠️';
-
             let subtitle = item.desc;
             let description = item.tag;
             
@@ -7528,10 +7523,11 @@ const App = {
             track.innerHTML += `
                 <div class="carousel-slide premium-dark-slide" onclick="App.handleCarouselInteraction(); ${item.action}">
                     <div class="slide-content-dark">
-                        <h4 class="slide-title-dark">${iconStr} ${item.title.toUpperCase()}</h4>
+                        <span class="slide-tag-dark">COMUNICADOS</span>
+                        <h4 class="slide-title-dark">${item.title}</h4>
                         <span class="slide-subtitle-dark">${subtitle}</span>
                         <p class="slide-desc-dark">${description}</p>
-                        <span class="slide-action-link">[ VER DETALHES ]</span>
+                        <span class="slide-action-link">TOQUE PARA VER DETALHES</span>
                     </div>
                 </div>
             `;
