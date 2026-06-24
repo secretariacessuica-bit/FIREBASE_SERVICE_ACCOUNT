@@ -47,6 +47,12 @@ async function runEngine() {
 
         escalasSnapshot.forEach(doc => {
             const e = { id: doc.id, ...doc.data() };
+
+            // Ignorar escalas sem membroId válido
+            if (!e.membroId || typeof e.membroId !== 'string' || e.membroId.trim() === '') {
+                console.warn(`[AVISO] Escala ${e.id} ignorada: membroId ausente ou inválido.`);
+                return;
+            }
             
             if (!membrosParaNotificar[e.membroId]) {
                 membrosParaNotificar[e.membroId] = { pendentes: [], lembretesAmanha: [] };
@@ -65,6 +71,9 @@ async function runEngine() {
 
         // --- 2. BUSCAR TOKENS E DISPARAR ---
         for (const membroId of Object.keys(membrosParaNotificar)) {
+            // Segurança extra: nunca passar string vazia para .doc()
+            if (!membroId || membroId.trim() === '') continue;
+
             const info = membrosParaNotificar[membroId];
             
             if (info.pendentes.length === 0 && info.lembretesAmanha.length === 0) continue;
