@@ -1,0 +1,32 @@
+name: Diaconia Push Notifications Engine
+
+on:
+  schedule:
+    # Executa todos os dias às 10:00 UTC (07:00 AM no horário de Brasília)
+    - cron: '0 10 * * *'
+    # Executa todos os dias às 21:00 UTC (18:00 PM no horário de Brasília)
+    - cron: '0 21 * * *'
+  workflow_dispatch: # Permite disparo manual via botão no GitHub
+
+jobs:
+  run-engine:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install Dependencies
+        working-directory: ./cron-job
+        run: npm install
+        
+      - name: Run Push Engine
+        working-directory: ./cron-job
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: npm start

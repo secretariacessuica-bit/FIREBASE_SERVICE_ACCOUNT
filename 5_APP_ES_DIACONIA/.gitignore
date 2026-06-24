@@ -1,0 +1,55 @@
+# ==============================================================================
+# SEGURANÇA: chaves privadas e credenciais
+# NUNCA commitar arquivos de Service Account ou segredos
+# ==============================================================================
+serviceAccountKey.json
+*.serviceAccountKey.json
+*.private.json
+*.credentials.json
+firebase-secrets/
+secrets/
+.env
+.env.*
+GOOGLE_APPLICATION_CREDENTIALS
+
+# ==============================================================================
+# Firebase / ferramentas CLI
+# ==============================================================================
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+
+# ==============================================================================
+# Node.js
+# (package-lock.json NÃO está nesta lista — deve ser versionado)
+# ==============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==============================================================================
+# Sistema operacional
+# ==============================================================================
+Thumbs.db
+.DS_Store
+desktop.ini
+[Dd]esktop.ini
+
+# ==============================================================================
+# IDE / editores
+# ==============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ==============================================================================
+# Backups e exports temporários de auditoria
+# ==============================================================================
+scratch/exports/
+backup/
+*.backup
+firestore_backup/

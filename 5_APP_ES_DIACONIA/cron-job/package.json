@@ -1,0 +1,12 @@
+{
+  "name": "diaconia-push-engine",
+  "version": "1.0.0",
+  "description": "Motor de notificações Push (FCM) via GitHub Actions",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.1.0"
+  }
+}
