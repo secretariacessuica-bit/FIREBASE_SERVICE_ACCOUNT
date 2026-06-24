@@ -14,19 +14,19 @@ jobs:
     
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           
       - name: Install Dependencies
-        working-directory: ./cron-job
+        working-directory: ./5_APP_ES_DIACONIA/cron-job
         run: npm install
         
       - name: Run Push Engine
-        working-directory: ./cron-job
+        working-directory: ./5_APP_ES_DIACONIA/cron-job
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: npm start
