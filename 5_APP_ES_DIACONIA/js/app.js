@@ -8635,41 +8635,62 @@ const App = {
 
     async runAutoScaleAndPublish(culto) {
         const model = culto.modeloEscala;
-        let slots = [];
-        if (model === 'Culto Completo') {
-            slots = [
-                { setorId: 'entrada', funcao: 'Portaria' },
-                { setorId: 'check_in', funcao: 'Check-in' },
-                { setorId: 'check_in', funcao: 'Check-in' },
-                { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
-                { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
-                { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
-                { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
-                { setorId: 'acolhimento', funcao: 'Conduzir ao Acolhimento' },
-                { setorId: 'acolhimento', funcao: 'Recepcionar' },
-                { setorId: 'acolhimento', funcao: 'Servir' },
-                { setorId: 'acolhimento', funcao: 'Preparar a mesa' }
-            ];
-        } else if (model === 'Escala Livre') {
-            const numVagas = culto.vagasEscalaLivre || 2;
-            for (let i = 0; i < numVagas; i++) {
-                slots.push({ setorId: 'escala_livre', funcao: 'Escala Livre' });
-            }
-        } else if (model === 'Culto Menor') {
-            slots = [
-                { setorId: 'check_in', funcao: 'Check-in' },
-                { setorId: 'acolhimento', funcao: 'Acolhimento' }
-            ];
-        } else if (model === 'Personalizado') {
-            slots = culto.funcoesPersonalizadas || [
-                { setorId: 'entrada', funcao: 'Entrada' },
-                { setorId: 'check_in', funcao: 'Check-in' },
-                { setorId: 'acolhimento', funcao: 'Acolhimento' }
-            ];
-        }
-
         const membros = await DbService.getMembros();
         const escalas = await DbService.getEscalas();
+
+        const scheduledMemberIds = new Set();
+        const escalasDoCulto = escalas.filter(e => e.cultoId === culto.id);
+        
+        let slots = [];
+        let isEditingExisting = false;
+
+        if (escalasDoCulto.length > 0) {
+            isEditingExisting = true;
+            escalasDoCulto.forEach(e => {
+                if (e.membroId && e.membroNome !== 'Vaga Pendente' && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                    scheduledMemberIds.add(e.membroId);
+                }
+            });
+            slots = escalasDoCulto
+                .filter(e => !e.membroId || e.membroNome === 'Vaga Pendente' || e.statusPresenca === 'Recusado' || e.statusPresenca === 'Recusada')
+                .map(e => ({
+                    id: e.id,
+                    setorId: e.setorId,
+                    funcao: e.funcao
+                }));
+        } else {
+            if (model === 'Culto Completo') {
+                slots = [
+                    { setorId: 'entrada', funcao: 'Portaria' },
+                    { setorId: 'check_in', funcao: 'Check-in' },
+                    { setorId: 'check_in', funcao: 'Check-in' },
+                    { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
+                    { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
+                    { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
+                    { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
+                    { setorId: 'acolhimento', funcao: 'Conduzir ao Acolhimento' },
+                    { setorId: 'acolhimento', funcao: 'Recepcionar' },
+                    { setorId: 'acolhimento', funcao: 'Servir' },
+                    { setorId: 'acolhimento', funcao: 'Preparar a mesa' }
+                ];
+            } else if (model === 'Escala Livre') {
+                const numVagas = culto.vagasEscalaLivre || 2;
+                for (let i = 0; i < numVagas; i++) {
+                    slots.push({ setorId: 'escala_livre', funcao: 'Escala Livre' });
+                }
+            } else if (model === 'Culto Menor') {
+                slots = [
+                    { setorId: 'check_in', funcao: 'Check-in' },
+                    { setorId: 'acolhimento', funcao: 'Acolhimento' }
+                ];
+            } else if (model === 'Personalizado') {
+                slots = culto.funcoesPersonalizadas || [
+                    { setorId: 'entrada', funcao: 'Entrada' },
+                    { setorId: 'check_in', funcao: 'Check-in' },
+                    { setorId: 'acolhimento', funcao: 'Acolhimento' }
+                ];
+            }
+        }
 
         // Mapear último serviço de cada membro
         const lastScaledMap = {};
@@ -8702,8 +8723,15 @@ const App = {
             }
         });
 
+        // Mapear membros escalados na mesma data em outros cultos
+        const membersScaledOnSameDate = new Set();
+        escalas.forEach(e => {
+            if (e.data === culto.data && e.cultoId !== culto.id && e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                membersScaledOnSameDate.add(e.membroId);
+            }
+        });
+
         const assignments = [];
-        const scheduledMemberIds = new Set();
 
         for (let slot of slots) {
             let eligible = membros.filter(m => {
@@ -8740,6 +8768,22 @@ const App = {
                 
                 return principalMatch || secundariaMatch || isAcolhimentoBypass || isPortariaBypass;
             });
+
+            // Evitar obreiros que já estão escalados na mesma data em outros cultos, a menos que queiram servir sempre
+            let sameDateEligible = eligible.filter(m => {
+                const wasOnSameDate = membersScaledOnSameDate.has(m.id);
+                if (!wasOnSameDate) return true;
+
+                const mDisp = (m.disponibilidade || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const mObs = (m.funcao || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const querTodoCulto = mDisp.includes('todos cultos') || mDisp.includes('todo culto') || mDisp.includes('dias de culto') ||
+                                      mObs.includes('todos cultos') || mObs.includes('todo culto') || mObs.includes('dias de culto');
+                return querTodoCulto;
+            });
+
+            if (sameDateEligible.length > 0) {
+                eligible = sameDateEligible;
+            }
 
             // Evitar obreiros que serviram no domingo anterior, a menos que queiram servir sempre (Disponibilidade Geral ou Função / Obs)
             let primaryEligible = eligible.filter(m => {
@@ -8834,6 +8878,7 @@ const App = {
                 scheduledMemberIds.add(chosen.id);
 
                 assignments.push({
+                    id: slot.id || null,
                     setorId: slot.setorId,
                     funcao: slot.funcao,
                     membroId: chosen.id,
@@ -8842,6 +8887,7 @@ const App = {
                 });
             } else {
                 assignments.push({
+                    id: slot.id || null,
                     setorId: slot.setorId,
                     funcao: slot.funcao,
                     membroId: '',
@@ -8851,7 +8897,7 @@ const App = {
             }
         }
 
-        // Salvar escalas diretamente no Firestore
+        // Salvar ou atualizar escalas no Firestore
         for (let item of assignments) {
             const escalaPayload = {
                 cultoId: culto.id,
@@ -8868,9 +8914,15 @@ const App = {
             };
             if (!item.membroId) {
                 escalaPayload.observacoes = "🚨 Sem substituto disponível na fila de rodízio. Sob responsabilidade da Supervisão.";
+            } else {
+                escalaPayload.observacoes = "";
             }
 
-            await DbService.saveEscala(null, escalaPayload);
+            if (isEditingExisting && item.id) {
+                await DbService.saveEscala(item.id, escalaPayload);
+            } else {
+                await DbService.saveEscala(null, escalaPayload);
+            }
         }
     },
 
