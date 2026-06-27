@@ -96,7 +96,6 @@ const App = {
             if (sectorId === 'escala_livre') {
                 return ["Escala Livre"];
             }
-            return [];
         }
 
         // Para os demais modelos, nao exibir o setor virtual escala_livre
@@ -346,15 +345,19 @@ const App = {
     // --- NAVIGATION ROUTER ---
     navigateTo(viewId) {
         console.log("DEBUG: navigateTo called with viewId:", viewId, "showingMonthlyCalendar:", this.showingMonthlyCalendar);
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
-        if (viewId === 'view-member') {
+        
+        // Validação rígida de segurança para o Painel Administrativo
+        if (viewId === 'view-admin') {
             const isAdmin = this.currentUser && this.currentUser.perfil === 'admin';
             if (!isAdmin) {
-                console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa de navegar para view-member bloqueada para obreiro.');
-                this.showToast('Esta tela foi descontinuada. Use a nova Home Premium.', 'warning');
+                console.warn('[Segurança] Tentativa de acesso não autorizado à área de administração. Usuário:', this.currentUser ? this.currentUser.nome : 'Nulo');
+                this.showToast('Acesso negado. Esta é uma área administrativa restrita.', 'danger');
+                // Redireciona de volta com segurança
+                setTimeout(() => this.navigateTo('view-setor-select'), 100);
                 return;
             }
         }
+
         if (viewId !== 'view-member') {
             this.showingMonthlyCalendar = false;
             this.forceShowFullScales = false;
@@ -385,10 +388,6 @@ const App = {
         }
     },
     navigateToNextService(escalaId, dataStr, cultoId, horarioInicio, setorId, funcao, observacoes) {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
-        console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa bloqueada de acessar navigateToNextService.');
-        this.showToast('Os detalhes da escala legada foram desativados.', 'warning');
-        return;
 
         // Build and select the event key so the organograma focuses on this specific culto
         const eventKey = `${dataStr}_${cultoId || 'sem-culto'}_${horarioInicio || '00:00'}`;
@@ -408,6 +407,10 @@ const App = {
             nodeId = 'recepcao';
         } else if (setorId === 'apoio_templo_ronda_dir' || setorId === 'apoio_templo_ronda_esq') {
             nodeId = 'templo';
+        }
+
+        if (setorId) {
+            this.activeSectorId = setorId;
         }
 
         if (nodeId) {
@@ -459,8 +462,16 @@ const App = {
     },
 
     onUserLoggedIn() {
+        const isAdmin = this.currentUser && this.currentUser.perfil === 'admin';
+        
+        // Exibir ou ocultar botões administrativos com segurança no DOM
+        const adminBtn = document.getElementById('btn-admin-panel');
+        if (adminBtn) {
+            adminBtn.style.setProperty('display', isAdmin ? 'flex' : 'none', 'important');
+        }
+
         // If user is Admin, they can access anything
-        if (this.currentUser.perfil === 'admin') {
+        if (isAdmin) {
             document.getElementById('admin-shortcut-container').style.display = 'block';
             document.getElementById('admin-profile-name-footer').innerText = this.currentUser.nome;
             this.navigateTo('view-setor-select');
@@ -506,6 +517,69 @@ const App = {
         this.showAlert(html, 'Notificações no iPhone');
     },
 
+    showBackgroundOptimizationGuide() {
+        const modal = document.getElementById('modal-guia-bateria');
+        if (modal) {
+            modal.classList.add('active');
+        }
+    },
+
+    testNotificationDirectly() {
+        if (!('Notification' in window)) {
+            if (this.isIOS()) {
+                this.showIOSNotificationInstructions();
+            } else {
+                this.showToast('Navegador não suporta notificações.', 'danger');
+            }
+            return;
+        }
+
+        if (Notification.permission === 'denied') {
+            this.showToast('Notificações bloqueadas! Ative nas configurações do aparelho.', 'danger');
+            return;
+        }
+
+        if (Notification.permission === 'default') {
+            this.requestNotificationPermission(true);
+            return;
+        }
+
+        // If granted, show a test notification
+        try {
+            if (this._swRegistration) {
+                // Try using service worker if active
+                this._swRegistration.showNotification('🔔 Teste de Notificação', {
+                    body: 'Parabéns! Suas notificações de escala estão configuradas corretamente.',
+                    icon: '/assets/logo.png',
+                    tag: 'ces-diaconia-test',
+                    renotify: true
+                });
+            } else {
+                // Fallback direct
+                new Notification('🔔 Teste de Notificação', {
+                    body: 'Parabéns! Suas notificações de escala estão configuradas corretamente.',
+                    icon: '/assets/logo.png',
+                    tag: 'ces-diaconia-test',
+                    renotify: true
+                });
+            }
+            this.showToast('Notificação de teste disparada!', 'success');
+        } catch (e) {
+            console.error("Error triggering test notification:", e);
+            try {
+                new Notification('🔔 Teste de Notificação', {
+                    body: 'Parabéns! Suas notificações de escala estão configuradas corretamente.',
+                    icon: '/assets/logo.png',
+                    tag: 'ces-diaconia-test',
+                    renotify: true
+                });
+                this.showToast('Notificação de teste disparada!', 'success');
+            } catch (err) {
+                this.showToast('Erro ao disparar notificação: ' + err.message, 'danger');
+            }
+        }
+    },
+
     async setupNotifications() {
         if (!('serviceWorker' in navigator)) {
             console.log('[Notificações] Navegador não suporta Service Workers.');
@@ -514,7 +588,7 @@ const App = {
 
         // Register Service Worker
         try {
-            this._swRegistration = await navigator.serviceWorker.register('/sw-notifications.js?v=3.6.35', { scope: '/' });
+            this._swRegistration = await navigator.serviceWorker.register('/sw-notifications.js?v=3.10.5U', { scope: '/' });
             console.log('[Notificações] Service Worker registrado:', this._swRegistration.scope);
         } catch (err) {
             console.warn('[Notificações] Falha ao registrar Service Worker:', err);
@@ -587,9 +661,9 @@ const App = {
             }
         }
 
-        // Permission granted — start checking
+        // Permission granted — init FCM
         this.showToast('🔔 Notificações ativadas!', 'success');
-        this.startNotificationReminderLoop();
+        this.initializeFCM();
     },
 
     _resolveNotifPrompt(value) {
@@ -600,212 +674,90 @@ const App = {
         }
     },
 
-    async startNotificationReminderLoop() {
-        // Check immediately on login
-        await this.runNotificationChecks();
-
-        // Clear any previous interval
-        if (this._notificationInterval) clearInterval(this._notificationInterval);
-
-        // Re-check every 1 hour to see if date changed or reminders need to trigger
-        this._notificationInterval = setInterval(async () => {
-            await this.runNotificationChecks();
-        }, 60 * 60 * 1000); // 1 hour
-    },
-
-    async runNotificationChecks() {
-        if (!this.currentUser) return;
-        
-        // Evita incomodar o sono das pessoas: apenas executa notificações entre 08h e 20h
-        const horaAtual = new Date().getHours();
-        if (horaAtual < 8 || horaAtual >= 20) {
-            console.log('[Notificações] Silenciadas pelo horário (permitido apenas das 08h às 20h). Hora atual:', horaAtual);
-            return;
-        }
-        
-        // 1. Check pending scales (notifies once per day)
-        await this.checkAndNotifyPendingScales();
-
-        // 2. Check confirmed scales for tomorrow (reminds once per scale 1 day before)
-        await this.checkAndNotifyUpcomingConfirmedScales();
-    },
-
-    async checkAndNotifyPendingScales() {
-        if (!this.currentUser) return false;
-        if (Notification.permission !== 'granted') return false;
-
+    async initializeFCM() {
         try {
-            const now = new Date();
-            const hojeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            const messaging = firebase.messaging();
+            
+            // Request token
+            const currentToken = await messaging.getToken({
+                vapidKey: 'BMeN5X-yiVCJSxpM44Q1IApiVZh21LBHJdKxLKNJptKwE0evVyySa-pN9xpMyleYnTYpuYJmKXd8wG67o8QXZbQ',
+                serviceWorkerRegistration: this._swRegistration
+            });
 
-            // Check notified pending IDs in localStorage
-            const notifiedKey = `notified_pending_ids_${this.currentUser.id}`;
-            const notifiedStr = localStorage.getItem(notifiedKey);
-            let notifiedIds = [];
-            try {
-                if (notifiedStr) notifiedIds = JSON.parse(notifiedStr);
-            } catch (e) {
-                notifiedIds = [];
+            if (currentToken) {
+                console.log('[FCM] Token gerado:', currentToken);
+                await this.saveTokenToFirestore(currentToken);
+            } else {
+                console.warn('[FCM] Nenhum token gerado.');
             }
 
-            // Check if we already sent pending scale alert today
-            const storageKey = `last_pending_alert_${this.currentUser.id}`;
-            const lastAlertDate = localStorage.getItem(storageKey);
-
-            // Get next 60 days
-            const future = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
-            const futureStr = `${future.getFullYear()}-${String(future.getMonth()+1).padStart(2,'0')}-${String(future.getDate()).padStart(2,'0')}`;
-
-            const escalas = await DbService.getEscalas(null, hojeStr, futureStr);
-            const pendentes = escalas.filter(e =>
-                e.membroId === this.currentUser.id &&
-                e.statusPresenca === 'Pendente' &&
-                e.data >= hojeStr
-            );
-
-            if (pendentes.length === 0) {
-                // Clear notified list so future additions trigger immediately
-                localStorage.setItem(notifiedKey, JSON.stringify([]));
-                return false;
-            }
-
-            // Check if there are any new pending scales we haven't notified about yet
-            const currentPendingIds = pendentes.map(p => p.id);
-            const hasNewPending = currentPendingIds.some(id => !notifiedIds.includes(id));
-
-            // If already alerted today and there are no new pending scales, skip sending again
-            if (lastAlertDate === hojeStr && !hasNewPending) {
-                console.log('[Notificações] Alerta diário de escalas pendentes já enviado hoje e sem novas pendências.');
-                return true;
-            }
-
-            // Format data for the SW notification
-            const scalePayload = pendentes.map(e => {
-                const [y, m, d] = e.data.split('-');
-                return {
-                    id: e.id,
-                    cultoNome: e.cultoNome || 'Culto',
-                    dataFmt: `${d}/${m}`,
-                    horarioInicio: e.horarioInicio || '',
-                    funcao: e.funcao || ''
+            // Foreground listener
+            messaging.onMessage((payload) => {
+                console.log('[FCM] Mensagem em foreground:', payload);
+                const notificationTitle = payload.notification?.title || 'Aviso';
+                const notificationOptions = {
+                    body: payload.notification?.body,
+                    icon: '/assets/logo.png',
+                    data: payload.data
+                };
+                const notif = new Notification(notificationTitle, notificationOptions);
+                notif.onclick = () => {
+                    window.focus();
+                    notif.close();
+                    if(payload.data && payload.data.scaleId) {
+                         this.handleNotificationAction('view', payload.data.scaleId);
+                    } else {
+                         this.activeSectorId = 'entrada';
+                         this.navigateTo('view-member');
+                    }
                 };
             });
 
-            // Send to service worker to show notification
-            if (this._swRegistration && this._swRegistration.active) {
-                this._swRegistration.active.postMessage({
-                    type: 'SHOW_PENDING_NOTIFICATION',
-                    scales: scalePayload
-                });
-            } else {
-                // Fallback: show browser notification directly
-                this.showDirectNotification(scalePayload);
-            }
-
-            // Mark today as alerted and save notified IDs list
-            localStorage.setItem(storageKey, hojeStr);
-            localStorage.setItem(notifiedKey, JSON.stringify(currentPendingIds));
-            return true;
-        } catch (err) {
-            console.warn('[Notificações] Erro ao verificar escalas pendentes:', err);
-            return false;
-        }
-    },
-
-    async checkAndNotifyUpcomingConfirmedScales() {
-        if (!this.currentUser) return;
-        if (Notification.permission !== 'granted') return;
-
-        try {
-            const now = new Date();
-            // Tomorrow is today + 1 day
-            const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-            const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,'0')}-${String(tomorrow.getDate()).padStart(2,'0')}`;
-
-            // Fetch scales for tomorrow
-            const escalas = await DbService.getEscalas(null, tomorrowStr, tomorrowStr);
-            const confirmadasAmanha = escalas.filter(e =>
-                e.membroId === this.currentUser.id &&
-                e.statusPresenca === 'Confirmada'
-            );
-
-            for (const escala of confirmadasAmanha) {
-                const storageKey = `confirmed_reminder_${this.currentUser.id}_${escala.id}`;
-                const alreadyReminded = localStorage.getItem(storageKey);
-
-                if (!alreadyReminded) {
-                    const [y, m, d] = escala.data.split('-');
-                    const scalePayload = {
-                        id: escala.id,
-                        cultoNome: escala.cultoNome || 'Culto',
-                        dataFmt: `${d}/${m}`,
-                        horarioInicio: escala.horarioInicio || '',
-                        funcao: escala.funcao || ''
-                    };
-
-                    if (this._swRegistration && this._swRegistration.active) {
-                        this._swRegistration.active.postMessage({
-                            type: 'SHOW_CONFIRMED_REMINDER_NOTIFICATION',
-                            scale: scalePayload
-                        });
-                    } else {
-                        this.showDirectConfirmedNotification(scalePayload);
-                    }
-
-                    // Mark this specific scale ID as reminded so we never notify it again
-                    localStorage.setItem(storageKey, 'true');
-                    console.log(`[Notificações] Lembrete de 1 dia antes enviado para escala: ${escala.id}`);
+            // Handle token refresh
+            messaging.onTokenRefresh(async () => {
+                try {
+                    const refreshedToken = await messaging.getToken({ vapidKey: 'BMeN5X-yiVCJSxpM44Q1IApiVZh21LBHJdKxLKNJptKwE0evVyySa-pN9xpMyleYnTYpuYJmKXd8wG67o8QXZbQ' });
+                    console.log('[FCM] Token atualizado:', refreshedToken);
+                    await this.saveTokenToFirestore(refreshedToken);
+                } catch (err) {
+                    console.error('[FCM] Erro ao atualizar token:', err);
                 }
-            }
-        } catch (err) {
-            console.warn('[Notificações] Erro ao verificar lembretes de escalas confirmadas:', err);
+            });
+
+        } catch (error) {
+            console.error('[FCM] Erro ao inicializar Messaging:', error);
         }
     },
 
-    showDirectNotification(scales) {
-        if (!scales || scales.length === 0) return;
-        const first = scales[0];
-        const count = scales.length;
-        const title = count === 1 ? '⚠️ Escala aguardando confirmação' : `⚠️ ${count} escalas aguardando confirmação`;
-        const body = count === 1
-            ? `${first.cultoNome} em ${first.dataFmt} às ${first.horarioInicio}\nConfirme ou recuse sua presença no app.`
-            : scales.slice(0,2).map(s => `• ${s.cultoNome} – ${s.dataFmt}`).join('\n');
-
-        const notif = new Notification(title, {
-            body,
-            icon: '/assets/logo.png',
-            tag: 'ces-diaconia-pendente',
-            renotify: true,
-            requireInteraction: true
-        });
-
-        notif.onclick = () => {
-            window.focus();
-            notif.close();
-            this.activeSectorId = 'entrada';
-            this.navigateTo('view-member');
-        };
+    async saveTokenToFirestore(token) {
+        if (!this.currentUser) return;
+        try {
+            const memberRef = window.db.collection('membros').doc(this.currentUser.id);
+            await memberRef.set({
+                fcmTokens: firebase.firestore.FieldValue.arrayUnion(token)
+            }, { merge: true });
+            
+            localStorage.setItem('fcm_token_atual', token);
+            console.log('[FCM] Token salvo no membro:', this.currentUser.id);
+        } catch (error) {
+            console.error('[FCM] Erro ao salvar token no Firestore:', error);
+        }
     },
 
-    showDirectConfirmedNotification(scale) {
-        if (!scale) return;
-        const title = `📢 Lembrete de Escala Amanhã!`;
-        const body = `Você tem escala confirmada no "${scale.cultoNome}" amanhã às ${scale.horarioInicio}.\nFunção: ${scale.funcao}.`;
-
-        const notif = new Notification(title, {
-            body,
-            icon: '/assets/logo.png',
-            tag: `ces-diaconia-confirmada-${scale.id}`,
-            renotify: true,
-            requireInteraction: true
-        });
-
-        notif.onclick = () => {
-            window.focus();
-            notif.close();
-            this.activeSectorId = 'entrada';
-            this.navigateTo('view-member');
-        };
+    async removeTokenFromFirestore() {
+        const token = localStorage.getItem('fcm_token_atual');
+        if (!token || !this.currentUser) return;
+        
+        try {
+            const memberRef = window.db.collection('membros').doc(this.currentUser.id);
+            await memberRef.update({
+                fcmTokens: firebase.firestore.FieldValue.arrayRemove(token)
+            });
+            localStorage.removeItem('fcm_token_atual');
+            console.log('[FCM] Token desvinculado do membro.');
+        } catch (error) {
+            console.error('[FCM] Erro ao desvincular token:', error);
+        }
     },
 
     async handleNotificationAction(action, scaleId) {
@@ -820,9 +772,10 @@ const App = {
         } else if (action === 'refuse') {
             await this.handleConfirmPresenca(scaleId, 'Recusada');
             this.showToast('Recusa registrada.', 'info');
+        } else if (action === 'view') {
+            this.activeSectorId = 'entrada';
+            this.navigateTo('view-member');
         }
-        // Run checks again to update pending list and today's alert status
-        this.runNotificationChecks();
     },
 
     handleNotificationUrlParams() {
@@ -835,26 +788,14 @@ const App = {
         }
     },
 
-    stopNotificationLoop() {
-        if (this._notificationInterval) {
-            clearInterval(this._notificationInterval);
-            this._notificationInterval = null;
-        }
-        if (this._swRegistration && this._swRegistration.active) {
-            this._swRegistration.active.postMessage({ type: 'CLEAR_NOTIFICATIONS' });
-        }
-    },
-
-
-
-    handleLogout() {
+    async handleLogout() {
+        // Remove FCM token before logging out
+        await this.removeTokenFromFirestore();
+        
         this.currentUser = null;
         this.activeSectorId = null;
         localStorage.removeItem('diaconia_user_session');
         sessionStorage.removeItem('diaconia_user_session');
-        
-        // Stop notification reminders
-        this.stopNotificationLoop();
 
         // Reset forms e limpa campos explicitamente
         document.getElementById('login-form').reset();
@@ -947,16 +888,17 @@ const App = {
             // Sort chronologically
             futureScales.sort((a, b) => a.data.localeCompare(b.data) || a.horarioInicio.localeCompare(b.horarioInicio));
 
-            // Dynamic Welcome Greeting
+            // Dynamic Welcome Greeting (v3.10.4B Refined)
             if (this.currentUser) {
-                const names = this.currentUser.nome.split(' ');
-                const genderTitle = this.isFemale(this.currentUser.nome) ? 'Diaconisa' : 'Diácono';
-                const welcomeText = `Olá, ${genderTitle} ${names[0]}!`;
-                const welcomeEl = document.getElementById('selector-welcome-greeting');
-                if (welcomeEl) welcomeEl.innerText = welcomeText;
+                const welcomeGreetingEl = document.getElementById('selector-welcome-greeting');
+                const welcomeNameEl = document.getElementById('selector-welcome-name');
+                if (welcomeNameEl) {
+                    welcomeNameEl.innerHTML = `Olá, ${this.currentUser.nome}`.trim();
+                }
+                if (welcomeGreetingEl) {
+                    welcomeGreetingEl.style.setProperty('display', 'none', 'important');
+                }
             }
-
-
 
             // Render Premium Next Service Card
             const premiumNextContainer = document.getElementById('premium-next-scale-container');
@@ -989,39 +931,50 @@ const App = {
                     let btnConfirmHtml = '';
                     if (status !== 'Confirmada') {
                         btnConfirmHtml = `
-                            <button class="btn-confirm-huge" onclick="event.stopPropagation(); App.confirmarPresencaDireto('${next.id}', '${next.data}')">
+                            <button class="btn-confirm-huge" style="height: 40px !important; font-size: 0.85rem; border-radius: 10px;" onclick="event.stopPropagation(); App.confirmarPresencaDireto('${next.id}', '${next.data}')">
                                 <i class="fa-solid fa-circle-check"></i> CONFIRMAR PRESENÇA
                             </button>
                         `;
                     }
 
                     premiumNextContainer.innerHTML = `
-                        <div class="premium-next-scale-card" onclick="App.navigateToNextService('${next.id}', '${next.data}', '${next.cultoId || 'sem-culto'}', '${next.horarioInicio || '00:00'}', '${next.setorId}', '${(next.funcao || '').replace(/'/g, '\\\'')}');">
-                            <span class="scale-status-badge ${badgeClass}">${statusText}</span>
+                        <div class="premium-next-scale-card" onclick="App.navigateToNextService('${next.id}', '${next.data}', '${next.cultoId || 'sem-culto'}', '${next.horarioInicio || '00:00'}', '${next.setorId}', '${(next.funcao || '').replace(/'/g, '\\\'')}');" style="display: flex; flex-direction: column; gap: 6px; padding: 8px 12px;">
+                            <!-- Linha Superior -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <span style="font-size: 0.72rem; color: #8AA6A3; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                                    <i class="fa-solid fa-map-marker-alt" style="color: var(--teal-primary);"></i> Templo Central
+                                </span>
+                                <span class="scale-status-badge ${badgeClass}" style="margin: 0; padding: 3px 6px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">${statusText}</span>
+                            </div>
                             
-                            <div class="scale-info-row">
-                                <div class="scale-date-badge">
-                                    <div class="month">${monthAbbrev}</div>
-                                    <div class="day">${String(dNum).padStart(2, '0')}</div>
-                                    <div class="weekday">${weekday.substring(0,3).toUpperCase()}</div>
+                            <!-- Corpo -->
+                            <div class="scale-info-row" style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
+                                <!-- Bloco Data Compacto (Reduzido em 15%) -->
+                                <div class="scale-date-badge" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 6px; padding: 4px 6px; min-width: 48px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08);">
+                                    <div class="day" style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF; line-height: 1;">${String(dNum).padStart(2, '0')}</div>
+                                    <div class="month" style="font-size: 0.62rem; color: #8AA6A3; font-weight: 600; margin-top: 1px; text-transform: uppercase;">${monthAbbrev}</div>
                                 </div>
-                                <div class="scale-details">
-                                    <h4>${next.cultoNome || 'Culto'}</h4>
-                                    <p>${next.horarioInicio || '00:00'}</p>
-                                    <p>Templo Central</p>
-                                    <p style="margin-top: 4px; font-weight: 500;">Função: ${next.funcao} (${sectorName})</p>
+                                
+                                <!-- Detalhes da Escala -->
+                                <div class="scale-details" style="flex: 1; min-width: 0; text-align: left;">
+                                    <h4 style="margin: 0; font-size: 0.88rem; font-weight: 700; color: #FFFFFF; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${next.cultoNome || 'Culto'}</h4>
+                                    <p style="margin: 2px 0 0 0; font-size: 0.75rem; color: #8AA6A3; display: flex; align-items: center; gap: 4px;"><i class="fa-regular fa-clock"></i> ${next.horarioInicio || '00:00'}</p>
+                                    <p style="margin: 3px 0 0 0; font-size: 0.75rem; color: #E2E8F0; line-height: 1.2;">
+                                        <span style="font-weight: 500; color: #8AA6A3;">Função:</span><br>
+                                        <span style="font-weight: 600; color: #FFFFFF;">${next.funcao} (${sectorName})</span>
+                                    </p>
                                 </div>
                             </div>
                             
-                            ${btnConfirmHtml}
+                            ${btnConfirmHtml ? `<div style="margin-top: 4px;">${btnConfirmHtml}</div>` : ''}
                         </div>
                     `;
                 } else {
                     premiumNextContainer.innerHTML = `
-                        <div class="premium-next-scale-card" style="align-items: center; text-align: center; justify-content: center; min-height: 140px;">
-                            <i class="fa-regular fa-calendar-times" style="font-size: 2rem; opacity: 0.5; margin-bottom: 5px;"></i>
-                            <h4 style="margin: 0; color: white; font-weight: 700;">Escala Livre</h4>
-                            <p style="opacity: 0.8; margin: 0; font-size: 0.85rem;">Você não possui serviços agendados.</p>
+                        <div class="premium-next-scale-card" onclick="App.handleMobileNavClick('escala')" style="align-items: center; text-align: center; justify-content: center; padding: 12px; cursor: pointer;">
+                            <i class="fa-regular fa-calendar-times" style="font-size: 1.5rem; opacity: 0.5; margin-bottom: 5px; color: white;"></i>
+                            <h4 style="margin: 0; color: white; font-weight: 700; font-size: 0.9rem;">Escala Livre</h4>
+                            <p style="opacity: 0.8; margin: 0; font-size: 0.8rem; color: #8AA6A3;">Toque para ver sua escala e equipe.</p>
                         </div>
                     `;
                 }
@@ -1244,6 +1197,12 @@ const App = {
 
     handleMobileNavClick(tabName) {
         if (!this.currentUser) return;
+
+        // Avisos abre o sidebar do mural, não o view-member
+        if (tabName === 'avisos') {
+            this.toggleMuralMobile(true);
+            return;
+        }
         
         const targetSector = this.activeSectorId || this.currentUser.setor || (Array.isArray(this.currentUser.setores) && this.currentUser.setores[0]) || 'entrada';
         this.activeSectorId = targetSector;
@@ -1305,7 +1264,10 @@ const App = {
         if (!container || !list) return;
 
         try {
-            const avisos = await DbService.getAvisos();
+            let avisos = await DbService.getAvisos();
+            // Filter out legacy "Escala" and "Culto" announcements from the mural
+            avisos = avisos.filter(a => !a.titulo.toLowerCase().includes('escala') && !a.titulo.toLowerCase().includes('culto'));
+            
             if (avisos.length === 0) {
                 container.style.display = 'none';
                 return;
@@ -1518,8 +1480,20 @@ const App = {
     loadAndRenderMemberPortal() {
         // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         console.log("DEBUG: loadAndRenderMemberPortal called, activeSectorId:", this.activeSectorId);
+        
+        if (!this.activeSectorId && this.currentUser) {
+            const targetSector = this.currentUser.setor || (Array.isArray(this.currentUser.setores) && this.currentUser.setores[0]);
+            if (targetSector) {
+                this.activeSectorId = targetSector;
+                console.log("DEBUG: Auto-recovered activeSectorId:", this.activeSectorId);
+            }
+        }
+
         const sector = this.sectorsData[this.activeSectorId];
-        if (!sector) return;
+        if (!sector) {
+            console.warn("DEBUG: loadAndRenderMemberPortal aborted - sector not found for:", this.activeSectorId);
+            return;
+        }
 
         // Apply dynamic sector theme
         const appContainer = document.getElementById('member-app-container');
@@ -1573,7 +1547,9 @@ const App = {
 
         // Hide all subviews, show selected
         document.querySelectorAll('.member-subview').forEach(view => view.style.display = 'none');
-        document.getElementById(`member-sub-${tabName}`).style.display = 'block';
+        const subEl = document.getElementById(`member-sub-${tabName}`);
+        if (subEl) subEl.style.display = 'block';
+        else if (tabName === 'avisos') { this.toggleMuralMobile(true); return; }
 
         // Load tab data
         if (tabName === 'escala') {
@@ -1632,9 +1608,14 @@ const App = {
             const sectorToFetch = null;
             const escalas = await DbService.getEscalas(sectorToFetch, dateRange.start, dateRange.end);
 
+            console.log('activeSectorId', this.activeSectorId);
+            console.log('currentUser', this.currentUser?.nome);
+            console.log('escalasEncontradas', escalas);
+
             // Smart check for non-scheduled members (v3.6.22)
             const userSectorEscalas = escalas.filter(e => e.membroId === this.currentUser.id && e.statusPresenca !== 'Recusada');
             if (userSectorEscalas.length === 0 && !this.forceShowFullScales) {
+                console.log('userSectorEscalas', 'Vazio (0 escalas)');
                 this.renderNoScalesActionCards(container);
                 return;
             }
@@ -1850,6 +1831,8 @@ const App = {
             const highlightContainer = document.getElementById('next-service-highlight');
             const nextInfoContainer = document.getElementById('next-service-info');
             
+            console.log('nextService', nextService);
+
             if (nextService) {
                 highlightContainer.style.display = 'block';
                 const dateParts = nextService.data.split('-');
@@ -3067,7 +3050,7 @@ const App = {
             const checkDate = data || new Date().toISOString().split('T')[0];
             if (m.afastamentoInicio && m.afastamentoFim) {
                 if (checkDate >= m.afastamentoInicio && checkDate <= m.afastamentoFim) {
-                    return false; // Afastado no período
+                    return false; // Afastado no período (afetando escala manual, automática e preditiva)
                 }
                 if (checkDate > m.afastamentoFim) {
                     const autoRetorno = m.afastamentoRetornoAutomativo === 'Sim' || m.afastamentoRetornoAutomativo === true;
@@ -3538,7 +3521,7 @@ const App = {
             }
             this.loadAndRenderMemberScales();
             // Re-evaluate notification reminders (both pending and confirmed tomorrow)
-            setTimeout(() => this.runNotificationChecks(), 1000);
+            // runNotificationChecks removed (function deprecated)
         } catch (e) {
             this.showAlert('Erro ao atualizar presença no servidor.', 'Erro');
         }
@@ -3551,7 +3534,7 @@ const App = {
             App.hideLoading();
             this.showToast(`Presença confirmada com sucesso!`, 'success');
             this.loadAndRenderMemberScales();
-            setTimeout(() => this.runNotificationChecks(), 1000);
+            // runNotificationChecks removed (function deprecated)
         } catch (e) {
             App.hideLoading();
             console.error("Erro em confirmarPresencaDireto:", e);
@@ -3936,6 +3919,15 @@ const App = {
     // VIEW 4: ADMIN PORTAL
     // ==========================================================================
     loadAndRenderAdminPortal() {
+        // Validação rígida de segurança
+        const isAdmin = this.currentUser && this.currentUser.perfil === 'admin';
+        if (!isAdmin) {
+            console.error('[Segurança] Tentativa de renderizar Portal Admin bloqueada para usuário:', this.currentUser ? this.currentUser.nome : 'Nulo');
+            this.showToast('Acesso negado. Esta é uma área administrativa.', 'danger');
+            this.navigateTo('view-setor-select');
+            return;
+        }
+
         // Toggle mobile drawer shut
         document.getElementById('admin-drawer').classList.remove('mobile-open');
 
@@ -4850,6 +4842,9 @@ const App = {
                     afastamentoObsSupervisao,
                     afastamentoRetornoAutomativo
                 });
+
+                // FASE 2: Remover obreiro de escalas conflitantes futuras no período
+                await this.removerMembroDeEscalasConflitantes(savedId, nome, afastamentoInicio, afastamentoFim, statusOperacional);
             }
 
             this.closeMembroFormModal();
@@ -6001,14 +5996,17 @@ const App = {
             
             const term = c.tipo === 'especial' ? 'evento' : 'culto';
             
+            // Removed: Do not create an Aviso for scale publication as per v3.10.4A requirements
+            /*
             await DbService.saveAviso({
                 titulo: `Escala Publicada - ${c.nome}`,
                 conteudo: `A escala de voluntários para o ${term} "${c.nome}" no dia ${formattedDate} (${c.horarioInicio} às ${c.horarioFim}) foi publicada. Por favor, acesse o painel e confirme sua presença!`,
                 autorNome: this.currentUser.nome,
                 dataExpiracao: c.data
             });
+            */
             
-            this.showToast('Escala publicada e aviso enviado aos membros!', 'success');
+            this.showToast('Escala confirmada e publicada!', 'success');
             this.loadAdminEscalas();
         } catch (e) {
             this.showAlert('Erro ao publicar escala.');
@@ -7313,7 +7311,8 @@ const App = {
                     gap: 15px;
                     background: #FAF8F6;
                 `;
-                const dt = a.data ? a.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                const dateObj = a.data && typeof a.data.toDate === 'function' ? a.data.toDate() : new Date(a.data);
+                const dt = a.data ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
                 const expStr = a.dataExpiracao ? ` (Expirando em: ${a.dataExpiracao.split('-').reverse().join('/')})` : '';
                 item.innerHTML = `
                     <div style="flex: 1; text-align: left;">
@@ -7394,42 +7393,68 @@ const App = {
         }
     },
 
+    async loadAdminMessages() {
+        const showArchived = document.getElementById('admin-msg-show-archived')?.checked || false;
+        const container = document.getElementById('admin-messages-list-container');
+        if (!container) return;
+        container.innerHTML = '<div style="text-align:center;padding:20px;"><i class="fa-solid fa-circle-notch fa-spin"></i></div>';
+        try {
+            const membros = await DbService.getMembros();
+            const allMessages = [];
+            for (const m of membros) {
+                if (m.mensagens && Array.isArray(m.mensagens)) {
+                    m.mensagens.forEach(msg => allMessages.push({ ...msg, autorNome: m.nome }));
+                }
+            }
+            const filtered = showArchived ? allMessages : allMessages.filter(msg => !msg.arquivado);
+            filtered.sort((a, b) => (b.data?.seconds || 0) - (a.data?.seconds || 0));
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--slate-gray);padding:20px;">Nenhuma mensagem encontrada.</p>';
+                return;
+            }
+            container.innerHTML = filtered.map(msg => {
+                const dateObj = msg.data && typeof msg.data.toDate === 'function' ? msg.data.toDate() : new Date(msg.data);
+                const dt = msg.data ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                return `<div style="border:1px solid #E2E8F0;border-radius:10px;padding:12px 15px;background:#FAF8F6;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span style="font-size:0.8rem;font-weight:700;color:var(--teal-primary);">${msg.autorNome || 'Obreiro'}</span>
+                        <span style="font-size:0.75rem;color:var(--slate-gray);">${dt}</span>
+                    </div>
+                    <p style="margin:0;font-size:0.88rem;color:var(--navy-dark);">${msg.texto || msg.conteudo || ''}</p>
+                </div>`;
+            }).join('');
+        } catch (err) {
+            console.error('[loadAdminMessages] Erro:', err);
+            container.innerHTML = '<p style="text-align:center;color:red;padding:20px;">Erro ao carregar mensagens.</p>';
+        }
+    },
+
     // --- MURAL INFORMATIVO FUNCTIONS (v3.4.9) ---
     async loadAndRenderSectorSelectMural(escalas, avisos) {
         let carouselItems = [];
 
-        // 1. Next Events (Future Cultos)
-        const now = new Date();
-        const tzOffset = now.getTimezoneOffset() * 60000;
-        const hojeStr = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
-
-        try {
-            const cultos = await DbService.getCultos();
-            const futureCultos = cultos.filter(c => c.data >= hojeStr);
-            if (futureCultos.length > 0) {
-                const topEvents = futureCultos.slice(0, 3);
-                topEvents.forEach(event => {
-                    const parts = event.data.split('-');
-                    carouselItems.push({
-                        type: 'event',
-                        tag: 'Próximo Evento',
-                        title: event.nome,
-                        desc: `${parts[2]}/${parts[1]} • ${event.horarioInicio || ''}`,
-                        action: 'App.openMonthlyCalendar()'
-                    });
-                });
-            }
-        } catch (e) { console.error("Error loading next event for carousel:", e); }
-
-        // 2. Announcements
+        // 1. Announcements (Avisos / Comunicados) - Priority 1
         if (avisos && avisos.length > 0) {
-            const topAvisos = avisos.slice(0, 3);
+            // Filter out only auto-generated scale announcements (not legitimate notices)
+            const filteredAvisos = avisos.filter(a => {
+                const contentLower = (a.texto || a.conteudo || '').toLowerCase();
+                // Ignorar apenas publicações automáticas de escala (identificadas pelo conteúdo)
+                if (contentLower.includes('escala de voluntário') || contentLower.includes('escala de voluntario') || contentLower.includes('confirme sua presença')) {
+                    return false;
+                }
+                return true;
+            });
+            const topAvisos = filteredAvisos.slice(0, 3);
             topAvisos.forEach(a => {
+                const dateObj = a.data && typeof a.data.toDate === 'function' ? a.data.toDate() : new Date(a.data);
+                const dateStr = a.data ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
                 carouselItems.push({
                     type: 'warning',
-                    tag: 'Aviso Importante',
+                    category: '📢 COMUNICADO',
                     title: a.titulo,
-                    desc: a.texto || 'Toque para ler mais',
+                    subtitle: 'Aviso Geral',
+                    description: a.texto || a.conteudo || 'Toque para ver mais detalhes.',
+                    date: dateStr,
                     action: 'App.showMuralAvisosDetail()'
                 });
             });
@@ -7438,28 +7463,68 @@ const App = {
             this.cachedAvisosList = [];
         }
 
-        // 3. Birthdays
+        // 2. Pedidos de Oração (Prayer Requests) - Priority 2
+        let prayers = JSON.parse(localStorage.getItem('diaconia_pedidos_oracao') || '[]');
+        // Limpar mock legado se ainda existir no dispositivo do usuario
+        const originalLength = prayers.length;
+        prayers = prayers.filter(p => p.obreiro !== 'Supervisor André' && p.obreiro !== 'Diác. Lucas');
+        if (prayers.length !== originalLength) {
+            localStorage.setItem('diaconia_pedidos_oracao', JSON.stringify(prayers));
+        }
+        const activePrayers = prayers.filter(p => p.ativo);
+        activePrayers.forEach(p => {
+            carouselItems.push({
+                type: 'prayer',
+                category: '🙏 PEDIDO DE ORAÇÃO',
+                title: p.obreiro,
+                subtitle: 'Pedido de Intercessão',
+                description: p.motivo,
+                date: p.data,
+                action: 'App.openPrayersModal()'
+            });
+        });
+
+        // Update Prayers Card UI
+        const prayersBadge = document.getElementById('smart-card-prayers-count');
+        if (prayersBadge) {
+            prayersBadge.innerText = activePrayers.length;
+        }
+
+        // 3. Birthdays (Aniversários) - Priority 3
+        let birthdaysCount = 0;
         try {
             const members = await DbService.getMembros();
-            const currentMonth = new Date().getMonth();
+            const today = new Date();
+            const next7Days = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(today.getDate() + i);
+                next7Days.push({ day: d.getDate(), month: d.getMonth() });
+            }
             const birthdayMembers = members.filter(m => {
                 if (m.status !== 'ativo') return false;
                 if (!m.dataNascimento || m.dataNascimento === 'N/A') return false;
                 const parts = m.dataNascimento.split('-');
                 if (parts.length < 3) return false;
-                return (parseInt(parts[1], 10) - 1) === currentMonth;
+                const mDay = parseInt(parts[2], 10);
+                const mMonth = parseInt(parts[1], 10) - 1;
+                return next7Days.some(d => d.day === mDay && d.month === mMonth);
             });
             birthdayMembers.sort((a, b) => this.getMemberBirthDayLocal(a) - this.getMemberBirthDayLocal(b));
-            
+            birthdaysCount = birthdayMembers.length;
+
             if (birthdayMembers.length > 0) {
-                const currentMonthNumStr = (currentMonth + 1).toString().padStart(2, '0');
-                birthdayMembers.slice(0, 3).forEach(m => {
-                    const day = this.getMemberBirthDayLocal(m).toString().padStart(2, '0');
+                birthdayMembers.forEach(m => {
+                    const parts = m.dataNascimento.split('-');
+                    const day = parts[2];
+                    const month = parts[1];
                     carouselItems.push({
                         type: 'birthday',
-                        tag: 'Aniversariante',
+                        category: '🎂 ANIVERSARIANTE',
                         title: m.nome,
-                        desc: `${day}/${currentMonthNumStr} • Dê os parabéns!`,
+                        subtitle: 'Aniversariante da Semana',
+                        description: 'Que tal enviar uma mensagem de parabéns e celebrar a vida deste obreiro?',
+                        date: `${day}/${month}`,
                         action: 'App.showMuralBirthdaysDetail()'
                     });
                 });
@@ -7469,12 +7534,55 @@ const App = {
             }
         } catch (e) { console.error("Error loading birthdays:", e); }
 
+        // Update Birthday Card UI
+        const birthdaysBadge = document.getElementById('smart-card-birthdays-count');
+        if (birthdaysBadge) {
+            birthdaysBadge.innerText = birthdaysCount;
+        }
+
+        // 4. Ausências da Semana (Away Members) - Priority 4
+        let awayCount = 0;
+        try {
+            const members = await DbService.getMembros();
+            const hojeStr = new Date().toISOString().split('T')[0];
+            const away = members.filter(m => {
+                if (m.status !== 'ativo') return false;
+                if (!m.statusOperacional || m.statusOperacional === 'Disponível') return false;
+                if (m.afastamentoInicio && m.afastamentoFim) {
+                    return hojeStr >= m.afastamentoInicio && hojeStr <= m.afastamentoFim;
+                }
+                return true;
+            });
+            awayCount = away.length;
+
+            if (away.length > 0) {
+                carouselItems.push({
+                    type: 'away',
+                    category: '👥 AUSÊNCIAS DA SEMANA',
+                    title: `${away.length} Obreiro(s) Ausente(s)`,
+                    subtitle: 'Ausências da Semana',
+                    description: `Obreiros temporariamente indisponíveis: ${away.map(m => m.nome).join(', ')}`,
+                    date: 'Esta semana',
+                    action: 'App.showMuralAwayDetail()'
+                });
+            }
+        } catch(e) { console.error("Error loading away members:", e); }
+
+        // Update Away Card UI
+        const awayBadge = document.getElementById('smart-card-away-count');
+        if (awayBadge) {
+            awayBadge.innerText = awayCount;
+        }
+
+        // Fallback slide
         if (carouselItems.length === 0) {
             carouselItems.push({
                 type: 'default',
-                tag: 'Mural',
+                category: 'MURAL',
                 title: 'Tudo em dia!',
-                desc: 'Nenhuma novidade no momento.',
+                subtitle: 'Sem novos avisos',
+                description: 'Nenhum comunicado disponível no momento.',
+                date: 'Hoje',
                 action: ''
             });
         }
@@ -7512,22 +7620,19 @@ const App = {
         dotsContainer.innerHTML = '';
 
         this.carouselItems.forEach((item, index) => {
-            let subtitle = item.desc;
-            let description = item.tag;
-            
-            if (item.type === 'warning' || item.type === 'default') {
-                subtitle = item.tag;
-                description = item.desc;
-            }
-
             track.innerHTML += `
                 <div class="carousel-slide premium-dark-slide" onclick="App.handleCarouselInteraction(); ${item.action}">
-                    <div class="slide-content-dark">
-                        <span class="slide-tag-dark">COMUNICADOS</span>
-                        <h4 class="slide-title-dark">${item.title}</h4>
-                        <span class="slide-subtitle-dark">${subtitle}</span>
-                        <p class="slide-desc-dark">${description}</p>
-                        <span class="slide-action-link">TOQUE PARA VER DETALHES</span>
+                    <div class="slide-content-dark" style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <span class="slide-tag-dark" style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: var(--teal-primary, #0F766E); letter-spacing: 1.5px; display: block; margin-bottom: 6px;">${item.category}</span>
+                            <h4 class="slide-title-dark" style="margin-bottom: 6px; font-size: 1.25rem; line-height: 1.25;">${item.title}</h4>
+                            <span class="slide-subtitle-dark" style="display: block; margin-bottom: 8px; font-size: 0.95rem; color: #64748B;">${item.subtitle}</span>
+                            <p class="slide-desc-dark" style="margin-bottom: 8px; font-size: 0.95rem; color: #475569; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${item.description}</p>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #E2E8F0; padding-top: 10px; margin-top: auto;">
+                            <span style="font-size: 0.85rem; color: #94A3B8; font-weight: 600;">${item.date}</span>
+                            <span class="slide-action-link" style="margin-top: 0; font-size: 0.9rem; font-weight: 700; color: var(--teal-primary, #0F766E);">Ler mais →</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -7614,7 +7719,7 @@ const App = {
                     <div class="mural-card-content">
                         <span class="mural-card-tag">RESUMO</span>
                         <h3 class="mural-card-title">${a.titulo}</h3>
-                        <h4 class="mural-card-subtitle">Celebração da Ceia do Senhor</h4>
+                        ${a.subtitulo ? `<h4 class="mural-card-subtitle">${a.subtitulo}</h4>` : ''}
                         
                         <hr class="mural-card-divider">
                         
@@ -7902,6 +8007,399 @@ const App = {
             App.hideLoading();
             console.error("Error sending supervision message from profile:", e);
             App.showToast('Erro ao enviar mensagem. Tente novamente.', 'danger');
+        }
+    },
+
+    // --- NAV NAVIGATION AND MODAL HANDLERS (v3.10) ---
+    setActiveNavBtn(btnId) {
+        document.querySelectorAll('.nav-action-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.color = '#94A3B8';
+        });
+        const activeBtn = document.getElementById(btnId);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+            activeBtn.style.color = 'var(--teal-primary)';
+        }
+    },
+    openMaisModal() {
+        const modal = document.getElementById('modal-mais');
+        if (modal) modal.classList.add('active');
+    },
+    openConfiguracoes() {
+        this.showToast('Configurações acessadas.', 'info');
+    },
+    showSobre() {
+        this.showAlert(
+            `<div style="text-align: center; font-family: inherit;">
+                <h4 style="margin: 0 0 10px 0; color: var(--navy-dark); font-weight: 800;">ES Diaconia v3.10.5</h4>
+                <p style="font-size: 0.88rem; color: var(--slate-gray); line-height: 1.5; margin-bottom: 15px;">
+                    Aplicativo inteligente para gerenciamento, escalas e comunicação da Diaconia.
+                </p>
+                <div style="font-size: 0.78rem; color: #94A3B8; border-top: 1px solid #E2E8F0; padding-top: 10px;">
+                    Desenvolvido com ❤️ para a Catedral.
+                </div>
+            </div>`,
+            'Sobre o Aplicativo'
+        );
+    },
+    openAdminPortalDirect() {
+        const isAdmin = this.currentUser && this.currentUser.perfil === 'admin';
+        if (!isAdmin) {
+            console.error('[Segurança] Tentativa de navegar direto para Admin bloqueada.');
+            this.showToast('Acesso negado. Esta é uma área administrativa.', 'danger');
+            return;
+        }
+        this.navigateTo('view-admin');
+    },
+    openDisponibilidadeModal() {
+        this.showAlert("Para ajustar sua disponibilidade ou candidatar-se a voluntariado, utilize a aba de Escalas do aplicativo.", "Disponibilidade");
+    },
+    openSolicitarFeriasModal() {
+        const msgModal = document.getElementById('modal-meu-perfil');
+        if (msgModal) msgModal.classList.remove('active');
+        this.showAlert(
+            `<div style="text-align: left;">
+                <p style="font-size: 0.88rem; margin-bottom: 15px; color: var(--slate-gray);">Solicite suas férias ou período de afastamento enviando uma mensagem direta para a supervisão:</p>
+                <textarea id="solicitar-ferias-texto" rows="4" placeholder="Ex: Solicito afastamento das escalas entre 10/07 e 25/07 por motivo de viagem." style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
+                <button onclick="App.enviarSolicitacaoFerias()" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700;">Enviar Solicitação</button>
+            </div>`,
+            "Solicitar Férias / Ausência"
+        );
+    },
+    async enviarSolicitacaoFerias() {
+        const txt = document.getElementById('solicitar-ferias-texto');
+        if (!txt) return;
+        const val = txt.value.trim();
+        if (!val) {
+            this.showToast('Preencha o motivo/datas do afastamento.', 'warning');
+            return;
+        }
+        try {
+            this.showLoading();
+            await DbService.saveSupervisionMessage(this.currentUser.id, this.currentUser.nome, `[SOLICITAÇÃO DE FÉRIAS] ${val}`);
+            this.hideLoading();
+            this.closeAlert();
+            this.showToast('Solicitação de férias enviada para a supervisão!', 'success');
+        } catch(e) {
+            this.hideLoading();
+            this.showToast('Erro ao enviar solicitação.', 'danger');
+        }
+    },
+    openSolicitarSubstituicaoModal() {
+        const msgModal = document.getElementById('modal-meu-perfil');
+        if (msgModal) msgModal.classList.remove('active');
+        this.showAlert(
+            `<div style="text-align: left;">
+                <p style="font-size: 0.88rem; margin-bottom: 15px; color: var(--slate-gray);">Solicite substituição de escala enviando detalhes para a supervisão:</p>
+                <textarea id="solicitar-substituicao-texto" rows="4" placeholder="Ex: Preciso de substituição na escala do dia 28/06 no culto da noite." style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
+                <button onclick="App.enviarSolicitacaoSubstituicao()" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700;">Enviar Solicitação</button>
+            </div>`,
+            "Solicitar Substituição"
+        );
+    },
+    async enviarSolicitacaoSubstituicao() {
+        const txt = document.getElementById('solicitar-substituicao-texto');
+        if (!txt) return;
+        const val = txt.value.trim();
+        if (!val) {
+            this.showToast('Preencha os detalhes da substituição.', 'warning');
+            return;
+        }
+        try {
+            this.showLoading();
+            await DbService.saveSupervisionMessage(this.currentUser.id, this.currentUser.nome, `[SOLICITAÇÃO DE SUBSTITUIÇÃO] ${val}`);
+            this.hideLoading();
+            this.closeAlert();
+            this.showToast('Solicitação de substituição enviada para a supervisão!', 'success');
+        } catch(e) {
+            this.hideLoading();
+            this.showToast('Erro ao enviar solicitação.', 'danger');
+        }
+    },
+    openSupervisionMsgModal() {
+        const msgModal = document.getElementById('modal-meu-perfil');
+        if (msgModal) msgModal.classList.remove('active');
+        this.showAlert(
+            `<div style="text-align: left;">
+                <p style="font-size: 0.88rem; margin-bottom: 15px; color: var(--slate-gray);">Envie uma mensagem direta para a supervisão da Diaconia:</p>
+                <textarea id="mensagem-supervisao-texto" rows="4" placeholder="Escreva sua mensagem aqui..." style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
+                <button onclick="App.enviarMensagemSupervisaoDirect()" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700;">Enviar Mensagem</button>
+            </div>`,
+            "Mensagem para Supervisão"
+        );
+    },
+    async enviarMensagemSupervisaoDirect() {
+        const txt = document.getElementById('mensagem-supervisao-texto');
+        if (!txt) return;
+        const val = txt.value.trim();
+        if (!val) {
+            this.showToast('Preencha a mensagem antes de enviar.', 'warning');
+            return;
+        }
+        try {
+            this.showLoading();
+            await DbService.saveSupervisionMessage(this.currentUser.id, this.currentUser.nome, val);
+            this.hideLoading();
+            this.closeAlert();
+            this.showToast('Mensagem enviada com sucesso!', 'success');
+        } catch(e) {
+            this.hideLoading();
+            this.showToast('Erro ao enviar mensagem.', 'danger');
+        }
+    },
+    openFeedbackModal() {
+        const msgModal = document.getElementById('modal-meu-perfil');
+        if (msgModal) msgModal.classList.remove('active');
+        this.showAlert(
+            `<div style="text-align: left;">
+                <p style="font-size: 0.88rem; margin-bottom: 15px; color: var(--slate-gray);">Ajude-nos a melhorar o ES Diaconia! Deixe suas sugestões ou relate problemas:</p>
+                <textarea id="feedback-app-texto" rows="4" placeholder="Escreva seu feedback..." style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
+                <button onclick="App.enviarFeedbackApp()" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700;">Enviar Feedback</button>
+            </div>`,
+            "Enviar Feedback"
+        );
+    },
+    async enviarFeedbackApp() {
+        const txt = document.getElementById('feedback-app-texto');
+        if (!txt) return;
+        const val = txt.value.trim();
+        if (!val) {
+            this.showToast('Preencha o feedback antes de enviar.', 'warning');
+            return;
+        }
+        try {
+            this.showLoading();
+            await DbService.saveSupervisionMessage(this.currentUser.id, this.currentUser.nome, `[FEEDBACK APP] ${val}`);
+            this.hideLoading();
+            this.closeAlert();
+            this.showToast('Muito obrigado! Seu feedback foi enviado.', 'success');
+        } catch(e) {
+            this.hideLoading();
+            this.showToast('Erro ao enviar feedback.', 'danger');
+        }
+    },
+    openNotificationPreferences() {
+        const msgModal = document.getElementById('modal-meu-perfil');
+        if (msgModal) msgModal.classList.remove('active');
+        this.showAlert(
+            `<div style="text-align: left; font-size: 0.88rem; color: var(--navy-dark);">
+                <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Alertas de Escalas por WhatsApp</span>
+                    <input type="checkbox" checked style="width: 18px; height: 18px; accent-color: var(--teal-primary);">
+                </div>
+                <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Alertas de Escalas no App (Push)</span>
+                    <input type="checkbox" checked style="width: 18px; height: 18px; accent-color: var(--teal-primary);">
+                </div>
+                <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Lembrete de aniversariantes diários</span>
+                    <input type="checkbox" style="width: 18px; height: 18px; accent-color: var(--teal-primary);">
+                </div>
+                <button onclick="App.closeAlert(); App.showToast('Preferências de notificação salvas!', 'success');" class="btn-primary" style="width: 100%; padding: 12px; border-radius: 10px; font-weight: 700;">Salvar Preferências</button>
+            </div>`,
+            "Preferências de Notificação"
+        );
+    },
+    async openParabenizarModal() {
+        const msgModal = document.getElementById('modal-meu-perfil');
+        if (msgModal) msgModal.classList.remove('active');
+        this.showLoading();
+        try {
+            const members = await DbService.getMembros();
+            const activeMembers = members.filter(m => m.status === 'ativo' && m.id !== this.currentUser.id);
+            let selectOptions = activeMembers.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+            this.hideLoading();
+            this.showAlert(
+                `<div style="text-align: left;">
+                    <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Selecione o Aniversariante</label>
+                    <select id="parabenizar-membro" style="width: 100%; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px; font-family: inherit; font-size: 0.88rem; box-sizing: border-box; margin-bottom: 15px; background: white;">
+                        ${selectOptions}
+                    </select>
+                    <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Mensagem de Parabéns</label>
+                    <textarea id="parabenizar-mensagem" rows="3" placeholder="Feliz aniversário, meu irmão! Que Deus te abençoe..." style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
+                    <button onclick="App.enviarMensagemReconhecimento('Parabenizar')" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700; background: #EC4899; border-color: #EC4899;">Enviar Mensagem 🎂</button>
+                </div>`,
+                "Parabenizar Aniversariante"
+            );
+        } catch(e) {
+            this.hideLoading();
+            this.showToast('Erro ao carregar membros.', 'danger');
+        }
+    },
+    async openAgradecerModal() {
+        const msgModal = document.getElementById('modal-meu-perfil');
+        if (msgModal) msgModal.classList.remove('active');
+        this.showLoading();
+        try {
+            const members = await DbService.getMembros();
+            const activeMembers = members.filter(m => m.status === 'ativo' && m.id !== this.currentUser.id);
+            let selectOptions = activeMembers.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+            this.hideLoading();
+            this.showAlert(
+                `<div style="text-align: left;">
+                    <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Selecione o Obreiro</label>
+                    <select id="parabenizar-membro" style="width: 100%; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px; font-family: inherit; font-size: 0.88rem; box-sizing: border-box; margin-bottom: 15px; background: white;">
+                        ${selectOptions}
+                    </select>
+                    <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Agradecimento</label>
+                    <textarea id="parabenizar-mensagem" rows="3" placeholder="Obrigado pelo seu apoio e serviço no último culto..." style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
+                    <button onclick="App.enviarMensagemReconhecimento('Agradecer')" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700; background: #F59E0B; border-color: #F59E0B;">Agradecer Obreiro 👏</button>
+                </div>`,
+                "Agradecer um Obreiro"
+            );
+        } catch(e) {
+            this.hideLoading();
+            this.showToast('Erro ao carregar membros.', 'danger');
+        }
+    },
+    async openIncentivarModal() {
+        const msgModal = document.getElementById('modal-meu-perfil');
+        if (msgModal) msgModal.classList.remove('active');
+        this.showLoading();
+        try {
+            const members = await DbService.getMembros();
+            const activeMembers = members.filter(m => m.status === 'ativo' && m.id !== this.currentUser.id);
+            let selectOptions = activeMembers.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+            this.hideLoading();
+            this.showAlert(
+                `<div style="text-align: left;">
+                    <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Selecione o Obreiro</label>
+                    <select id="parabenizar-membro" style="width: 100%; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px; font-family: inherit; font-size: 0.88rem; box-sizing: border-box; margin-bottom: 15px; background: white;">
+                        ${selectOptions}
+                    </select>
+                    <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Mensagem de Incentivo</label>
+                    <textarea id="parabenizar-mensagem" rows="3" placeholder="Deus te abençoe, continue firme no serviço!" style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
+                    <button onclick="App.enviarMensagemReconhecimento('Incentivar')" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700; background: #10B981; border-color: #10B981;">Enviar Mensagem 🎉</button>
+                </div>`,
+                "Enviar Mensagem de Incentivo"
+            );
+        } catch(e) {
+            this.hideLoading();
+            this.showToast('Erro ao carregar membros.', 'danger');
+        }
+    },
+    async enviarMensagemReconhecimento(tipo) {
+        const select = document.getElementById('parabenizar-membro');
+        const txt = document.getElementById('parabenizar-mensagem');
+        if (!select || !txt) return;
+        const paraMembro = select.value;
+        const msg = txt.value.trim();
+        if (!msg) {
+            this.showToast('Escreva sua mensagem antes de enviar.', 'warning');
+            return;
+        }
+        try {
+            this.showLoading();
+            await DbService.saveSupervisionMessage(this.currentUser.id, this.currentUser.nome, `[RECONHECIMENTO - ${tipo.toUpperCase()}] Para: ${paraMembro} - Mensagem: ${msg}`);
+            this.hideLoading();
+            this.closeAlert();
+            this.showToast(`Mensagem enviada com sucesso para ${paraMembro}!`, 'success');
+        } catch(e) {
+            this.hideLoading();
+            this.showToast('Erro ao enviar mensagem.', 'danger');
+        }
+    },
+    openPrayersModal() {
+        const msgModal = document.getElementById('modal-meu-perfil');
+        if (msgModal) msgModal.classList.remove('active');
+        
+        let prayers = JSON.parse(localStorage.getItem('diaconia_pedidos_oracao') || '[]');
+        if (prayers.length === 0) {
+            prayers = [
+                { id: '1', obreiro: 'Diác. Lucas', motivo: 'Intercessão pela saúde da mãe dele', data: '22/06/2026', ativo: true },
+                { id: '2', obreiro: 'Supervisor André', motivo: 'Oração pela nova escala e proteção das famílias', data: '21/06/2026', ativo: true }
+            ];
+            localStorage.setItem('diaconia_pedidos_oracao', JSON.stringify(prayers));
+        }
+        
+        let listHtml = prayers.map(p => `
+            <div style="background: white; border-radius: 12px; padding: 12px; border: 1px solid #E2E8F0; margin-bottom: 10px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="font-weight: 700; font-size: 0.88rem; color: var(--navy-dark);">${p.obreiro}</span>
+                    <span style="font-size: 0.75rem; color: #94A3B8;">${p.data}</span>
+                </div>
+                <p style="margin: 0; font-size: 0.85rem; color: var(--slate-gray);">${p.motivo}</p>
+            </div>
+        `).join('');
+        
+        this.showAlert(
+            `<div style="text-align: left; max-height: 400px; overflow-y: auto;">
+                <div style="margin-bottom: 15px;">
+                    ${listHtml}
+                </div>
+                <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 15px 0;">
+                <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Novo Pedido de Oração</label>
+                <textarea id="novo-pedido-oracao-texto" rows="3" placeholder="Escreva seu pedido de oração..." style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
+                <button onclick="App.salvarNovoPedidoOracao()" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700;">Publicar Pedido 🙏</button>
+            </div>`,
+            "Pedidos de Oração"
+        );
+    },
+    async salvarNovoPedidoOracao() {
+        const txt = document.getElementById('novo-pedido-oracao-texto');
+        if (!txt) return;
+        const val = txt.value.trim();
+        if (!val) {
+            this.showToast('Escreva o motivo da oração.', 'warning');
+            return;
+        }
+        try {
+            let prayers = JSON.parse(localStorage.getItem('diaconia_pedidos_oracao') || '[]');
+            const todayStr = new Date().toLocaleDateString('pt-BR');
+            const newPrayer = {
+                id: Date.now().toString(),
+                obreiro: this.currentUser.nome || 'Diácono',
+                motivo: val,
+                data: todayStr,
+                ativo: true
+            };
+            prayers.unshift(newPrayer);
+            localStorage.setItem('diaconia_pedidos_oracao', JSON.stringify(prayers));
+            
+            try {
+                await DbService.saveSupervisionMessage(this.currentUser.id, this.currentUser.nome, `[NOVO PEDIDO ORAÇÃO] ${val}`);
+            } catch(e) { console.error(e); }
+            
+            this.closeAlert();
+            this.showToast('Pedido de oração publicado!', 'success');
+            
+            const escalas = await DbService.getEscalasDoMembro(this.currentUser.id);
+            const avisos = await DbService.getAvisos();
+            this.loadAndRenderSectorSelectMural(escalas, avisos);
+        } catch(e) {
+            this.showToast('Erro ao salvar pedido de oração.', 'danger');
+        }
+    },
+    async showMuralAwayDetail() {
+        this.showLoading();
+        try {
+            const members = await DbService.getMembros();
+            const hojeStr = new Date().toISOString().split('T')[0];
+            const away = members.filter(m => {
+                if (m.status !== 'ativo') return false;
+                if (!m.statusOperacional || m.statusOperacional === 'Disponível') return false;
+                if (m.afastamentoInicio && m.afastamentoFim) {
+                    return hojeStr >= m.afastamentoInicio && hojeStr <= m.afastamentoFim;
+                }
+                return true;
+            });
+            if (away.length === 0) {
+                this.hideLoading();
+                this.showAlert('Nenhum obreiro ausente registrado para esta semana.', 'Ausências da Semana');
+                return;
+            }
+            let listHtml = away.map(m => `
+                <div style="background: white; border-radius: 12px; padding: 12px; border: 1px solid #E2E8F0; margin-bottom: 10px; text-align: left;">
+                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--navy-dark);">${m.nome}</div>
+                    <div style="font-size: 0.8rem; color: #EF4444; margin-top: 4px;">Afastado temporariamente</div>
+                </div>
+            `).join('');
+            this.hideLoading();
+            this.showAlert(`<div style="max-height: 350px; overflow-y: auto;">${listHtml}</div>`, 'Ausências da Semana');
+        } catch(e) {
+            this.hideLoading();
+            this.showToast('Erro ao carregar ausências.', 'danger');
         }
     },
 
@@ -8896,6 +9394,12 @@ const App = {
                 afastamentoRetornoAutomativo
             });
 
+            // FASE 2: Remover obreiro de escalas conflitantes futuras no período
+            const membros = await DbService.getMembros();
+            const m = membros.find(x => x.id === id);
+            const membroNome = m ? m.nome : 'Obreiro';
+            await this.removerMembroDeEscalasConflitantes(id, membroNome, afastamentoInicio, afastamentoFim, statusOperacional);
+            
             this.closeAfastamentoRapidoModal();
             this.showToast('Afastamento registrado com sucesso!', 'success');
             
@@ -8969,14 +9473,22 @@ const App = {
                     let diasRestantesStr = '-';
                     if (m.afastamentoFim) {
                         const fim = new Date(m.afastamentoFim + 'T00:00:00');
-                        const diffTime = fim.getTime() - hoje.getTime();
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        if (diffDays < 0) {
-                            diasRestantesStr = `<span style="color:#EF4444; font-weight:700;">Expirado (${Math.abs(diffDays)}d)</span>`;
-                        } else if (diffDays === 0) {
-                            diasRestantesStr = `<span style="color:#F59E0B; font-weight:700;">Último Dia (Hoje)</span>`;
+                        const inicio = m.afastamentoInicio ? new Date(m.afastamentoInicio + 'T00:00:00') : hoje;
+                        
+                        if (hoje < inicio) {
+                            const diffTime = inicio.getTime() - hoje.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            diasRestantesStr = `<span style="color:#6366F1; font-weight:700;">Futuro (Inicia em ${diffDays}d)</span>`;
                         } else {
-                            diasRestantesStr = `<b>${diffDays}</b> dia(s)`;
+                            const diffTime = fim.getTime() - hoje.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            if (diffDays < 0) {
+                                diasRestantesStr = `<span style="color:#EF4444; font-weight:700;">Expirado (${Math.abs(diffDays)}d)</span>`;
+                            } else if (diffDays === 0) {
+                                diasRestantesStr = `<span style="color:#F59E0B; font-weight:700;">Último Dia (Hoje)</span>`;
+                            } else {
+                                diasRestantesStr = `<b>${diffDays}</b> dia(s)`;
+                            }
                         }
                     }
 
@@ -9071,6 +9583,73 @@ const App = {
             } catch (e) {
                 this.showAlert('Erro ao reativar obreiro.');
             }
+        }
+    },
+
+    async removerMembroDeEscalasConflitantes(membroId, membroNome, inicio, fim, motivo) {
+        try {
+            console.log(`Verificando escalas conflitantes para o membro ${membroNome} (${membroId}) entre ${inicio} e ${fim}...`);
+            const escalas = await DbService.getEscalas();
+            const hojeStr = new Date().toISOString().split('T')[0];
+            
+            const escalasConflitantes = escalas.filter(esc => {
+                return esc.membroId === membroId && 
+                       esc.data >= hojeStr && 
+                       esc.data >= inicio && 
+                       esc.data <= fim;
+            });
+
+            if (escalasConflitantes.length === 0) {
+                console.log("Nenhuma escala futura conflitante encontrada.");
+                return;
+            }
+
+            console.log(`Encontradas ${escalasConflitantes.length} escalas conflitantes para remover.`);
+
+            for (const esc of escalasConflitantes) {
+                const originalMembroNome = esc.membroNome || membroNome;
+                
+                // Atualiza a escala limpando os dados de alocação do membro
+                esc.membroId = '';
+                esc.membroNome = 'Vaga Pendente';
+                esc.statusPresenca = 'Pendente';
+                
+                const obsPrefixo = esc.observacoes ? `${esc.observacoes}\n` : '';
+                esc.observacoes = `${obsPrefixo}🚨 Remoção automática: Obreiro afastado temporariamente (${motivo}).`;
+
+                const escalaData = { ...esc };
+                delete escalaData.id;
+                await DbService.saveEscala(esc.id, escalaData);
+
+                // Registrar o log em historico_substituicoes
+                const logPayload = {
+                    escalaId: esc.id,
+                    cultoId: esc.cultoId || '',
+                    cultoNome: esc.cultoNome || '',
+                    data: esc.data,
+                    funcao: esc.funcao || '',
+                    membroSaindoId: membroId,
+                    membroSaindoNome: originalMembroNome,
+                    membroEntrandoId: '',
+                    membroEntrandoNome: 'Vaga Pendente',
+                    motivo: `Afastamento temporário: ${motivo}`,
+                    dataHora: new Date().toISOString()
+                };
+                await DbService.addSubstituicaoLog(logPayload);
+
+                // Criar aviso ao admin
+                await DbService.addNotificacao({
+                    paraUsuarioId: 'admin_default',
+                    paraUsuarioNome: 'Supervisor Geral',
+                    titulo: 'Vaga Aberta por Afastamento',
+                    mensagem: `O obreiro ${originalMembroNome} foi removido da escala de ${esc.funcao || 'Diaconia'} no ${esc.cultoNome || 'Culto'} em ${esc.data.split('-').reverse().join('/')} devido a afastamento (${motivo}).`,
+                    tipo: 'alerta'
+                });
+            }
+
+            this.showToast(`Removido de ${escalasConflitantes.length} escala(s) conflitante(s). Avisos gerados para supervisão.`, 'info');
+        } catch (e) {
+            console.error("Erro ao remover membro de escalas conflitantes:", e);
         }
     },
 
