@@ -4168,9 +4168,15 @@ const App = {
                 const limiteFim = new Date(hoje);
                 limiteFim.setDate(hoje.getDate() + 5);
 
+                const parseLocalDate = (dateStr) => {
+                    if (!dateStr) return null;
+                    const parts = dateStr.split('-');
+                    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                };
+
                 membros.forEach(m => {
                     if (m.statusOperacional && m.statusOperacional !== 'Disponível' && m.afastamentoFim) {
-                        const fim = new Date(m.afastamentoFim + 'T00:00:00');
+                        const fim = parseLocalDate(m.afastamentoFim);
                         if (fim >= hoje && fim <= limiteFim) {
                             retornandoEm5Dias++;
                         }
@@ -9469,21 +9475,27 @@ const App = {
                 const hoje = new Date();
                 hoje.setHours(0,0,0,0);
 
+                const parseLocalDate = (dateStr) => {
+                    if (!dateStr) return null;
+                    const parts = dateStr.split('-');
+                    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                };
+
                 activeAbs.forEach(m => {
                     let diasRestantesStr = '-';
                     if (m.afastamentoFim) {
-                        const fim = new Date(m.afastamentoFim + 'T00:00:00');
-                        const inicio = m.afastamentoInicio ? new Date(m.afastamentoInicio + 'T00:00:00') : hoje;
+                        const fim = parseLocalDate(m.afastamentoFim);
+                        const inicio = m.afastamentoInicio ? parseLocalDate(m.afastamentoInicio) : hoje;
                         
                         if (hoje < inicio) {
                             const diffTime = inicio.getTime() - hoje.getTime();
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
                             diasRestantesStr = `<span style="color:#6366F1; font-weight:700;">Futuro (Inicia em ${diffDays}d)</span>`;
                         } else {
                             const diffTime = fim.getTime() - hoje.getTime();
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
                             if (diffDays < 0) {
-                                diasRestantesStr = `<span style="color:#EF4444; font-weight:700;">Expirado (${Math.abs(diffDays)}d)</span>`;
+                                diasRestantesStr = `<span style="color:#EF4444; font-weight:700;">Expirado (0d)</span>`;
                             } else if (diffDays === 0) {
                                 diasRestantesStr = `<span style="color:#F59E0B; font-weight:700;">Último Dia (Hoje)</span>`;
                             } else {
