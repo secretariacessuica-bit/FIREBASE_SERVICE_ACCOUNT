@@ -102,7 +102,7 @@ async function runEngine() {
                     tokens: fcmTokens
                 };
 
-                const response = await messaging.sendMulticast(message);
+                const response = await messaging.sendEachForMulticast(message);
                 totalEnviados += response.successCount;
                 
                 // Cleanup invalid tokens
@@ -142,7 +142,7 @@ async function runEngine() {
                         tokens: fcmTokens
                     };
                     
-                    const response = await messaging.sendMulticast(message);
+                    const response = await messaging.sendEachForMulticast(message);
                     totalEnviados += response.successCount;
                 }
             }
