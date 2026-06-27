@@ -9487,19 +9487,21 @@ const App = {
                         const fim = parseLocalDate(m.afastamentoFim);
                         const inicio = m.afastamentoInicio ? parseLocalDate(m.afastamentoInicio) : hoje;
                         
+                        let diffTime, diffDays;
                         if (hoje < inicio) {
-                            const diffTime = inicio.getTime() - hoje.getTime();
-                            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                            diffTime = inicio.getTime() - hoje.getTime();
+                            diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
                             diasRestantesStr = `<span style="color:#6366F1; font-weight:700;">Futuro (Inicia em ${diffDays}d)</span>`;
                         } else {
-                            const diffTime = fim.getTime() - hoje.getTime();
-                            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                            diffTime = fim.getTime() - hoje.getTime();
+                            diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
                             if (diffDays < 0) {
                                 diasRestantesStr = `<span style="color:#EF4444; font-weight:700;">Expirado (0d)</span>`;
                             } else if (diffDays === 0) {
                                 diasRestantesStr = `<span style="color:#F59E0B; font-weight:700;">Último Dia (Hoje)</span>`;
                             } else {
-                                diasRestantesStr = `<b>${diffDays}</b> dia(s)`;
+                                const diasExibidos = Math.max(diffDays - 1, 0);
+                                diasRestantesStr = `<b>${diasExibidos}</b> dia(s)`;
                             }
                         }
                     }
