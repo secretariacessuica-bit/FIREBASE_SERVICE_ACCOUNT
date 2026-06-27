@@ -8663,15 +8663,13 @@ const App = {
                 slots = [
                     { setorId: 'entrada', funcao: 'Portaria' },
                     { setorId: 'check_in', funcao: 'Check-in' },
-                    { setorId: 'check_in', funcao: 'Check-in' },
                     { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
                     { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
                     { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
                     { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
                     { setorId: 'acolhimento', funcao: 'Conduzir ao Acolhimento' },
                     { setorId: 'acolhimento', funcao: 'Recepcionar' },
-                    { setorId: 'acolhimento', funcao: 'Servir' },
-                    { setorId: 'acolhimento', funcao: 'Preparar a mesa' }
+                    { setorId: 'acolhimento', funcao: 'Servir' }
                 ];
             } else if (model === 'Escala Livre') {
                 const numVagas = culto.vagasEscalaLivre || 2;
@@ -8805,8 +8803,17 @@ const App = {
             const needsGenderCheck = ['entrada', 'apoio'].some(x => slot.funcao.toLowerCase().includes(x));
             if (needsGenderCheck) {
                 const sameFunctionDraft = assignments.filter(a => a.funcao === slot.funcao);
-                if (sameFunctionDraft.length > 0) {
-                    const assignedSexes = sameFunctionDraft.map(a => a.sexo);
+                const sameFunctionExisting = escalasDoCulto.filter(e => e.funcao === slot.funcao && e.membroId && e.membroNome !== 'Vaga Pendente' && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada');
+                
+                if (sameFunctionDraft.length > 0 || sameFunctionExisting.length > 0) {
+                    const assignedSexes = [
+                        ...sameFunctionDraft.map(a => a.sexo),
+                        ...sameFunctionExisting.map(e => {
+                            const memberInfo = membros.find(m => m.id === e.membroId);
+                            return memberInfo ? (memberInfo.sexo || 'Masculino') : 'Masculino';
+                        })
+                    ];
+                    
                     if (assignedSexes.includes('Masculino') && !assignedSexes.includes('Feminino')) {
                         const femEligible = eligible.filter(m => m.sexo === 'Feminino');
                         if (femEligible.length > 0) eligible = femEligible;
