@@ -406,7 +406,12 @@ const App = {
         } else if (setorId === 'entrada' || setorId === 'check_in') {
             nodeId = 'recepcao';
         } else if (setorId === 'apoio_templo_ronda_dir' || setorId === 'apoio_templo_ronda_esq') {
-            nodeId = 'templo';
+            const funcLower = (funcao || '').toLowerCase();
+            if (funcLower.includes('ronda')) {
+                nodeId = 'ronda';
+            } else {
+                nodeId = 'templo';
+            }
         }
 
         if (setorId) {
