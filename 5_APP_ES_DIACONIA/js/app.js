@@ -883,8 +883,8 @@ const App = {
                 }
             }
 
-            // Next service today or in the future
-            const futureScales = userScales.filter(e => e.data >= hojeStr);
+            // Next service today or in the future (não finalizado e não recusado)
+            const futureScales = userScales.filter(e => e.data >= hojeStr && e.statusServico !== 'Finalizado' && e.statusPresenca !== 'Recusada');
             // Sort chronologically
             futureScales.sort((a, b) => a.data.localeCompare(b.data) || a.horarioInicio.localeCompare(b.horarioInicio));
 
@@ -1629,7 +1629,7 @@ const App = {
                 // Detect next service for highlight
                 escalas.forEach(escala => {
                     const isOwnScale = escala.membroId === this.currentUser.id;
-                    if (isOwnScale && escala.data >= hojeStr && escala.statusServico !== 'Finalizado') {
+                    if (isOwnScale && escala.data >= hojeStr && escala.statusServico !== 'Finalizado' && escala.statusPresenca !== 'Recusada') {
                         if (!nextService || escala.data < nextService.data) {
                             nextService = escala;
                         }
@@ -1741,7 +1741,7 @@ const App = {
                         container.appendChild(card);
 
                         // Detect next service for highlight
-                        if (isOwnScale && escala.data >= hojeStr && escala.statusServico !== 'Finalizado') {
+                        if (isOwnScale && escala.data >= hojeStr && escala.statusServico !== 'Finalizado' && escala.statusPresenca !== 'Recusada') {
                             if (!nextService || escala.data < nextService.data) {
                                 nextService = escala;
                             }
@@ -2124,7 +2124,7 @@ const App = {
         let nextServiceLabel = 'Nenhum serviço';
         let nextServiceDetail = 'Sem escalas agendadas';
         const hojeStr2 = this.formatLocalISOString(new Date()).split('T')[0];
-        const userScales = escalas.filter(e => e.membroId === this.currentUser.id && e.data >= hojeStr2);
+        const userScales = escalas.filter(e => e.membroId === this.currentUser.id && e.data >= hojeStr2 && e.statusServico !== 'Finalizado' && e.statusPresenca !== 'Recusada');
         userScales.sort((a, b) => a.data.localeCompare(b.data) || a.horarioInicio.localeCompare(b.horarioInicio));
         if (userScales.length > 0) {
             const next = userScales[0];
