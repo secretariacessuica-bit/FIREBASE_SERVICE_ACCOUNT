@@ -7269,24 +7269,26 @@ const App = {
         }
     },
 
-    // --- FASE 3.1: IA DE SUBSTITUIÇÃO SILENCIOSA ---
+    // --- FASE 3.1 & 3.2: IA DE SUBSTITUIÇÃO (MOTOR E VISUAL) ---
     async runIntelligentSubstitutionEngineSilently(rejections, allEscalas) {
-        if (!rejections || rejections.length === 0) return;
+        if (!rejections || rejections.length === 0) return {};
         
         // 1. Controle de permissão operacional (apenas Admin)
         if (!this.currentUser || this.currentUser.perfil !== 'admin') {
-            return;
+            return {};
         }
 
         // 2. Controle para evitar execuções repetidas no mesmo estado de pendências
         const currentHash = rejections.map(r => r.id).sort().join('_');
-        if (this._lastRejectionsHash === currentHash) {
-            return; // Já analisou este exato cenário no render anterior
+        if (this._lastRejectionsHash === currentHash && this._lastIaRecommendations) {
+            return this._lastIaRecommendations; // Retorna cache em memória
         }
         this._lastRejectionsHash = currentHash;
 
+        const results = {};
+
         try {
-            console.log(`\n[IA SUBSTITUIÇÃO] Iniciando análise silenciosa para ${rejections.length} pendências...`);
+            console.log(`\n[IA SUBSTITUIÇÃO] Iniciando análise para ${rejections.length} pendências...`);
             
             // 3. Reaproveitamento do cache interno do DbService
             const membros = await DbService.getMembros();
@@ -7331,6 +7333,7 @@ const App = {
 
                 if (elegiveis.length === 0) {
                     console.log(`[IA SUBSTITUIÇÃO] Nenhum candidato elegível encontrado para a pendência ${pendencia.id}\n`);
+                    results[pendencia.id] = null;
                     continue;
                 }
 
@@ -7373,12 +7376,16 @@ const App = {
 
                 candidatos.sort((a, b) => b.scoreTotal - a.scoreTotal);
                 const recomendado = candidatos[0];
+                results[pendencia.id] = recomendado;
                 
                 console.log(`[IA SUBSTITUIÇÃO] Recomendado: ${recomendado.membro.nome} | motivo: ${recomendado.motivo}\n`);
             }
         } catch (e) {
-            console.error('[IA SUBSTITUIÇÃO] Erro no motor lógico silencioso:', e);
+            console.error('[IA SUBSTITUIÇÃO] Erro no motor lógico da IA:', e);
         }
+        
+        this._lastIaRecommendations = results;
+        return results;
     },
 
         return this.sectorsData[sectorId]?.nome || sectorId || 'Sem Setor';
@@ -7420,8 +7427,45 @@ const App = {
             // Apenas cultos futuros ou do dia de hoje ficam no painel
             const rejections = rejectionsAll.filter(e => e.data >= hojeStr);
             
-            // FASE 3.1: Chamada silenciosa da IA de substituição (apenas console)
-            this.runIntelligentSubstitutionEngineSilently(rejections, allEscalas).catch(e => console.error(e));
+            // FASE 3.2: Chamada assíncrona não bloqueante (IA renderizada após o painel)
+            const escapeHtml = (unsafe) => {
+                return (unsafe || '').toString()
+                     .replace(/&/g, "&amp;")
+                     .replace(/</g, "&lt;")
+                     .replace(/>/g, "&gt;")
+                     .replace(/"/g, "&quot;")
+                     .replace(/'/g, "&#039;");
+            };
+            
+            this.runIntelligentSubstitutionEngineSilently(rejections, allEscalas).then(iaRecommendations => {
+                if (!iaRecommendations) return;
+                
+                rejections.forEach(escala => {
+                    const container = document.getElementById(`ia-container-${escala.id}`);
+                    if (!container) return;
+                    
+                    const recommendation = iaRecommendations[escala.id];
+                    if (recommendation !== undefined) {
+                        if (recommendation === null) {
+                            container.innerHTML = `
+                                <div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px;">
+                                    <div style="font-size: 0.75rem; color: #8b5cf6; font-weight: 700; margin-bottom: 5px; text-transform: uppercase;"><i class="fa-solid fa-robot" style="margin-right: 4px;"></i>Sugestão da IA</div>
+                                    <div style="font-size: 0.8rem; color: #6b7280;">Nenhum candidato elegível encontrado.</div>
+                                </div>
+                            `;
+                        } else {
+                            const recMotivosHtml = recommendation.motivo.split(', ').map(m => `<li style="margin-bottom: 2px;">${escapeHtml(m.charAt(0).toUpperCase() + m.slice(1))}</li>`).join('');
+                            container.innerHTML = `
+                                <div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px;">
+                                    <div style="font-size: 0.75rem; color: #8b5cf6; font-weight: 700; margin-bottom: 5px; text-transform: uppercase;"><i class="fa-solid fa-robot" style="margin-right: 4px;"></i>Sugestão da IA</div>
+                                    <div style="font-size: 0.85rem; color: var(--navy-dark); font-weight: 700; margin-bottom: 4px;">${escapeHtml(recommendation.membro.nome)}</div>
+                                    <ul style="margin: 0; padding-left: 18px; font-size: 0.78rem; color: #4b5563;">${recMotivosHtml}</ul>
+                                </div>
+                            `;
+                        }
+                    }
+                });
+            }).catch(e => console.error('[IA SUBSTITUIÇÃO]', e));
 
             const messages = await DbService.getSupervisionMessages();
             
@@ -7460,8 +7504,9 @@ const App = {
                     <div style="flex: 1; text-align: left;">
                         <span style="font-weight: 700; color: #dc2626; font-size: 0.8rem; text-transform: uppercase; display: block; margin-bottom: 2px;"><i class="fa-solid fa-triangle-exclamation"></i> Presença Recusada</span>
                         <span style="font-size: 0.88rem; color: var(--navy-dark); font-weight: 600;">${escala.membroNome}</span> recusou a escala para <span style="font-weight: 600;">${escala.cultoNome}</span> (${formattedDate} das ${escala.horarioInicio} às ${escala.horarioFim}) no setor <span style="font-weight: 600;">${App.getSectorFriendlyName(escala.setorId)}</span> (Função: ${escala.funcao}).
+                        <div id="ia-container-${escala.id}"></div>
                     </div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
                         ${escalarBtn}
                         <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.78rem; width: auto;" onclick="App.handleDismissRejection('${escala.id}')">
                             <i class="fa-solid fa-check"></i> Dispensar Alerta
