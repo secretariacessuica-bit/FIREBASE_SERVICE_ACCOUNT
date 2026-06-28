@@ -8846,6 +8846,7 @@ const App = {
                     alreadyFilled: false
                 });
             }
+        }
         // 2. FILTRAR SOMENTE VAGAS PENDENTES PARA A IA
         let slots = matchedSlots.filter(s => !s.alreadyFilled);
 
