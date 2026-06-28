@@ -5622,6 +5622,7 @@ const App = {
 
         try {
             const scalePayload = {
+                origem: 'manual',
                 setorId,
                 funcao,
                 membroId,
@@ -8633,6 +8634,116 @@ const App = {
         }
     },
 
+    async normalizarEscalasDuplicadas() {
+        const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
+        if (!c) return;
+
+        const confirmText = "Esta operação irá remover apenas escalas automáticas duplicadas deste culto.\n\nEscalas adicionadas manualmente permanecerão intactas.\n\nDeseja continuar?";
+        if (!confirm(confirmText)) return;
+
+        App.showLoading();
+        try {
+            const model = c.modeloEscala || 'Manter Existente';
+            const escalas = await DbService.getEscalas();
+            const membros = await DbService.getMembros();
+            const escalasDoCulto = escalas.filter(e => e.cultoId === c.id);
+
+            let baseBlueprint = [];
+            if (model === 'Culto Completo') {
+                baseBlueprint = [
+                    { setorId: 'entrada', funcao: 'Portaria' },
+                    { setorId: 'check_in', funcao: 'Check-in' },
+                    { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito', sexoExigido: 'Masculino' },
+                    { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito', sexoExigido: 'Feminino' },
+                    { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo', sexoExigido: 'Masculino' },
+                    { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo', sexoExigido: 'Feminino' },
+                    { setorId: 'acolhimento', funcao: 'Conduzir ao Acolhimento' },
+                    { setorId: 'acolhimento', funcao: 'Recepcionar' },
+                    { setorId: 'acolhimento', funcao: 'Servir' }
+                ];
+            } else if (model === 'Culto Menor') {
+                baseBlueprint = [
+                    { setorId: 'check_in', funcao: 'Check-in' },
+                    { setorId: 'acolhimento', funcao: 'Acolhimento' }
+                ];
+            } else if (model === 'Personalizado') {
+                baseBlueprint = c.funcoesPersonalizadas || [
+                    { setorId: 'entrada', funcao: 'Entrada' },
+                    { setorId: 'check_in', funcao: 'Check-in' },
+                    { setorId: 'acolhimento', funcao: 'Acolhimento' }
+                ];
+            } else if (model === 'Escala Livre') {
+                const numVagas = c.vagasEscalaLivre || 2;
+                for (let i = 0; i < numVagas; i++) {
+                    baseBlueprint.push({ setorId: 'escala_livre', funcao: 'Escala Livre' });
+                }
+            }
+
+            let usedEscalaIds = new Set();
+
+            for (let bp of baseBlueprint) {
+                let matched = null;
+                
+                if (bp.sexoExigido) {
+                    matched = escalasDoCulto.find(e => {
+                        if (usedEscalaIds.has(e.id)) return false;
+                        if (e.setorId !== bp.setorId || e.funcao !== bp.funcao) return false;
+                        if (e.membroId && e.membroNome !== 'Vaga Pendente' && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                            const mInfo = membros.find(m => m.id === e.membroId);
+                            const sexo = mInfo ? (mInfo.sexo || 'Masculino') : 'Masculino';
+                            return sexo === bp.sexoExigido;
+                        }
+                        return false;
+                    });
+                }
+
+                if (!matched) {
+                    matched = escalasDoCulto.find(e => {
+                        if (usedEscalaIds.has(e.id)) return false;
+                        if (e.setorId !== bp.setorId || e.funcao !== bp.funcao) return false;
+                        
+                        const isEmpty = !e.membroId || e.membroNome === 'Vaga Pendente' || e.statusPresenca === 'Recusado' || e.statusPresenca === 'Recusada';
+                        if (!isEmpty) {
+                            if (bp.sexoExigido) return false; 
+                            return true; 
+                        }
+                        return true;
+                    });
+                }
+
+                if (matched) {
+                    usedEscalaIds.add(matched.id);
+                }
+            }
+
+            const blueprintFunctions = new Set(baseBlueprint.map(bp => bp.funcao));
+            let deletedCount = 0;
+            
+            for (let e of escalasDoCulto) {
+                if (!usedEscalaIds.has(e.id)) {
+                    if (blueprintFunctions.has(e.funcao)) {
+                        await DbService.deleteEscala(e.id);
+                        deletedCount++;
+                    }
+                }
+            }
+
+            App.hideLoading();
+            
+            if (deletedCount > 0) {
+                alert(`Normalização concluída.\nForam removidas ${deletedCount} escalas automáticas duplicadas.`);
+                this.loadAdminEscalas();
+            } else {
+                alert('Normalização concluída.\nNão foram encontradas escalas duplicadas para este culto.');
+            }
+
+        } catch(e) {
+            App.hideLoading();
+            console.error(e);
+            this.showAlert("Erro ao processar a normalização das escalas.");
+        }
+    },
+
     async runAutoScaleAndPublish(culto) {
         const model = culto.modeloEscala;
         const membros = await DbService.getMembros();
@@ -8640,55 +8751,110 @@ const App = {
 
         const scheduledMemberIds = new Set();
         const escalasDoCulto = escalas.filter(e => e.cultoId === culto.id);
-        
-        let slots = [];
-        let isEditingExisting = false;
 
-        if (escalasDoCulto.length > 0) {
-            isEditingExisting = true;
-            escalasDoCulto.forEach(e => {
-                if (e.membroId && e.membroNome !== 'Vaga Pendente' && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
-                    scheduledMemberIds.add(e.membroId);
-                }
-            });
-            slots = escalasDoCulto
-                .filter(e => !e.membroId || e.membroNome === 'Vaga Pendente' || e.statusPresenca === 'Recusado' || e.statusPresenca === 'Recusada')
-                .map(e => ({
-                    id: e.id,
-                    setorId: e.setorId,
-                    funcao: e.funcao
-                }));
-        } else {
-            if (model === 'Culto Completo') {
-                slots = [
-                    { setorId: 'entrada', funcao: 'Portaria' },
-                    { setorId: 'check_in', funcao: 'Check-in' },
-                    { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
-                    { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito' },
-                    { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
-                    { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo' },
-                    { setorId: 'acolhimento', funcao: 'Conduzir ao Acolhimento' },
-                    { setorId: 'acolhimento', funcao: 'Recepcionar' },
-                    { setorId: 'acolhimento', funcao: 'Servir' }
-                ];
-            } else if (model === 'Escala Livre') {
-                const numVagas = culto.vagasEscalaLivre || 2;
-                for (let i = 0; i < numVagas; i++) {
-                    slots.push({ setorId: 'escala_livre', funcao: 'Escala Livre' });
-                }
-            } else if (model === 'Culto Menor') {
-                slots = [
-                    { setorId: 'check_in', funcao: 'Check-in' },
-                    { setorId: 'acolhimento', funcao: 'Acolhimento' }
-                ];
-            } else if (model === 'Personalizado') {
-                slots = culto.funcoesPersonalizadas || [
-                    { setorId: 'entrada', funcao: 'Entrada' },
-                    { setorId: 'check_in', funcao: 'Check-in' },
-                    { setorId: 'acolhimento', funcao: 'Acolhimento' }
-                ];
+        let baseBlueprint = [];
+        
+        if (model === 'Culto Completo') {
+            baseBlueprint = [
+                { setorId: 'entrada', funcao: 'Portaria' },
+                { setorId: 'check_in', funcao: 'Check-in' },
+                { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito', sexoExigido: 'Masculino' },
+                { setorId: 'apoio_templo_ronda_dir', funcao: 'Apoio Templo / Ronda Lado Direito', sexoExigido: 'Feminino' },
+                { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo', sexoExigido: 'Masculino' },
+                { setorId: 'apoio_templo_ronda_esq', funcao: 'Apoio Templo / Ronda Lado Esquerdo', sexoExigido: 'Feminino' },
+                { setorId: 'acolhimento', funcao: 'Conduzir ao Acolhimento' },
+                { setorId: 'acolhimento', funcao: 'Recepcionar' },
+                { setorId: 'acolhimento', funcao: 'Servir' }
+            ];
+        } else if (model === 'Culto Menor') {
+            baseBlueprint = [
+                { setorId: 'check_in', funcao: 'Check-in' },
+                { setorId: 'acolhimento', funcao: 'Acolhimento' }
+            ];
+        } else if (model === 'Personalizado') {
+            baseBlueprint = culto.funcoesPersonalizadas || [
+                { setorId: 'entrada', funcao: 'Entrada' },
+                { setorId: 'check_in', funcao: 'Check-in' },
+                { setorId: 'acolhimento', funcao: 'Acolhimento' }
+            ];
+        } else if (model === 'Escala Livre') {
+            const numVagas = culto.vagasEscalaLivre || 2;
+            for (let i = 0; i < numVagas; i++) {
+                baseBlueprint.push({ setorId: 'escala_livre', funcao: 'Escala Livre' });
             }
         }
+
+        // Registrar todos os membros validos ja escalados no culto
+        escalasDoCulto.forEach(e => {
+            if (e.membroId && e.membroNome !== 'Vaga Pendente' && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                scheduledMemberIds.add(e.membroId);
+            }
+        });
+
+        // 1. MAPEAMENTO IDEMPOTENTE E DEDUPLICAÇÃO
+        let usedEscalaIds = new Set();
+        let matchedSlots = [];
+
+        for (let bp of baseBlueprint) {
+            let matched = null;
+            
+            // Prioridade 1: Tentar casar com escala existente que tenha membro do sexo exigido
+            if (bp.sexoExigido) {
+                matched = escalasDoCulto.find(e => {
+                    if (usedEscalaIds.has(e.id)) return false;
+                    if (e.setorId !== bp.setorId || e.funcao !== bp.funcao) return false;
+                    if (e.membroId && e.membroNome !== 'Vaga Pendente' && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                        const mInfo = membros.find(m => m.id === e.membroId);
+                        const sexo = mInfo ? (mInfo.sexo || 'Masculino') : 'Masculino';
+                        return sexo === bp.sexoExigido;
+                    }
+                    return false;
+                });
+            }
+
+            // Prioridade 2: Tentar casar com escala existente vazia/pendente (ou que não tenha conflito de sexo)
+            if (!matched) {
+                matched = escalasDoCulto.find(e => {
+                    if (usedEscalaIds.has(e.id)) return false;
+                    if (e.setorId !== bp.setorId || e.funcao !== bp.funcao) return false;
+                    
+                    const isEmpty = !e.membroId || e.membroNome === 'Vaga Pendente' || e.statusPresenca === 'Recusado' || e.statusPresenca === 'Recusada';
+                    if (!isEmpty) {
+                        if (bp.sexoExigido) return false; // Falhou na prioridade 1, não serve para essa vaga de sexo especifico
+                        return true; 
+                    }
+                    return true;
+                });
+            }
+
+            if (matched) {
+                usedEscalaIds.add(matched.id);
+                const isFilled = matched.membroId && matched.membroNome !== 'Vaga Pendente' && matched.statusPresenca !== 'Recusado' && matched.statusPresenca !== 'Recusada';
+                matchedSlots.push({
+                    id: matched.id,
+                    setorId: bp.setorId,
+                    funcao: bp.funcao,
+                    sexoExigido: bp.sexoExigido,
+                    alreadyFilled: isFilled
+                });
+            } else {
+                matchedSlots.push({
+                    id: null,
+                    setorId: bp.setorId,
+                    funcao: bp.funcao,
+                    sexoExigido: bp.sexoExigido,
+                    alreadyFilled: false
+                });
+            }
+        // 2. FILTRAR SOMENTE VAGAS PENDENTES PARA A IA
+        let slots = matchedSlots.filter(s => !s.alreadyFilled);
+
+        if (slots.length === 0) {
+            alert('A escala automática já está completa e distribuída. Não há vagas pendentes para gerar.');
+            return;
+        }
+
+        let isEditingExisting = escalasDoCulto.length > 0;
 
         // Mapear último serviço de cada membro
         const lastScaledMap = {};
@@ -8799,29 +8965,9 @@ const App = {
                 eligible = primaryEligible;
             }
 
-            // Regra de Gênero (Entrada e Apoio)
-            const needsGenderCheck = ['entrada', 'apoio'].some(x => slot.funcao.toLowerCase().includes(x));
-            if (needsGenderCheck) {
-                const sameFunctionDraft = assignments.filter(a => a.funcao === slot.funcao);
-                const sameFunctionExisting = escalasDoCulto.filter(e => e.funcao === slot.funcao && e.membroId && e.membroNome !== 'Vaga Pendente' && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada');
-                
-                if (sameFunctionDraft.length > 0 || sameFunctionExisting.length > 0) {
-                    const assignedSexes = [
-                        ...sameFunctionDraft.map(a => a.sexo),
-                        ...sameFunctionExisting.map(e => {
-                            const memberInfo = membros.find(m => m.id === e.membroId);
-                            return memberInfo ? (memberInfo.sexo || 'Masculino') : 'Masculino';
-                        })
-                    ];
-                    
-                    if (assignedSexes.includes('Masculino') && !assignedSexes.includes('Feminino')) {
-                        const femEligible = eligible.filter(m => m.sexo === 'Feminino');
-                        if (femEligible.length > 0) eligible = femEligible;
-                    } else if (assignedSexes.includes('Feminino') && !assignedSexes.includes('Masculino')) {
-                        const mascEligible = eligible.filter(m => m.sexo === 'Masculino');
-                        if (mascEligible.length > 0) eligible = mascEligible;
-                    }
-                }
+            // Regra de Gênero Explícita
+            if (slot.sexoExigido) {
+                eligible = eligible.filter(m => m.sexo === slot.sexoExigido);
             }
 
             // Calcular score
@@ -8907,6 +9053,7 @@ const App = {
         // Salvar ou atualizar escalas no Firestore
         for (let item of assignments) {
             const escalaPayload = {
+                origem: 'ia',
                 cultoId: culto.id,
                 cultoNome: culto.nome,
                 data: culto.data,

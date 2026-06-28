@@ -14,12 +14,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=3.9.1">
+    <link rel="stylesheet" href="css/style.css?v=3.10.7">
     
     <!-- Firebase SDK (v8 Compat) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 </head>
 <body class="light-bg">
 
@@ -82,27 +83,30 @@
             
             <div class="selector-dashboard-wrapper">
                 <div class="select-container">
-                    <!-- Welcome Block -->
-                    <div class="selector-welcome-block">
-                        <h2 class="header-main-title">Escala do Culto</h2>
-                        <span class="welcome-user-discrete" id="selector-welcome-greeting">Carregando...</span>
-                        <p class="welcome-subtitle" style="font-size: 0.85rem; color: var(--slate-gray); margin-top: 4px;">Aqui você acompanha sua escala e tudo que acontece.</p>
+                    <!-- Welcome Block with Notification Bell -->
+                    <div class="selector-welcome-block" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; text-align: left; padding-top: 5px; height: 65px; box-sizing: border-box; overflow: hidden;">
+                        <div style="flex: 1; min-width: 0; padding-right: 10px;">
+                            <span class="welcome-user-discrete" style="display: none;" id="selector-welcome-greeting">Olá, Diácono</span>
+                            <h2 class="header-main-title" id="selector-welcome-name" style="margin: 0; font-size: 28px; font-weight: 700; line-height: 1.2; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Olá</h2>
+                            <p class="welcome-subtitle" style="font-size: 0.8rem; color: #8AA6A3; margin: 2px 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Que bom ter você aqui.</p>
+                        </div>
+                        <span id="btn-scales-badge" style="display: none;"></span>
                     </div>
 
                     <!-- Date Banner (Keep existing element container for backward compatibility if needed, or hide) -->
                     <div id="selector-date-banner-container" style="display: none;"></div>
 
-                    <!-- Bloco 1: Sua Próxima Escala (Maior Destaque) -->
-                    <div class="mural-header-row" style="margin-top: 10px;">
-                        <h3 style="color: var(--teal-primary);">SUA PRÓXIMA ESCALA</h3>
+                    <!-- Bloco 1: Sua Próxima Escala (Secundário - Agora Primeiro) -->
+                    <div class="mural-header-row" style="margin-top: 10px; margin-bottom: 8px; text-align: left;">
+                        <span style="font-size: 0.72rem; font-weight: 700; color: #8AA6A3; letter-spacing: 1.2px; text-transform: uppercase;">Sua Próxima Escala</span>
                     </div>
-                    <div id="premium-next-scale-container" style="margin-bottom: 25px;">
+                    <div id="premium-next-scale-container" style="margin-bottom: 20px;">
                         <!-- Dynamic next scale injected here by JS -->
-                        <div class="skeleton-loader" style="height: 120px; border-radius: 16px;"></div>
+                        <div class="skeleton-loader" style="height: 100px; border-radius: 16px;"></div>
                     </div>
 
-                    <!-- Bloco 2: Carrossel de Comunicados (Mural) -->
-                    <div id="premium-carousel-container" style="margin-bottom: 25px;">
+                    <!-- Bloco 2: Carrossel de Comunicados (Mural - Protagonista) -->
+                    <div id="premium-carousel-container" style="margin-bottom: 20px;">
                         <div class="premium-carousel">
                             <div class="carousel-track" id="mural-carousel-track">
                                 <!-- Slides injetados via JS -->
@@ -122,23 +126,44 @@
                         </div>
                     </div>
 
-                    <!-- Bloco 3: Indicadores Rápidos (Compacto) -->
-                    <div id="compact-status-bar" class="compact-status-bar" style="display: none; margin-bottom: 25px;">
-                        <!-- Injetado via JS -->
+                    <!-- Bloco 3: Cards Inteligentes (Discretos - Ultra Compactos) -->
+                    <div class="mural-header-row" style="margin-top: 10px; margin-bottom: 10px; text-align: left;">
+                        <span style="font-size: 0.72rem; font-weight: 700; color: #8AA6A3; letter-spacing: 1.2px; text-transform: uppercase;">Indicadores Rápidos</span>
+                    </div>
+                    <div class="smart-cards-container" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 40px; width: 100%; border: none; background: transparent;">
+                        <!-- Card 1: Aniversários -->
+                        <div class="smart-card-discrete" id="smart-card-birthdays" onclick="App.showMuralBirthdaysDetail()" style="flex: 1; margin: 0; padding: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: transparent; border: none; cursor: pointer; color: #8AA6A3; font-weight: 600;">
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                <span class="smart-card-icon" style="font-size: 1.3rem;">🎂</span>
+                                <span class="smart-card-badge" id="smart-card-birthdays-count" style="color: #FFFFFF; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 10px; font-size: 0.75rem;">0</span>
+                            </div>
+                            <span class="smart-card-title" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">Aniversários</span>
+                        </div>
+
+                        <!-- Card 2: Pedidos de Oração -->
+                        <div class="smart-card-discrete" id="smart-card-prayers" onclick="App.openPrayersModal()" style="flex: 1; margin: 0; padding: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: transparent; border: none; cursor: pointer; color: #8AA6A3; font-weight: 600;">
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                <span class="smart-card-icon" style="font-size: 1.3rem;">🙏</span>
+                                <span class="smart-card-badge" id="smart-card-prayers-count" style="color: #FFFFFF; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 10px; font-size: 0.75rem;">0</span>
+                            </div>
+                            <span class="smart-card-title" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">Oração</span>
+                        </div>
+
+                        <!-- Card 3: Ausências -->
+                        <div class="smart-card-discrete" id="smart-card-away" onclick="App.showMuralAwayDetail()" style="flex: 1; margin: 0; padding: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: transparent; border: none; cursor: pointer; color: #8AA6A3; font-weight: 600;">
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                <span class="smart-card-icon" style="font-size: 1.3rem;">👥</span>
+                                <span class="smart-card-badge" id="smart-card-away-count" style="color: #FFFFFF; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 10px; font-size: 0.75rem;">0</span>
+                            </div>
+                            <span class="smart-card-title" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">Ausências</span>
+                        </div>
                     </div>
 
                     <!-- Container Legado Oculto (para não quebrar lógicas antigas caso existam buscas diretas) -->
                     <div id="selector-next-service-highlight" style="display: none;"></div>
 
-                    <div id="admin-shortcut-container" style="display: none; width: 100%; margin-top: 25px;">
-                        <button onclick="App.navigateTo('view-admin')" class="btn-primary admin-portal-btn flex-btn-admin">
-                            <span>
-                                <i class="fa-solid fa-toolbox" style="margin-right: 8px;"></i>
-                                Painel Geral Admin
-                            </span>
-                            <span class="admin-badge-btn">ADMIN</span>
-                        </button>
-                    </div>
+                    <!-- Oculto para compatibilidade de script -->
+                    <div id="admin-shortcut-container" style="display: none !important;"></div>
                 </div>
             </div>
 
@@ -147,24 +172,24 @@
                 CES Diaconia © 2024 - Todos os direitos reservados
             </div>
 
-            <!-- Bottom Navigation Bar (Fase 1 - Simplificação) -->
+            <!-- Bottom Navigation Bar (v3.10) -->
             <nav class="selector-bottom-nav" style="justify-content: center; padding: 10px 0;">
                 <div class="selector-nav-actions" style="width: 100%; justify-content: space-around; gap: 0;">
-                    <button class="nav-action-btn active" style="color: var(--teal-primary);" title="Início">
+                    <button class="nav-action-btn active" id="nav-btn-home" onclick="App.navigateTo('view-setor-select'); App.setActiveNavBtn('nav-btn-home');" style="color: var(--teal-primary);" title="Mural">
                         <i class="fa-solid fa-house"></i>
-                        <span>Início</span>
+                        <span>Mural</span>
                     </button>
-                    <button onclick="App.openMinhasEscalasModal()" class="nav-action-btn" title="Minhas Escalas">
+                    <button class="nav-action-btn" id="nav-btn-escalas" onclick="App.openMinhasEscalasModal(); App.setActiveNavBtn('nav-btn-escalas');" title="Escalas">
                         <i class="fa-regular fa-calendar-days"></i>
                         <span>Escalas</span>
                     </button>
-                    <button onclick="App.openMeuPerfilModal()" class="nav-action-btn" title="Meu Perfil">
+                    <button class="nav-action-btn" id="nav-btn-perfil" onclick="App.openMeuPerfilModal(); App.setActiveNavBtn('nav-btn-perfil');" title="Perfil">
                         <i class="fa-regular fa-circle-user"></i>
                         <span>Perfil</span>
                     </button>
-                    <button onclick="App.handleLogout()" class="nav-action-btn nav-btn-logout" title="Sair" style="color: #ef4444;">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                        <span>Sair</span>
+                    <button class="nav-action-btn" id="nav-btn-mais" onclick="App.openMaisModal(); App.setActiveNavBtn('nav-btn-mais');" title="Mais">
+                        <i class="fa-solid fa-ellipsis"></i>
+                        <span>Mais</span>
                     </button>
                 </div>
             </nav>
@@ -205,7 +230,7 @@
                         </div>
                         
                         <!-- Next scheduled service highlight -->
-                        <div class="panel-card" style="margin-top: 20px;" id="next-service-highlight">
+                        <div class="panel-card" style="margin-top: 20px; display: none;" id="next-service-highlight">
                             <div class="panel-title" style="margin-bottom: 12px; font-size: 0.9rem; text-transform: uppercase; color: var(--slate-gray);"><i class="fa-solid fa-calendar-day" style="margin-right: 5px;"></i> Próximo Serviço</div>
                             <div id="next-service-info">
                                 <!-- Dynamic info -->
@@ -296,6 +321,36 @@
                             </div>
                         </div>
                         
+                        <!-- PWA Install Card -->
+                        <div id="pwa-install-card" class="panel-card" style="display: none; margin-top: 20px; text-align: left; border: 1.5px solid rgba(18,115,105,0.4); background: rgba(18,115,105,0.05);">
+                            <div class="panel-title" style="margin-bottom: 8px; color: var(--teal-primary);">
+                                <i class="fa-solid fa-mobile-screen-button" style="margin-right: 5px;"></i> Instalar Aplicativo
+                            </div>
+                            <p style="font-size: 0.82rem; color: #8AA6A3; line-height: 1.4; margin-bottom: 12px;">
+                                Instale o aplicativo da Diaconia em sua tela inicial para obter notificações mais rápidas e estáveis das suas escalas.
+                            </p>
+                            <button onclick="App.installPWA()" class="btn-primary" style="background-color: var(--teal-primary); width: 100%; font-weight: 700; height: 40px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <i class="fa-solid fa-download"></i> Instalar no Celular
+                            </button>
+                        </div>
+
+                        <!-- Notification Config Card -->
+                        <div class="panel-card" style="margin-top: 20px; text-align: left;">
+                            <div class="panel-title" style="margin-bottom: 12px;">
+                                <i class="fa-solid fa-bell" style="margin-right: 5px;"></i> Notificações do Aparelho
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; border-radius: 12px; padding: 12px; margin-bottom: 10px;">
+                                <span style="font-size: 0.85rem; color: var(--navy-dark); font-weight: 600;">Status das Alertas</span>
+                                <span id="notification-status-badge" class="badge" style="font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Verificando...</span>
+                            </div>
+                            <button id="btn-configure-notifications" onclick="App.requestNotificationPermission(true)" class="btn-secondary" style="width: 100%; font-size: 0.82rem; height: 38px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid rgba(138, 166, 163, 0.2); background: transparent; color: var(--navy-dark); border-radius: 10px; cursor: pointer;">
+                                <i class="fa-solid fa-gears"></i> Configurar / Reativar Alertas
+                            </button>
+                            <button id="btn-battery-guide" onclick="App.showBackgroundOptimizationGuide()" class="btn-secondary" style="width: 100%; font-size: 0.82rem; height: 38px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid rgba(138, 166, 163, 0.2); background: transparent; color: var(--navy-dark); border-radius: 10px; cursor: pointer; margin-top: 8px;">
+                                <i class="fa-solid fa-battery-three-quarters"></i> Guia: Evitar bloqueio de notificações (Bateria)
+                            </button>
+                        </div>
+
                         <!-- Fale com a Supervisão -->
                         <div class="panel-card" style="margin-top: 20px; text-align: left;">
                             <div class="panel-title" style="margin-bottom: 12px;">
@@ -399,6 +454,10 @@
                         <a class="admin-menu-item" onclick="App.switchAdminTab('avisos', this)">
                             <i class="fa-solid fa-bullhorn"></i>
                             <span>Informativos</span>
+                        </a>
+                        <a class="admin-menu-item" onclick="App.switchAdminTab('mensagens', this)">
+                            <i class="fa-solid fa-comments"></i>
+                            <span>Mensagens</span>
                         </a>
                         
                         <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
@@ -712,6 +771,10 @@
                                             <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Automática
                                         </button>
                                         
+                                        <button class="btn-secondary" style="padding: 8px 16px; font-size: 0.85rem; color: #D97706; border-color: #FDE68A; background-color: #FEF3C7; display: flex; align-items: center; gap: 6px; width: auto; height: 38px;" onclick="App.normalizarEscalasDuplicadas()">
+                                            <i class="fa-solid fa-broom"></i> Normalizar
+                                        </button>
+                                        
                                         <div class="dropdown-wrapper actions-dropdown" style="position: relative;">
                                             <label style="font-size: 0.75rem; color: var(--slate-gray); display: block; margin-bottom: 2px; visibility: hidden;">Ações</label>
                                             <button class="btn-secondary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="App.toggleActiveCultoActionsDropdown(event)">
@@ -856,7 +919,7 @@
                         <!-- TAB: Relatórios -->
                         <div id="admin-sub-relatorios" class="admin-tabview" style="display: none;">
                             <!-- Sub-abas -->
-                            <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                            <div class="scroll-tabs-container">
                                 <button class="btn-primary" id="btn-report-engagement" onclick="App.switchReportSubTab('engagement')" style="width: auto; height: 38px; padding: 0 16px; font-size: 0.85rem; background: var(--teal-primary);">
                                     <i class="fa-solid fa-chart-line"></i> Engajamento
                                 </button>
@@ -1176,6 +1239,26 @@
                                         <i class="fa-solid fa-floppy-disk"></i> Salvar Configuração
                                     </button>
                                 </form>
+                            </div>
+                        </div>
+
+                        <!-- View: Mensagens dos Obreiros -->
+                        <div id="admin-sub-mensagens" class="admin-tabview" style="display: none;">
+                            <div class="panel-card" style="background: #fff; border: 1px solid #E2E8F0; padding: 25px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                                    <div class="panel-title" style="margin: 0; color: var(--navy-dark) !important;">
+                                        <i class="fa-solid fa-comments" style="margin-right: 5px; color: var(--teal-primary);"></i> Histórico de Mensagens dos Obreiros
+                                    </div>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <label style="font-size: 0.85rem; color: var(--slate-gray); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="admin-msg-show-archived" onchange="App.loadAdminMessages()" style="width: 16px; height: 16px; cursor: pointer;"> Exibir mensagens arquivadas
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div id="admin-messages-list-container" style="display: flex; flex-direction: column; gap: 15px; max-height: 600px; overflow-y: auto; padding: 5px;">
+                                    <!-- Dynamic message history list -->
+                                </div>
                             </div>
                         </div>
                         
@@ -1942,32 +2025,117 @@
     <div class="premium-modal glass-modal" id="modal-meu-perfil" style="z-index: 2500;">
         <div class="modal-content" style="max-width: 500px; height: 90vh; display: flex; flex-direction: column; padding: 0; background: #F8FAFC; overflow: hidden; border-radius: 24px 24px 0 0; margin-top: auto;">
             <div class="modal-header" style="padding: 20px 24px; background: white; border-bottom: 1px solid #E2E8F0; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin:0; font-size: 1.25rem; color: var(--navy-dark); font-weight: 800;"><i class="fa-solid fa-circle-user" style="color: var(--teal-primary); margin-right: 8px;"></i> Meu Perfil</h3>
+                <h3 style="margin:0; font-size: 1.25rem; color: var(--navy-dark); font-weight: 800;"><i class="fa-solid fa-circle-user" style="color: var(--teal-primary); margin-right: 8px;"></i> Centro do Obreiro</h3>
                 <button onclick="document.getElementById('modal-meu-perfil').classList.remove('active')" style="background:none; border:none; font-size: 1.5rem; color: #94A3B8; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="modal-body" style="padding: 24px; overflow-y: auto; flex: 1;">
-                <div id="meu-perfil-header-container" style="text-align: center; margin-bottom: 30px;">
+            <div class="modal-body" style="padding: 24px; overflow-y: auto; flex: 1; text-align: left;">
+                <!-- 1. DADOS -->
+                <div id="meu-perfil-header-container" style="text-align: center; margin-bottom: 25px;">
                     <!-- User info injected here -->
                 </div>
-                
-                <h4 style="font-size: 1rem; color: var(--navy-dark); margin-bottom: 15px; font-weight: 700;">Estatísticas Básicas</h4>
-                <div id="meu-perfil-stats-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px;">
+
+                <!-- 5. HISTÓRICO / ESTATÍSTICAS -->
+                <h4 style="font-size: 0.9rem; color: var(--navy-dark); margin-bottom: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Meu Histórico</h4>
+                <div id="meu-perfil-stats-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
                     <!-- Stats injected here -->
                 </div>
                 
                 <div id="meu-perfil-tools-container" style="display: none;"></div>
-                
-                <h4 style="font-size: 1rem; color: var(--navy-dark); margin-bottom: 15px; font-weight: 700;">Contato</h4>
-                <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #E2E8F0;">
-                    <form id="meu-perfil-supervision-msg-form" onsubmit="App.handleSendMeuPerfilMessage(event)">
-                        <label for="meu-perfil-supervision-msg-text" style="color: var(--slate-gray); font-size: 0.85rem; display: block; margin-bottom: 10px; font-weight: 600;">Fale com a Supervisão</label>
-                        <div style="position: relative; margin-bottom: 15px;">
-                            <i class="fa-solid fa-comment" style="position: absolute; left: 15px; top: 15px; color: #94A3B8;"></i>
-                            <textarea id="meu-perfil-supervision-msg-text" rows="4" required placeholder="Escreva aqui sua dúvida, aviso ou mensagem de falta..." style="width: 100%; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 15px 12px 45px; font-family: inherit; font-size: 0.9rem; resize: none; background: #F8FAFC; box-sizing: border-box;"></textarea>
-                        </div>
-                        <button type="submit" class="btn-primary" style="width: 100%; border-radius: 10px; padding: 12px; font-weight: 600;"><i class="fa-regular fa-paper-plane" style="margin-right: 8px;"></i> Enviar Mensagem</button>
-                    </form>
+
+                <!-- 2. PARTICIPAÇÃO -->
+                <h4 style="font-size: 0.9rem; color: var(--navy-dark); margin-bottom: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Participação</h4>
+                <div style="background: white; border-radius: 16px; padding: 15px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">
+                    <button onclick="App.openDisponibilidadeModal()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-regular fa-clock" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i> Minha Disponibilidade
+                    </button>
+                    <button onclick="App.openSolicitarFeriasModal()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-solid fa-umbrella-beach" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i> Solicitar Férias / Ausência
+                    </button>
+                    <button onclick="App.openSolicitarSubstituicaoModal()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-solid fa-user-minus" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i> Solicitar Substituição
+                    </button>
                 </div>
+
+                <!-- 3. COMUNICAÇÃO -->
+                <h4 style="font-size: 0.9rem; color: var(--navy-dark); margin-bottom: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Comunicação</h4>
+                <div style="background: white; border-radius: 16px; padding: 15px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">
+                    <button onclick="App.openPrayersModal()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-solid fa-hands-praying" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i> Pedido de Oração
+                    </button>
+                    <button onclick="App.openSupervisionMsgModal()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-regular fa-comment-dots" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i> Mensagem para Supervisão
+                    </button>
+                    <button onclick="App.openFeedbackModal()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-regular fa-message" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i> Enviar Feedback
+                    </button>
+                </div>
+
+                <!-- RECONHECIMENTO -->
+                <h4 style="font-size: 0.9rem; color: var(--navy-dark); margin-bottom: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Reconhecimento</h4>
+                <div style="background: white; border-radius: 16px; padding: 15px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">
+                    <button onclick="App.openParabenizarModal()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-solid fa-cake-candles" style="color: #EC4899; font-size: 1.1rem; width: 20px;"></i> 🎂 Parabenizar aniversariante
+                    </button>
+                    <button onclick="App.openAgradecerModal()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-solid fa-hands-clapping" style="color: #F59E0B; font-size: 1.1rem; width: 20px;"></i> 👏 Agradecer um obreiro
+                    </button>
+                    <button onclick="App.openIncentivarModal()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-solid fa-gift" style="color: #10B981; font-size: 1.1rem; width: 20px;"></i> 🎉 Enviar mensagem de incentivo
+                    </button>
+                </div>
+
+                <!-- 4. NOTIFICAÇÕES -->
+                <h4 style="font-size: 0.9rem; color: var(--navy-dark); margin-bottom: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Notificações</h4>
+                <div style="background: white; border-radius: 16px; padding: 15px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;">
+                    <button onclick="App.openNotificationPreferences()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-regular fa-bell" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i> Preferências de Notificação
+                    </button>
+                    <button onclick="App.showBackgroundOptimizationGuide()" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-solid fa-battery-three-quarters" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i> Guia de Bateria
+                    </button>
+                    <button onclick="App.requestNotificationPermission(true)" style="background: none; border: none; font-size: 0.88rem; font-weight: 600; color: var(--navy-dark); display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 0; text-align: left; width: 100%;">
+                        <i class="fa-solid fa-gears" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i> Configurações de Alertas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL MAIS (v3.10)
+         ========================================== -->
+    <div class="premium-modal glass-modal" id="modal-mais" style="z-index: 2500;">
+        <div class="modal-content" style="max-width: 500px; height: auto; display: flex; flex-direction: column; padding: 0; background: #F8FAFC; overflow: hidden; border-radius: 24px 24px 0 0; margin-top: auto;">
+            <div class="modal-header" style="padding: 20px 24px; background: white; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0; font-size: 1.25rem; color: var(--navy-dark); font-weight: 800;"><i class="fa-solid fa-bars" style="color: var(--teal-primary); margin-right: 8px;"></i> Mais Opções</h3>
+                <button onclick="document.getElementById('modal-mais').classList.remove('active')" style="background:none; border:none; font-size: 1.5rem; color: #94A3B8; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+                <!-- Painel Administrativo -->
+                <button id="btn-admin-panel" onclick="document.getElementById('modal-mais').classList.remove('active'); App.openAdminPortalDirect();" class="btn-secondary" style="width: 100%; height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; font-weight: 700; background: white; border: 1px solid #E2E8F0; color: var(--navy-dark); cursor: pointer; text-align: left; padding: 0 16px;">
+                    <i class="fa-solid fa-toolbox" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i>
+                    Painel Geral Admin
+                </button>
+                <!-- Configurações -->
+                <button onclick="document.getElementById('modal-mais').classList.remove('active'); App.openConfiguracoes();" class="btn-secondary" style="width: 100%; height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; font-weight: 700; background: white; border: 1px solid #E2E8F0; color: var(--navy-dark); cursor: pointer; text-align: left; padding: 0 16px;">
+                    <i class="fa-solid fa-gears" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i>
+                    Configurações
+                </button>
+                <!-- Ajuda -->
+                <button onclick="document.getElementById('modal-mais').classList.remove('active'); App.showBackgroundOptimizationGuide();" class="btn-secondary" style="width: 100%; height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; font-weight: 700; background: white; border: 1px solid #E2E8F0; color: var(--navy-dark); cursor: pointer; text-align: left; padding: 0 16px;">
+                    <i class="fa-solid fa-circle-question" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i>
+                    Ajuda / Guia de Bateria
+                </button>
+                <!-- Sobre o Aplicativo -->
+                <button onclick="document.getElementById('modal-mais').classList.remove('active'); App.showSobre();" class="btn-secondary" style="width: 100%; height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; font-weight: 700; background: white; border: 1px solid #E2E8F0; color: var(--navy-dark); cursor: pointer; text-align: left; padding: 0 16px;">
+                    <i class="fa-solid fa-circle-info" style="color: var(--teal-primary); font-size: 1.1rem; width: 20px;"></i>
+                    Sobre o Aplicativo
+                </button>
+                <!-- Sair -->
+                <button onclick="document.getElementById('modal-mais').classList.remove('active'); App.handleLogout();" class="btn-secondary" style="width: 100%; height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; font-weight: 700; background: white; border: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444; cursor: pointer; text-align: left; padding: 0 16px;">
+                    <i class="fa-solid fa-arrow-right-from-bracket" style="font-size: 1.1rem; width: 20px;"></i>
+                    Sair da Conta
+                </button>
             </div>
         </div>
     </div>
@@ -2091,6 +2259,50 @@
             </div>
         </div>
         
+        <!-- ==========================================
+             MODAL: GUIA DE OTIMIZAÇÃO DE BATERIA (v3.10.5M)
+             ========================================== -->
+        <div class="premium-modal glass-modal" id="modal-guia-bateria" style="z-index: 2600;">
+            <div class="modal-content" style="max-width: 500px; height: 80vh; display: flex; flex-direction: column; padding: 0; background: #F8FAFC; overflow: hidden; border-radius: 24px 24px 0 0; margin-top: auto;">
+                <div class="modal-header" style="padding: 20px 24px; background: white; border-bottom: 1px solid #E2E8F0; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin:0; font-size: 1.15rem; color: var(--navy-dark); font-weight: 800;"><i class="fa-solid fa-battery-three-quarters" style="color: var(--teal-primary); margin-right: 8px;"></i> Guia de Alertas & Bateria</h3>
+                    <button onclick="document.getElementById('modal-guia-bateria').classList.remove('active')" style="background:none; border:none; font-size: 1.5rem; color: #94A3B8; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="modal-body" style="padding: 24px; overflow-y: auto; flex: 1; text-align: left; line-height: 1.5;">
+                    <p style="font-size: 0.9rem; color: #64748B; margin-bottom: 20px;">
+                        Para garantir que você receba avisos e convocações de escalas em tempo real, seu celular precisa permitir que este aplicativo rode em segundo plano sem restrições de bateria.
+                    </p>
+
+                    <!-- Android Guide -->
+                    <h4 style="font-size: 0.85rem; color: var(--navy-dark); margin-bottom: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">🤖 No Android (Samsung, Motorola, Xiaomi...)</h4>
+                    <div style="background: white; border-radius: 16px; padding: 15px; border: 1px solid #E2E8F0; margin-bottom: 20px; font-size: 0.88rem; color: var(--navy-dark);">
+                        <ol style="margin: 0; padding-left: 20px;">
+                            <li style="margin-bottom: 8px;">Pressione e segure o ícone do aplicativo <strong>ES Diaconia</strong> na tela inicial e toque em <strong>Informações do App</strong> (ou no ícone "i").</li>
+                            <li style="margin-bottom: 8px;">Selecione a opção <strong>Bateria</strong> ou <strong>Uso de Bateria</strong>.</li>
+                            <li style="margin-bottom: 8px;">Mude a configuração de <i>Otimizado</i> para <strong>Sem Restrições</strong> (ou <i>Não Otimizado</i>).</li>
+                            <li style="margin-bottom: 0;">Se seu celular for <strong>Xiaomi/Redmi</strong>, certifique-se de ativar também o <strong>Início Automático</strong> nas opções do app.</li>
+                        </ol>
+                    </div>
+
+                    <!-- iOS Guide -->
+                    <h4 style="font-size: 0.85rem; color: var(--navy-dark); margin-bottom: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">🍎 No iOS (iPhone)</h4>
+                    <div style="background: white; border-radius: 16px; padding: 15px; border: 1px solid #E2E8F0; margin-bottom: 20px; font-size: 0.88rem; color: var(--navy-dark);">
+                        <ol style="margin: 0; padding-left: 20px;">
+                            <li style="margin-bottom: 8px;">Abra os <strong>Ajustes</strong> do iPhone.</li>
+                            <li style="margin-bottom: 8px;">Vá em <strong>Geral</strong> > <strong>Atualização em Segundo Plano</strong>.</li>
+                            <li style="margin-bottom: 8px;">Certifique-se de que a opção de atualização em segundo plano está ativa para o navegador (Safari ou Chrome) ou para este aplicativo.</li>
+                            <li style="margin-bottom: 0;">Evite manter o <strong>Modo de Pouca Energia</strong> ativado constantemente, pois ele suspende notificações de apps em segundo plano.</li>
+                        </ol>
+                    </div>
+
+                    <!-- Test Notifications Button -->
+                    <button onclick="App.testNotificationDirectly()" class="btn-primary" style="width: 100%; border-radius: 12px; height: 46px; font-weight: 700; background-color: var(--teal-primary); border-color: var(--teal-primary); margin-top: 10px; cursor: pointer;">
+                        <i class="fa-regular fa-bell" style="margin-right: 8px;"></i> Testar Notificação Agora
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Invisible side navigation triggers -->
         <div class="side-nav-zone left-zone" onclick="App.navigateOrgEvent(-1)">
             <i class="fa-solid fa-chevron-left"></i>
@@ -2100,8 +2312,8 @@
         </div>
 
         <!-- Import Main App Control logic -->
-        <script src="js/firebase-config.js?v=3.9.1"></script>
-        <script src="js/db.js?v=3.9.1"></script>
-        <script src="js/app.js?v=3.9.1"></script>
+        <script src="js/firebase-config.js?v=3.10.7"></script>
+        <script src="js/db.js?v=3.10.7"></script>
+        <script src="js/app.js?v=3.10.7"></script>
 </body>
 </html>
