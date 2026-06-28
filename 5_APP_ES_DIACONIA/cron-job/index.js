@@ -52,15 +52,52 @@ async function runEngine() {
             if (!e.membroId || typeof e.membroId !== 'string' || e.membroId.trim() === '') {
                 console.warn(`[AVISO] Escala ${e.id} ignorada: membroId ausente ou inválido.`);
                 return;
+
             }
-            
+
             if (!membrosParaNotificar[e.membroId]) {
                 membrosParaNotificar[e.membroId] = { pendentes: [], lembretesAmanha: [] };
             }
 
-            // A. Escalas Pendentes (qualquer data no futuro a partir de hoje)
+            // A. Escalas Pendentes com Lembrete Inteligente (Fase 2)
             if (e.statusPresenca === 'Pendente') {
-                membrosParaNotificar[e.membroId].pendentes.push(e);
+                const agora = new Date();
+                const alertasCount = e.alertasEnviadosCount || 0;
+                let deveNotificar = false;
+
+                // 1. Bloqueio por limite máximo
+                if (alertasCount >= 3) {
+                    deveNotificar = false;
+                } else if (!e.ultimoAlertaEnviado) {
+                    // Nunca foi notificado. Envia o primeiro convite.
+                    deveNotificar = true;
+                } else {
+                    const ultimoAlertaDate = new Date(e.ultimoAlertaEnviado);
+                    const diffHorasUltimoAlerta = (agora - ultimoAlertaDate) / (1000 * 60 * 60);
+
+                    // 2. Remover UTC forçado - parsing em timezone local do ambiente
+                    const [yyyy, mm, dd] = e.data.split('-').map(Number);
+                    const [hh, min] = (e.horarioInicio || '09:00').split(':').map(Number);
+                    const dataCulto = new Date(yyyy, mm - 1, dd, hh, min);
+                    const diffHorasParaCulto = (dataCulto - agora) / (1000 * 60 * 60);
+
+                    // Só notifica se o culto estiver no futuro
+                    if (diffHorasParaCulto > 0) {
+                        // Regra 1: Segundo aviso (Lembrete intermediário) após 48 horas do primeiro
+                        if (alertasCount === 1 && diffHorasUltimoAlerta >= 48) {
+                            deveNotificar = true;
+                        }
+                        // Regra 2: Terceiro aviso (Alerta de Urgência) 24 horas antes do culto,
+                        // desde que o último alerta tenha ocorrido há mais de 24 horas.
+                        else if (alertasCount === 2 && diffHorasParaCulto <= 24 && diffHorasUltimoAlerta >= 24) {
+                            deveNotificar = true;
+                        }
+                    }
+                }
+
+                if (deveNotificar) {
+                    membrosParaNotificar[e.membroId].pendentes.push(e);
+                }
             }
 
             // B. Escalas Confirmadas para AMANHÃ (Lembrete)
@@ -101,11 +138,27 @@ async function runEngine() {
                     data: { scaleId: first.id, action: 'view' },
                     tokens: fcmTokens
                 };
-
                 const response = await messaging.sendEachForMulticast(message);
                 totalEnviados += response.successCount;
-                
-                // Cleanup invalid tokens
+
+                // 3. Evitar batch vazio (garantir que há pendentes para atualizar)
+                if (info.pendentes.length > 0) {
+                    try {
+                        const batch = db.batch();
+                        const agoraIso = new Date().toISOString();
+                        info.pendentes.forEach(p => {
+                            const escalaRef = db.collection('escalas').doc(p.id);
+                            batch.update(escalaRef, {
+                                ultimoAlertaEnviado: agoraIso,
+                                alertasEnviadosCount: admin.firestore.FieldValue.increment(1)
+                            });
+                        });
+                        await batch.commit();
+                    } catch (dbErr) {
+                        console.error(`[ERRO] Falha ao atualizar telemetria de alertas das escalas de ${membroId}:`, dbErr);
+                    }
+                }
+
                 if (response.failureCount > 0) {
                     const failedTokens = [];
                     response.responses.forEach((resp, idx) => {
