@@ -44,6 +44,7 @@ async function runEngine() {
             .get();
 
         const membrosParaNotificar = {};
+        const escalasParaExpirar = [];
 
         escalasSnapshot.forEach(doc => {
             const e = { id: doc.id, ...doc.data() };
@@ -52,17 +53,35 @@ async function runEngine() {
             if (!e.membroId || typeof e.membroId !== 'string' || e.membroId.trim() === '') {
                 console.warn(`[AVISO] Escala ${e.id} ignorada: membroId ausente ou inválido.`);
                 return;
-
-            }
-
-            if (!membrosParaNotificar[e.membroId]) {
-                membrosParaNotificar[e.membroId] = { pendentes: [], lembretesAmanha: [] };
             }
 
             // A. Escalas Pendentes com Lembrete Inteligente (Fase 2)
             if (e.statusPresenca === 'Pendente') {
                 const agora = new Date();
                 const alertasCount = e.alertasEnviadosCount || 0;
+
+                const [yyyy, mm, dd] = e.data.split('-').map(Number);
+                const [hh, min] = (e.horarioInicio || '09:00').split(':').map(Number);
+                const dataCulto = new Date(yyyy, mm - 1, dd, hh, min);
+                const diffHorasParaCulto = (dataCulto - agora) / (1000 * 60 * 60);
+
+                // Lógica de Expiração Automática por Timeout (Implementação 02)
+                let deveExpirar = false;
+                if (diffHorasParaCulto > 0) {
+                    const ultimoAlertaDate = e.ultimoAlertaEnviado ? new Date(e.ultimoAlertaEnviado) : null;
+                    const diffHorasUltimoAlerta = ultimoAlertaDate ? (agora - ultimoAlertaDate) / (1000 * 60 * 60) : 0;
+
+                    if (diffHorasParaCulto <= 48 && alertasCount >= 2 && diffHorasUltimoAlerta >= 12) {
+                        deveExpirar = true;
+                    }
+                }
+
+                if (deveExpirar) {
+                    escalasParaExpirar.push(e.id);
+                    return; // Aborta e não envia novas notificações
+                }
+
+                // Lógica de Lembretes Inteligentes (Implementação 01)
                 let deveNotificar = false;
 
                 // 1. Bloqueio por limite máximo
@@ -74,12 +93,6 @@ async function runEngine() {
                 } else {
                     const ultimoAlertaDate = new Date(e.ultimoAlertaEnviado);
                     const diffHorasUltimoAlerta = (agora - ultimoAlertaDate) / (1000 * 60 * 60);
-
-                    // 2. Remover UTC forçado - parsing em timezone local do ambiente
-                    const [yyyy, mm, dd] = e.data.split('-').map(Number);
-                    const [hh, min] = (e.horarioInicio || '09:00').split(':').map(Number);
-                    const dataCulto = new Date(yyyy, mm - 1, dd, hh, min);
-                    const diffHorasParaCulto = (dataCulto - agora) / (1000 * 60 * 60);
 
                     // Só notifica se o culto estiver no futuro
                     if (diffHorasParaCulto > 0) {
@@ -96,15 +109,40 @@ async function runEngine() {
                 }
 
                 if (deveNotificar) {
+                    if (!membrosParaNotificar[e.membroId]) {
+                        membrosParaNotificar[e.membroId] = { pendentes: [], lembretesAmanha: [] };
+                    }
                     membrosParaNotificar[e.membroId].pendentes.push(e);
                 }
             }
 
             // B. Escalas Confirmadas para AMANHÃ (Lembrete)
             if (e.statusPresenca === 'Confirmada' && e.data === tomorrowStr) {
+                if (!membrosParaNotificar[e.membroId]) {
+                    membrosParaNotificar[e.membroId] = { pendentes: [], lembretesAmanha: [] };
+                }
                 membrosParaNotificar[e.membroId].lembretesAmanha.push(e);
             }
         });
+
+        // --- 1.5 EXPIRAR ESCALAS EM BATCH ---
+        if (escalasParaExpirar.length > 0) {
+            console.log(`[TIMEOUT] Expirando ${escalasParaExpirar.length} escalas pendentes...`);
+            try {
+                const batch = db.batch();
+                escalasParaExpirar.forEach(id => {
+                    const ref = db.collection('escalas').doc(id);
+                    batch.update(ref, {
+                        statusPresenca: 'Recusada',
+                        rejeicaoResolvida: false
+                    });
+                });
+                await batch.commit();
+                console.log(`[TIMEOUT] ${escalasParaExpirar.length} escalas atualizadas para 'Recusada'.`);
+            } catch (err) {
+                console.error('[ERRO] Falha ao expirar escalas em lote:', err);
+            }
+        }
 
         // --- 2. BUSCAR TOKENS E DISPARAR ---
         for (const membroId of Object.keys(membrosParaNotificar)) {
