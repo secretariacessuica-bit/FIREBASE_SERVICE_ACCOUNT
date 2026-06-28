@@ -4072,13 +4072,19 @@ const App = {
     switchAdminTab(tabName, el) {
         this.adminActiveTab = tabName;
         
+        const menuEl = el || document.querySelector(`.admin-menu-item[onclick*="'${tabName}'"]`);
+        
         document.querySelectorAll('.admin-menu-item').forEach(item => {
             item.classList.remove('active');
         });
-        el.classList.add('active');
+        if (menuEl) {
+            menuEl.classList.add('active');
+        }
 
         if (tabName === 'escalas') {
-            this.adminSelectedCultoId = null;
+            if (el) {
+                this.adminSelectedCultoId = null;
+            }
         }
 
         this.loadAndRenderAdminPortal();
@@ -4310,6 +4316,9 @@ const App = {
                 adminDashboardAfastamentosAlertas.innerHTML = alertasHTML;
             }
 
+            // 5. Operational Pendencies panel rendering (Decoupled)
+            this.renderOperationalPendingPanel(cultos, escalas);
+
         } catch (e) {
             console.error("Dashboard load error:", e);
         }
@@ -4320,6 +4329,154 @@ const App = {
         if (el) {
             this.switchAdminTab(tabName, el);
         }
+    },
+
+    renderOperationalPendingPanel(cultos, escalas) {
+        const pendenciasContainer = document.getElementById('admin-dashboard-pendencias');
+        if (!pendenciasContainer) return;
+
+        const agora = new Date();
+        const hojeStr = agora.toISOString().split('T')[0];
+        const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5);
+
+        const cultosPassados = cultos.filter(c => {
+            if (c.status === 'Finalizado') return false;
+            if (c.data < hojeStr) return true;
+            if (c.data === hojeStr) {
+                const fim = c.horarioFim || '23:59';
+                return horaAtual > fim;
+            }
+            return false;
+        }).filter(c => {
+            const escalasDoCulto = escalas.filter(e => e.cultoId === c.id);
+            return escalasDoCulto.length > 0;
+        });
+
+        const aceitesPendentes = escalas.filter(e => {
+            if (e.statusPresenca !== 'Pendente' || !e.membroId || e.membroNome === 'Vaga Pendente') return false;
+            const c = cultos.find(culto => culto.id === e.cultoId);
+            return c && c.status !== 'Finalizado';
+        });
+
+        const faltasSemJustificativa = escalas.filter(e => {
+            if (e.statusPresenca !== 'Ausente') return false;
+            const c = cultos.find(culto => culto.id === e.cultoId);
+            return c && c.data < hojeStr;
+        });
+
+        const finalizadosRecentemente = cultos
+            .filter(c => c.status === 'Finalizado')
+            .sort((a, b) => b.data.localeCompare(a.data))
+            .slice(0, 3);
+
+        const totalPendencias = cultosPassados.length + aceitesPendentes.length + faltasSemJustificativa.length;
+
+        const badgeEl = document.getElementById('pendencias-count-badge');
+        if (badgeEl) {
+            badgeEl.innerText = `${totalPendencias} Pendência(s)`;
+            if (totalPendencias === 0) {
+                badgeEl.style.background = '#ECFDF5';
+                badgeEl.style.color = '#10B981';
+                badgeEl.style.borderColor = '#A7F3D0';
+            } else {
+                badgeEl.style.background = '#FEF2F2';
+                badgeEl.style.color = '#EF4444';
+                badgeEl.style.borderColor = '#FCA5A5';
+            }
+        }
+
+        let itemsHtml = '';
+
+        // A. Cultos Passados sem Fechamento
+        cultosPassados.forEach(c => {
+            const dataFmt = c.data.split('-').reverse().join('/');
+            itemsHtml += `
+                <div style="display:flex; align-items:center; justify-content:space-between; background:#FEF2F2; border:1px solid #FCA5A5; padding:12px; border-radius:10px; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                    <div style="display:flex; align-items:center; gap:12px; text-align:left;">
+                        <span style="font-size:1rem; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; background:#FEE2E2; color:#EF4444;">
+                            <i class="fa-solid fa-lock-open"></i>
+                        </span>
+                        <div>
+                            <div style="font-weight:700; font-size:0.82rem; color:var(--navy-dark);">Culto sem Fechamento</div>
+                            <div style="font-size:0.75rem; color:var(--slate-gray); font-weight:500;">${c.nome} • ${dataFmt}</div>
+                        </div>
+                    </div>
+                    <button onclick="App.adminSelectedCultoId='${c.id}'; App.openFechamentoCultoModal();" class="btn-clean-action" style="padding: 5px 10px; font-size: 0.72rem; background:#EF4444; color:#fff; border-radius: 6px; border:none; cursor:pointer; font-weight: 700; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Fechar</button>
+                </div>
+            `;
+        });
+
+        // B. Aceites Pendentes
+        aceitesPendentes.forEach(e => {
+            const dataFmt = e.data.split('-').reverse().join('/');
+            const c = cultos.find(culto => culto.id === e.cultoId);
+            const cultoNome = c ? c.nome : 'Culto';
+            itemsHtml += `
+                <div style="display:flex; align-items:center; justify-content:space-between; background:#FFFBEB; border:1px solid #FCD34D; padding:12px; border-radius:10px; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                    <div style="display:flex; align-items:center; gap:12px; text-align:left;">
+                        <span style="font-size:1rem; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; background:#FEF3C7; color:#D97706;">
+                            <i class="fa-solid fa-hourglass-half"></i>
+                        </span>
+                        <div>
+                            <div style="font-weight:700; font-size:0.82rem; color:var(--navy-dark);">Aceite Pendente</div>
+                            <div style="font-size:0.75rem; color:var(--slate-gray); font-weight:500;"><b>${e.membroNome}</b> • ${cultoNome} (${dataFmt})</div>
+                        </div>
+                    </div>
+                    <button onclick="App.adminSelectedCultoId='${e.cultoId}'; App.switchAdminTab('escalas');" class="btn-clean-action" style="padding: 5px 10px; font-size: 0.72rem; background:#D97706; color:#fff; border-radius: 6px; border:none; cursor:pointer; font-weight: 700; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Ver</button>
+                </div>
+            `;
+        });
+
+        // C. Faltas Injustificadas
+        faltasSemJustificativa.forEach(e => {
+            const dataFmt = e.data.split('-').reverse().join('/');
+            const c = cultos.find(culto => culto.id === e.cultoId);
+            const cultoNome = c ? c.nome : 'Culto';
+            itemsHtml += `
+                <div style="display:flex; align-items:center; justify-content:space-between; background:#FEF2F2; border:1px solid #FCA5A5; padding:12px; border-radius:10px; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                    <div style="display:flex; align-items:center; gap:12px; text-align:left;">
+                        <span style="font-size:1rem; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; background:#FEE2E2; color:#EF4444;">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </span>
+                        <div>
+                            <div style="font-weight:700; font-size:0.82rem; color:var(--navy-dark);">Falta Injustificada</div>
+                            <div style="font-size:0.75rem; color:var(--slate-gray); font-weight:500;"><b>${e.membroNome}</b> • ${cultoNome} (${dataFmt})</div>
+                        </div>
+                    </div>
+                    <button onclick="App.adminSelectedCultoId='${e.cultoId}'; App.openFechamentoCultoModal();" class="btn-clean-action" style="padding: 5px 10px; font-size: 0.72rem; background:#EF4444; color:#fff; border-radius: 6px; border:none; cursor:pointer; font-weight: 700; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Justificar</button>
+                </div>
+            `;
+        });
+
+        // D. Cultos Finalizados Recentemente
+        finalizadosRecentemente.forEach(c => {
+            const dataFmt = c.data.split('-').reverse().join('/');
+            itemsHtml += `
+                <div style="display:flex; align-items:center; justify-content:space-between; background:#F0FDF4; border:1px solid #A7F3D0; padding:12px; border-radius:10px; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                    <div style="display:flex; align-items:center; gap:12px; text-align:left;">
+                        <span style="font-size:1rem; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; background:#DCFCE7; color:#10B981;">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </span>
+                        <div>
+                            <div style="font-weight:700; font-size:0.82rem; color:var(--navy-dark);">Culto Finalizado</div>
+                            <div style="font-size:0.75rem; color:var(--slate-gray); font-weight:500;">${c.nome} • ${dataFmt}</div>
+                        </div>
+                    </div>
+                    <button onclick="App.adminSelectedCultoId='${c.id}'; App.switchAdminTab('escalas');" class="btn-clean-action" style="padding: 5px 10px; font-size: 0.72rem; background:#10B981; color:#fff; border-radius: 6px; border:none; cursor:pointer; font-weight: 700; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Ver Escala</button>
+                </div>
+            `;
+        });
+
+        if (!itemsHtml) {
+            itemsHtml = `
+                <div style="grid-column: 1 / -1; text-align: center; color: var(--slate-gray); padding: 30px; font-size:0.95rem; font-weight:500; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                    <i class="fa-solid fa-circle-check" style="color:#10B981; font-size:2rem;"></i>
+                    Excelente! Nenhuma pendência operacional ativa no momento.
+                </div>
+            `;
+        }
+
+        pendenciasContainer.innerHTML = itemsHtml;
     },
 
     // --- TAB: SETORES (ADMIN) ---

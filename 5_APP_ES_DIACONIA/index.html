@@ -530,6 +530,20 @@
                                 <!-- Dynamic stats cards generated from sectorsData -->
                             </div>
                             
+                            <!-- Pendências Operacionais Section -->
+                            <div class="panel-card" style="margin-bottom: 25px; box-shadow: var(--shadow-sm); border-radius: 12px; border: 1px solid var(--border-color);">
+                                <div class="panel-header" style="border-bottom: 1px solid #F1F5F9; padding-bottom: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div class="panel-title" style="font-size: 1.05rem; font-weight: 700; color: var(--navy-dark); display: flex; align-items: center; gap: 8px;">
+                                        <i class="fa-solid fa-triangle-exclamation" style="color: #EF4444;"></i> 
+                                        Pendências Operacionais
+                                    </div>
+                                    <span class="badge" id="pendencias-count-badge" style="background: #FEF2F2; color: #EF4444; border: 1px solid #FCA5A5; font-size: 0.75rem; font-weight: 700; padding: 4px 8px; border-radius: 6px;">0 Pendência(s)</span>
+                                </div>
+                                <div id="admin-dashboard-pendencias" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                                    <div style="grid-column: 1 / -1; text-align: center; color: var(--slate-gray); padding: 20px; font-size: 0.9rem;">Carregando pendências...</div>
+                                </div>
+                            </div>
+                            
                             <!-- Columns layout -->
                             <div class="dashboard-columns">
                                 <div>
