@@ -78,6 +78,9 @@ const DbService = {
                 sessionStorage.removeItem('diaconia_cache_produtos');
                 sessionStorage.removeItem('diaconia_cache_escalas');
                 sessionStorage.removeItem('diaconia_cache_cultos');
+                sessionStorage.removeItem('diaconia_cache_reposicoes');
+                sessionStorage.removeItem('diaconia_cache_avisos');
+                sessionStorage.removeItem('diaconia_cache_muralConfig');
                 sessionStorage.removeItem('diaconia_cache_timestamps');
             }
         } catch (e) {
@@ -209,9 +212,9 @@ const DbService = {
         }
     },
 
-    // Normalize a string for comparison: lowercase + remove accents
+    // Normalize a string for comparison: lowercase + remove accents + compress spaces
     normalizeStr(str) {
-        return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
     },
 
     // --- AUTENTICAï¿½ï¿½O POR NOME (Firestore-based) ---
@@ -511,6 +514,16 @@ const DbService = {
 
     // --- REPOSIï¿½ï¿½ES CRUD ---
     async getReposicoes() {
+        if (this.isCacheValido('reposicoes')) {
+            const data = this._obterDoCache('reposicoes');
+            if (data) {
+                this.cacheStats.leiturasEconomizadas += data.length || 1;
+                return data.map(item => ({
+                    ...item,
+                    dataSolicitacao: this.safeToDate(item.dataSolicitacao, new Date())
+                }));
+            }
+        }
         const snap = await db.collection('reposicoes').get();
         const list = snap.docs.map(doc => {
             const data = doc.data();
@@ -522,6 +535,8 @@ const DbService = {
         });
         // Ordenação em JS (evita necessidade de índice composto no Firestore)
         list.sort((a, b) => b.dataSolicitacao - a.dataSolicitacao);
+        this._salvarNoCache('reposicoes', list);
+        this.cacheStats.leiturasReais += list.length;
         return list;
     },
 
@@ -529,14 +544,26 @@ const DbService = {
         data.dataSolicitacao = firebase.firestore.FieldValue.serverTimestamp();
         data.status = 'Pendente';
         await db.collection('reposicoes').add(data);
+        this.limparCache('reposicoes');
     },
 
     async updateStatusReposicao(id, status) {
         await db.collection('reposicoes').doc(id).update({ status });
+        this.limparCache('reposicoes');
     },
 
     // --- AVISOS CRUD ---
     async getAvisos() {
+        if (this.isCacheValido('avisos')) {
+            const data = this._obterDoCache('avisos');
+            if (data) {
+                this.cacheStats.leiturasEconomizadas += data.length || 1;
+                return data.map(item => ({
+                    ...item,
+                    data: this.safeToDate(item.data, new Date())
+                }));
+            }
+        }
         const snap = await db.collection('avisos').get();
         let list = snap.docs.map(doc => {
             const data = doc.data();
@@ -557,16 +584,20 @@ const DbService = {
 
         // Sort by date descending
         list.sort((a, b) => b.data - a.data);
+        this._salvarNoCache('avisos', list);
+        this.cacheStats.leiturasReais += list.length;
         return list;
     },
 
     async saveAviso(data) {
         data.data = firebase.firestore.FieldValue.serverTimestamp();
         await db.collection('avisos').add(data);
+        this.limparCache('avisos');
     },
 
     async deleteAviso(id) {
         await db.collection('avisos').doc(id).delete();
+        this.limparCache('avisos');
     },
 
     // --- CULTOS CRUD ---
@@ -792,11 +823,9 @@ const DbService = {
     },
 
     async getRepositores() {
-        const snap = await db.collection('membros')
-            .where('eRepositor', '==', true)
-            .where('status', '==', 'ativo')
-            .get();
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Aproveita o cache de membros em vez de realizar query Firestore adicional
+        const todos = await this.getMembros();
+        return todos.filter(m => m.eRepositor === true && m.status === 'ativo');
     },
 
     async addNotificacao(data) {
@@ -864,8 +893,12 @@ const DbService = {
         await db.collection('mensagens_supervisao').add(msg);
     },
 
-    async getSupervisionMessages() {
-        const snap = await db.collection('mensagens_supervisao').where('lida', '==', false).get();
+    async getSupervisionMessages(somenteNaoLidas = true) {
+        let query = db.collection('mensagens_supervisao');
+        if (somenteNaoLidas) {
+            query = query.where('lida', '==', false);
+        }
+        const snap = await query.get();
         let list = snap.docs.map(doc => {
             const data = doc.data();
             return {
@@ -883,12 +916,21 @@ const DbService = {
     },
 
     async getMuralConfig() {
+        if (this.isCacheValido('muralConfig')) {
+            const data = this._obterDoCache('muralConfig');
+            if (data) {
+                this.cacheStats.leiturasEconomizadas += 1;
+                return data;
+            }
+        }
         try {
             const doc = await db.collection('configuracoes').doc('mural').get();
-            if (doc.exists) {
-                return doc.data();
+            const result = doc.exists ? doc.data() : null;
+            if (result) {
+                this._salvarNoCache('muralConfig', result);
+                this.cacheStats.leiturasReais += 1;
             }
-            return null;
+            return result;
         } catch (e) {
             console.error("Erro ao buscar configuracoes do mural:", e);
             return null;
@@ -897,6 +939,7 @@ const DbService = {
 
     async saveMuralConfig(data) {
         await db.collection('configuracoes').doc('mural').set(data);
+        this.limparCache('muralConfig');
     },
 
     // --- HISTï¿½RICO DE SUBSTITUIï¿½ï¿½ES ---
@@ -933,21 +976,21 @@ const DbService = {
     },
 
     async getHistoricoAfastamentos() {
-        const snap = await db.collection('membros').get();
+        // Aproveita o cache de membros em vez de realizar nova leitura Firestore
+        const membros = await this.getMembros();
         const list = [];
-        snap.docs.forEach(doc => {
-            const m = doc.data();
+        membros.forEach(m => {
             if (m.afastamentosHistorico && Array.isArray(m.afastamentosHistorico)) {
                 m.afastamentosHistorico.forEach(af => {
                     list.push({
-                        membroId: doc.id,
+                        membroId: m.id,
                         membroNome: m.nome,
                         ...af
                     });
                 });
             } else if (m.afastamento) {
                 list.push({
-                    membroId: doc.id,
+                    membroId: m.id,
                     membroNome: m.nome,
                     ...m.afastamento
                 });
@@ -1020,6 +1063,14 @@ const DbService = {
     },
 
     async getIndisponibilidades(membroId) {
+        // Consulta cache de membros antes de ir ao Firestore
+        if (this.isCacheValido('membros')) {
+            const cached = this._obterDoCache('membros');
+            if (cached) {
+                const m = cached.find(x => x.id === membroId);
+                if (m) return m.indisponibilidades_mensais || {};
+            }
+        }
         const doc = await db.collection('membros').doc(membroId).get();
         if (!doc.exists) return {};
         return doc.data().indisponibilidades_mensais || {};
@@ -1027,14 +1078,14 @@ const DbService = {
 
     // Retorna mapa { membroId: { nome, diasMap } } para visï¿½o do admin
     async getAllIndisponibilidades() {
-        const snap = await db.collection('membros').get();
+        // Aproveita o cache de membros em vez de realizar nova leitura Firestore
+        const membros = await this.getMembros();
         const result = {};
-        snap.docs.forEach(doc => {
-            const d = doc.data();
-            if (d.indisponibilidades_mensais && Object.keys(d.indisponibilidades_mensais).length > 0) {
-                result[doc.id] = {
-                    nome: d.nome,
-                    diasMap: d.indisponibilidades_mensais
+        membros.forEach(m => {
+            if (m.indisponibilidades_mensais && Object.keys(m.indisponibilidades_mensais).length > 0) {
+                result[m.id] = {
+                    nome: m.nome,
+                    diasMap: m.indisponibilidades_mensais
                 };
             }
         });
@@ -1117,22 +1168,25 @@ const DbService = {
 
     async getMetricasSaudeSistema() {
         try {
-            const membrosSnap = await db.collection('membros').get();
-            const escalasSnap = await db.collection('escalas').get();
-            const produtosSnap = await db.collection('produtos').get();
-            
-            // Coleï¿½ï¿½o arquivada
+            // Reutiliza caches de membros, escalas e produtos (evita 3 leituras Firestore)
+            const [membros, escalas, produtos] = await Promise.all([
+                this.getMembros(),
+                this.getEscalas(),
+                this.getProdutos()
+            ]);
+
+            // escalas_arquivadas nao tem cache dedicado -- leitura direta necessaria
             const arquivadosSnap = await db.collection('escalas_arquivadas').get();
 
             return {
-                membrosAtivos: membrosSnap.size,
-                escalasAtivas: escalasSnap.size,
-                produtosCadastrados: produtosSnap.size,
+                membrosAtivos: membros.length,
+                escalasAtivas: escalas.length,
+                produtosCadastrados: produtos.length,
                 escalasArquivadas: arquivadosSnap.size,
-                totalDocumentos: membrosSnap.size + escalasSnap.size + produtosSnap.size + arquivadosSnap.size
+                totalDocumentos: membros.length + escalas.length + produtos.length + arquivadosSnap.size
             };
         } catch (e) {
-            console.error("Erro ao computar mï¿½tricas de saï¿½de:", e);
+            console.error("Erro ao computar metricas de saude:", e);
             return {
                 membrosAtivos: 0,
                 escalasAtivas: 0,
@@ -1143,4 +1197,6 @@ const DbService = {
         }
     }
 };
+
+
 
