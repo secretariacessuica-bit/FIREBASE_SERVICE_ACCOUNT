@@ -7388,6 +7388,7 @@ const App = {
         return results;
     },
 
+    getSectorFriendlyName(sectorId) {
         return this.sectorsData[sectorId]?.nome || sectorId || 'Sem Setor';
     },
 
