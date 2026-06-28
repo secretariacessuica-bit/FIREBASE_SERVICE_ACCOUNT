@@ -7269,7 +7269,118 @@ const App = {
         }
     },
 
-    getSectorFriendlyName(sectorId) {
+    // --- FASE 3.1: IA DE SUBSTITUIÇÃO SILENCIOSA ---
+    async runIntelligentSubstitutionEngineSilently(rejections, allEscalas) {
+        if (!rejections || rejections.length === 0) return;
+        
+        // 1. Controle de permissão operacional (apenas Admin)
+        if (!this.currentUser || this.currentUser.perfil !== 'admin') {
+            return;
+        }
+
+        // 2. Controle para evitar execuções repetidas no mesmo estado de pendências
+        const currentHash = rejections.map(r => r.id).sort().join('_');
+        if (this._lastRejectionsHash === currentHash) {
+            return; // Já analisou este exato cenário no render anterior
+        }
+        this._lastRejectionsHash = currentHash;
+
+        try {
+            console.log(`\n[IA SUBSTITUIÇÃO] Iniciando análise silenciosa para ${rejections.length} pendências...`);
+            
+            // 3. Reaproveitamento do cache interno do DbService
+            const membros = await DbService.getMembros();
+            
+            // Reaproveita escalas já em memória na renderização atual
+            const escalas = allEscalas || await DbService.getEscalas();
+            
+            const hojeStr = new Date().toISOString().split('T')[0];
+
+            for (const pendencia of rejections) {
+                console.log(`[IA SUBSTITUIÇÃO] Pendência: culto ${pendencia.cultoNome || pendencia.cultoId} / função ${pendencia.funcao}`);
+                
+                // Critérios eliminatórios
+                const elegiveis = membros.filter(m => {
+                    if (m.statusOperacional !== 'Disponível') return false;
+                    
+                    const noSetor = m.setor === pendencia.setorId || (m.setores && m.setores.includes(pendencia.setorId));
+                    if (!noSetor) return false;
+                    
+                    if (m.funcaoPrincipal !== pendencia.funcao && m.funcaoSecundaria !== pendencia.funcao && m.funcao !== pendencia.funcao) return false;
+                    if (m.id === pendencia.membroId) return false;
+                    if (m.participaSubstituicao === 'Não' || m.participaSubstituicao === false) return false;
+                    
+                    const conflito = escalas.some(esc => 
+                        esc.membroId === m.id && 
+                        (esc.cultoId === pendencia.cultoId || (esc.data === pendencia.data && esc.horarioInicio === pendencia.horarioInicio)) &&
+                        esc.statusPresenca !== 'Recusada'
+                    );
+                    if (conflito) return false;
+                    
+                    if (m.disponibilidade && m.disponibilidade.indisponibilidades) {
+                        const isIndisponivel = m.disponibilidade.indisponibilidades.some(ind => {
+                            return pendencia.data >= ind.inicio && pendencia.data <= ind.fim;
+                        });
+                        if (isIndisponivel) return false;
+                    }
+
+                    return true;
+                });
+
+                console.log(`[IA SUBSTITUIÇÃO] Candidatos elegíveis: ${elegiveis.length}`);
+
+                if (elegiveis.length === 0) {
+                    console.log(`[IA SUBSTITUIÇÃO] Nenhum candidato elegível encontrado para a pendência ${pendencia.id}\n`);
+                    continue;
+                }
+
+                // Critérios classificatórios
+                const candidatos = elegiveis.map(m => {
+                    const isFuncaoPrincipal = m.funcaoPrincipal === pendencia.funcao || m.funcao === pendencia.funcao;
+                    const funcaoPontos = isFuncaoPrincipal ? 50 : 20;
+                    
+                    const mEscalas = escalas.filter(esc => esc.membroId === m.id);
+                    const scoreObj = DbService.calcularScoreConfiabilidade(mEscalas);
+                    const scoreBase = scoreObj.emAvaliacao ? 22.5 : (scoreObj.score / 100) * 30;
+                    const logScoreOriginal = scoreObj.emAvaliacao ? 'em avaliação (75%)' : `${scoreObj.score}%`;
+                    
+                    const escalasPassadas = mEscalas.filter(esc => esc.data < hojeStr && esc.statusPresenca === 'Confirmada');
+                    escalasPassadas.sort((a, b) => new Date(b.data) - new Date(a.data));
+                    
+                    let diasSemServir = 999;
+                    if (escalasPassadas.length > 0) {
+                        const lastData = new Date(escalasPassadas[0].data);
+                        const hojeData = new Date(hojeStr);
+                        diasSemServir = Math.ceil(Math.abs(hojeData - lastData) / (1000 * 60 * 60 * 24));
+                    }
+                    
+                    const data30diasAtras = new Date();
+                    data30diasAtras.setDate(data30diasAtras.getDate() - 30);
+                    const str30DiasAtras = data30diasAtras.toISOString().split('T')[0];
+                    const escalasRecentesCount = escalasPassadas.filter(esc => esc.data >= str30DiasAtras).length;
+                    
+                    const penalidadeRecentes = escalasRecentesCount * 10;
+                    const bonusDias = Math.min(diasSemServir, 60); 
+                    
+                    const scoreTotal = funcaoPontos + scoreBase + bonusDias - penalidadeRecentes;
+
+                    return {
+                        membro: m,
+                        scoreTotal,
+                        motivo: `função ${isFuncaoPrincipal ? 'principal' : 'secundária'}, score ${logScoreOriginal}, último serviço há ${diasSemServir === 999 ? 'nunca' : diasSemServir + ' dias'}, ${escalasRecentesCount} escalas recentes`
+                    };
+                });
+
+                candidatos.sort((a, b) => b.scoreTotal - a.scoreTotal);
+                const recomendado = candidatos[0];
+                
+                console.log(`[IA SUBSTITUIÇÃO] Recomendado: ${recomendado.membro.nome} | motivo: ${recomendado.motivo}\n`);
+            }
+        } catch (e) {
+            console.error('[IA SUBSTITUIÇÃO] Erro no motor lógico silencioso:', e);
+        }
+    },
+
         return this.sectorsData[sectorId]?.nome || sectorId || 'Sem Setor';
     },
 
@@ -7308,6 +7419,10 @@ const App = {
 
             // Apenas cultos futuros ou do dia de hoje ficam no painel
             const rejections = rejectionsAll.filter(e => e.data >= hojeStr);
+            
+            // FASE 3.1: Chamada silenciosa da IA de substituição (apenas console)
+            this.runIntelligentSubstitutionEngineSilently(rejections, allEscalas).catch(e => console.error(e));
+
             const messages = await DbService.getSupervisionMessages();
             
             const totalAlerts = standbys.length + rejections.length + messages.length;
