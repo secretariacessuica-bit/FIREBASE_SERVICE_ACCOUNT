@@ -3605,6 +3605,109 @@ const App = {
         }
     },
 
+    getPresenceBadgeHtml(statusPresenca) {
+        if (statusPresenca === 'Confirmada') {
+            return `<span class="badge badge-active">Trabalhou</span>`;
+        }
+        if (statusPresenca === 'Recusada') {
+            return `<span class="badge" style="background:#FEE2E2; color:#B91C1C; font-weight:500;">Recusada</span>`;
+        }
+        if (statusPresenca === 'Ausente') {
+            return `<span class="badge" style="background:#FEF2F2; color:#EF4444; border: 1px solid #FCA5A5; font-weight:500;">Faltou</span>`;
+        }
+        if (statusPresenca === 'Justificado') {
+            return `<span class="badge" style="background:#FEF3C7; color:#D97706; border: 1px solid #FCD34D; font-weight:500;">Justificado</span>`;
+        }
+        if (statusPresenca === 'Substituido') {
+            return `<span class="badge" style="background:#E2E8F0; color:#475569; font-weight:500;">Substituído</span>`;
+        }
+        return `<span class="badge badge-inactive">Pendente</span>`;
+    },
+
+    async openFechamentoCultoModal() {
+        if (!this.adminSelectedCultoId) {
+            this.showToast('Por favor, selecione um culto primeiro.', 'warning');
+            return;
+        }
+
+        try {
+            document.getElementById('fechamento-culto-id').value = this.adminSelectedCultoId;
+            const container = document.getElementById('fechamento-membros-lista');
+            container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fa-solid fa-spinner fa-spin fa-lg" style="color:var(--teal-primary);"></i><p style="margin-top:10px; font-size:0.85rem; color:var(--slate-gray);">Buscando obreiros...</p></div>';
+            
+            document.getElementById('modal-culto-fechamento').classList.add('active');
+
+            const escalas = await DbService.getEscalas(null, null, null, this.adminSelectedCultoId);
+            
+            let html = '';
+            escalas.forEach(escala => {
+                if (!escala.membroId || escala.membroNome === 'Vaga Pendente') return;
+                
+                const setorNome = this.sectorsData[escala.setorId]?.nome || escala.setorId;
+                
+                html += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F5F9; padding-bottom:8px; gap: 10px;">
+                        <div style="text-align:left;">
+                            <span style="font-weight:600; font-size:0.85rem; color:var(--navy-dark);">${escala.membroNome}</span><br>
+                            <span style="font-size:0.75rem; color:var(--slate-gray); font-weight:500;">${setorNome} • ${escala.funcao}</span>
+                        </div>
+                        <select class="presence-select select-clean" 
+                                data-escala-id="${escala.id}" 
+                                style="padding: 4px 8px; font-size: 0.8rem; border: 1px solid #CBD5E1; border-radius: 4px; background:#fff; color:var(--navy-dark); cursor:pointer;">
+                            <option value="Confirmada" ${escala.statusPresenca === 'Confirmada' ? 'selected' : ''}>Trabalhou</option>
+                            <option value="Ausente" ${escala.statusPresenca === 'Ausente' ? 'selected' : ''}>Faltou</option>
+                            <option value="Justificado" ${escala.statusPresenca === 'Justificado' ? 'selected' : ''}>Justificou Ausência</option>
+                            <option value="Substituido" ${escala.statusPresenca === 'Substituido' ? 'selected' : ''}>Foi Substituído</option>
+                            <option value="Pendente" ${escala.statusPresenca === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                            <option value="Recusada" ${escala.statusPresenca === 'Recusada' ? 'selected' : ''}>Recusada</option>
+                        </select>
+                    </div>
+                `;
+            });
+
+            if (!html) {
+                html = '<p style="text-align:center; color:var(--slate-gray); padding:10px; font-size:0.85rem; margin:0;">Nenhum voluntário escalado para este culto.</p>';
+            }
+            container.innerHTML = html;
+        } catch (e) {
+            console.error("Erro ao carregar modal de fechamento:", e);
+            this.showToast('Erro ao carregar escala para fechamento.', 'danger');
+            this.closeFechamentoCultoModal();
+        }
+    },
+
+    closeFechamentoCultoModal() {
+        document.getElementById('modal-culto-fechamento').classList.remove('active');
+    },
+
+    async handleFechamentoCultoSubmit(event) {
+        event.preventDefault();
+        const cultoId = document.getElementById('fechamento-culto-id').value;
+        
+        const statusEscalas = [];
+        document.querySelectorAll('#fechamento-membros-lista .presence-select').forEach(select => {
+            statusEscalas.push({
+                escalaId: select.dataset.escalaId,
+                statusPresenca: select.value
+            });
+        });
+
+        try {
+            await DbService.fecharCulto(cultoId, statusEscalas);
+            this.closeFechamentoCultoModal();
+            this.showToast('Fechamento de culto concluído com sucesso!', 'success');
+            
+            if (this.adminSelectedCultoId === cultoId) {
+                this.selectAdminCulto(cultoId);
+            } else {
+                this.loadAdminEscalas();
+            }
+        } catch (e) {
+            console.error("Erro ao salvar fechamento:", e);
+            this.showAlert('Erro ao salvar o fechamento do culto no banco de dados.');
+        }
+    },
+
     // --- REPOSIÇÃO (MEMBRO LIMPEZA) ---
     async loadAndRenderMemberReplenish() {
         // Load pre-registered products list
@@ -5294,9 +5397,7 @@ const App = {
                         escalasFunc.forEach((escalaFunc, idx) => {
                             const tr = document.createElement('tr');
                             
-                            let pBadge = `<span class="badge badge-inactive">${escalaFunc.statusPresenca}</span>`;
-                            if (escalaFunc.statusPresenca === 'Confirmada') pBadge = `<span class="badge badge-active">${escalaFunc.statusPresenca}</span>`;
-                            if (escalaFunc.statusPresenca === 'Recusada') pBadge = `<span class="badge" style="background:#FEE2E2; color:#B91C1C;">${escalaFunc.statusPresenca}</span>`;
+                            let pBadge = this.getPresenceBadgeHtml(escalaFunc.statusPresenca);
                             
                             let timeDetails = '';
                             if (isOutsideCulto) {
@@ -5378,9 +5479,7 @@ const App = {
                     const tr = document.createElement('tr');
                     tr.style.background = '#FFFBEB'; // light amber highlight
                     
-                    let pBadge = `<span class="badge badge-inactive">${escalaFunc.statusPresenca}</span>`;
-                    if (escalaFunc.statusPresenca === 'Confirmada') pBadge = `<span class="badge badge-active">${escalaFunc.statusPresenca}</span>`;
-                    if (escalaFunc.statusPresenca === 'Recusada') pBadge = `<span class="badge" style="background:#FEE2E2; color:#B91C1C;">${escalaFunc.statusPresenca}</span>`;
+                    let pBadge = this.getPresenceBadgeHtml(escalaFunc.statusPresenca);
                     
                     tr.innerHTML = `
                         <td style="font-weight:600; vertical-align:middle;">
@@ -5415,7 +5514,7 @@ const App = {
             
             const publishBtn = document.querySelector('.publish-scale-btn');
             if (publishBtn) {
-                if (c && c.status === 'Confirmado') {
+                if (c && (c.status === 'Confirmado' || c.status === 'Finalizado')) {
                     publishBtn.innerText = 'Escala Publicada';
                     publishBtn.disabled = true;
                     publishBtn.style.opacity = '0.6';
@@ -8865,7 +8964,7 @@ const App = {
         // Mapear último serviço de cada membro
         const lastScaledMap = {};
         escalas.forEach(e => {
-            if (e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+            if (e.membroId && e.statusPresenca === 'Confirmada') {
                 if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
                     lastScaledMap[e.membroId] = e.data;
                 }
@@ -9192,7 +9291,7 @@ const App = {
             // 2. Calcular scores e ordenar
             const lastScaledMap = {};
             escalas.forEach(e => {
-                if (e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                if (e.membroId && e.statusPresenca === 'Confirmada') {
                     if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
                         lastScaledMap[e.membroId] = e.data;
                     }
@@ -9375,7 +9474,7 @@ const App = {
             // Map members to their last scaled date
             const lastScaledMap = {};
             escalas.forEach(e => {
-                if (e.membroId && e.statusPresenca !== 'Recusado' && e.statusPresenca !== 'Recusada') {
+                if (e.membroId && e.statusPresenca === 'Confirmada') {
                     if (!lastScaledMap[e.membroId] || e.data > lastScaledMap[e.membroId]) {
                         lastScaledMap[e.membroId] = e.data;
                     }

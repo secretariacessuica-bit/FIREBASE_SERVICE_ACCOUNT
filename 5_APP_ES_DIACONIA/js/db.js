@@ -790,6 +790,27 @@ const DbService = {
         });
     },
 
+    async fecharCulto(cultoId, statusEscalas) {
+        await db.collection('cultos').doc(cultoId).update({
+            status: 'Finalizado',
+            fechadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        const batch = db.batch();
+        statusEscalas.forEach(item => {
+            const escalaRef = db.collection('escalas').doc(item.escalaId);
+            batch.update(escalaRef, {
+                statusPresenca: item.statusPresenca,
+                statusServico: 'Finalizado'
+            });
+        });
+
+        await batch.commit();
+
+        this.limparCache('cultos');
+        this.limparCache('escalas');
+    },
+
     async getServicosEmAndamento() {
         const snap = await db.collection('servicos')
             .where('status', '==', 'Em andamento')

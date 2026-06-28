@@ -785,6 +785,7 @@
                                                 <a onclick="App.handleDeleteActiveCulto()" id="action-delete-culto" class="delete" style="padding: 8px 12px; display: block; font-size: 0.85rem; color: #EF4444; cursor: pointer; text-decoration: none; border-top: 1px solid #F1F5F9;"><i class="fa-solid fa-trash" style="margin-right: 5px;"></i> Excluir Culto</a>
                                                 <a onclick="App.openEscalaFormModal()" style="padding: 8px 12px; display: block; font-size: 0.85rem; color: var(--teal-primary); cursor: pointer; text-decoration: none; border-top: 1px solid #F1F5F9;"><i class="fa-solid fa-user-plus" style="margin-right: 5px;"></i> Montar Escala</a>
                                                 <a onclick="App.openDuplicarCultoModal()" style="padding: 8px 12px; display: block; font-size: 0.85rem; color: var(--teal-primary); cursor: pointer; text-decoration: none; border-top: 1px solid #F1F5F9;"><i class="fa-solid fa-copy" style="margin-right: 5px;"></i> Duplicar Culto com Escala</a>
+                                                <a onclick="App.openFechamentoCultoModal()" id="action-fechamento-culto" style="padding: 8px 12px; display: block; font-size: 0.85rem; color: var(--teal-primary); cursor: pointer; text-decoration: none; border-top: 1px solid #F1F5F9;"><i class="fa-solid fa-lock" style="margin-right: 5px;"></i> Fechar Culto</a>
                                             </div>
                                         </div>
                                     </div>
@@ -1697,6 +1698,28 @@
                 <button type="submit" class="btn-primary btn-finish-work" style="margin-top: 10px;">
                     <i class="fa-solid fa-circle-check"></i>
                     Finalizar e Gravar Presença
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal: Fechamento de Culto (Admin) -->
+    <div class="premium-modal" id="modal-culto-fechamento">
+        <div class="modal-content light-bg" style="max-width: 600px; width: 95%;">
+            <button class="modal-close-btn" onclick="App.closeFechamentoCultoModal()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="panel-title" style="margin-bottom: 15px; color: var(--teal-primary);"><i class="fa-solid fa-lock"></i> Fechamento do Culto</h3>
+            <p style="font-size: 0.9rem; color: var(--slate-gray); margin-bottom: 20px;">Homologue a presença real da equipe escalada para este culto.</p>
+            
+            <form id="culto-fechamento-form" onsubmit="App.handleFechamentoCultoSubmit(event)">
+                <input type="hidden" id="fechamento-culto-id">
+                
+                <div id="fechamento-membros-lista" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #E2E8F0; padding: 12px; border-radius: 8px; background: #fff;">
+                    <!-- Rendered dynamically -->
+                </div>
+                
+                <button type="submit" class="btn-primary" style="margin-top: 10px; width: 100%;">
+                    <i class="fa-solid fa-circle-check"></i>
+                    Gravar Fechamento e Presenças
                 </button>
             </form>
         </div>
