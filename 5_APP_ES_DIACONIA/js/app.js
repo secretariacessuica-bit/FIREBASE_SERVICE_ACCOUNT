@@ -1180,6 +1180,69 @@ const App = {
                 return;
             }
 
+            // --- ALERTAS GERENCIAIS (Apenas Admin / Repositor) ---
+            let alertasHtml = '';
+            if (this.currentUser) {
+                const isAdminAlerts = this.currentUser.perfil === 'admin';
+                const isRepositorAlerts = this.currentUser.eRepositor === true;
+
+                if (isAdminAlerts) {
+                    // Contabilizar funções sem voluntário ou recusadas (somente futuras ou de hoje)
+                    const funcoesVagas = escalas.filter(e => e.data >= hojeStr && e.statusServico !== 'Finalizado' && (!e.membroId || e.statusPresenca === 'Recusada')).length;
+                    
+                    if (funcoesVagas > 0) {
+                        alertasHtml += `
+                            <div class="premium-next-scale-card" onclick="App.navigateTo('view-admin')" style="align-items: center; justify-content: space-between; padding: 12px; cursor: pointer; flex-direction: row; border-left: 4px solid #F59E0B;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="background: rgba(245,158,11,0.15); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fa-solid fa-clipboard-user" style="font-size: 1.1rem; color: #F59E0B;"></i>
+                                    </div>
+                                    <div style="text-align: left;">
+                                        <h4 style="margin: 0; color: white; font-weight: 700; font-size: 0.85rem;">Escalas Incompletas</h4>
+                                        <p style="opacity: 0.8; margin: 2px 0 0 0; font-size: 0.75rem; color: #8AA6A3;">${funcoesVagas} funç${funcoesVagas !== 1 ? 'ões' : 'ão'} precisando de atenção.</p>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right" style="color: #8AA6A3; font-size: 0.8rem;"></i>
+                            </div>
+                        `;
+                    }
+                }
+
+                if (isRepositorAlerts) {
+                    // Prepara o container para reposição utilizando um dado em memória, se existir no futuro (sem consultar DB)
+                    // Por ora, se app.js implementasse this.cachedReposicoes, pegaria.
+                    const reposicoesPendentes = this.cachedReposicoes ? this.cachedReposicoes.filter(r => r.status === 'Pendente').length : 0;
+                    if (reposicoesPendentes > 0) {
+                        alertasHtml += `
+                            <div class="premium-next-scale-card" onclick="App.openRepositorCompraModal()" style="align-items: center; justify-content: space-between; padding: 12px; cursor: pointer; flex-direction: row; border-left: 4px solid #F59E0B;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="background: rgba(245,158,11,0.15); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fa-solid fa-box-open" style="font-size: 1.1rem; color: #F59E0B;"></i>
+                                    </div>
+                                    <div style="text-align: left;">
+                                        <h4 style="margin: 0; color: white; font-weight: 700; font-size: 0.85rem;">Estoque e Reposição</h4>
+                                        <p style="opacity: 0.8; margin: 2px 0 0 0; font-size: 0.75rem; color: #8AA6A3;">${reposicoesPendentes} item${reposicoesPendentes !== 1 ? 'ns' : ''} aguardando compra.</p>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right" style="color: #8AA6A3; font-size: 0.8rem;"></i>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            const alertasContainer = document.getElementById('alertas-gerenciais-container');
+            const alertasList = document.getElementById('alertas-gerenciais-list');
+            if (alertasContainer && alertasList) {
+                if (alertasHtml !== '') {
+                    alertasList.innerHTML = alertasHtml;
+                    alertasContainer.style.display = 'block';
+                } else {
+                    alertasContainer.style.display = 'none';
+                }
+            }
+            // -------------------------------------------------------------
+
             // Render Sector Cards
             container.innerHTML = '';
             const userSetor = this.currentUser ? this.currentUser.setor : null;
