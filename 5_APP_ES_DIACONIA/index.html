@@ -96,13 +96,25 @@
                     <!-- Date Banner (Keep existing element container for backward compatibility if needed, or hide) -->
                     <div id="selector-date-banner-container" style="display: none;"></div>
 
-                    <!-- Bloco 1: Sua Próxima Escala (Secundário - Agora Primeiro) -->
-                    <div class="mural-header-row" style="margin-top: 10px; margin-bottom: 8px; text-align: left;">
-                        <span style="font-size: 0.72rem; font-weight: 700; color: #8AA6A3; letter-spacing: 1.2px; text-transform: uppercase;">Sua Próxima Escala</span>
+                    <!-- ÁREA DE MISSÃO PRIMÁRIA -->
+                    <div id="missao-primaria-container" style="margin-top: 10px; margin-bottom: 20px;">
+                        <div class="mural-header-row" style="margin-bottom: 8px; text-align: left;">
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #8AA6A3; letter-spacing: 1.2px; text-transform: uppercase;">Missão Primária</span>
+                        </div>
+                        <div id="premium-next-scale-container">
+                            <!-- Dynamic next scale injected here by JS -->
+                            <div class="skeleton-loader" style="height: 100px; border-radius: 16px;"></div>
+                        </div>
                     </div>
-                    <div id="premium-next-scale-container" style="margin-bottom: 20px;">
-                        <!-- Dynamic next scale injected here by JS -->
-                        <div class="skeleton-loader" style="height: 100px; border-radius: 16px;"></div>
+
+                    <!-- GRID DE SETORES (Posição Secundária) -->
+                    <div id="setores-secundarios-container" style="margin-bottom: 20px;">
+                        <div class="mural-header-row" style="margin-bottom: 8px; text-align: left;">
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #8AA6A3; letter-spacing: 1.2px; text-transform: uppercase;">Setores Operacionais</span>
+                        </div>
+                        <div class="sector-grid" id="sector-selection-list">
+                            <!-- Dynamic rendering from JS -->
+                        </div>
                     </div>
 
                     <!-- Bloco 2: Carrossel de Comunicados (Mural - Protagonista) -->
@@ -2242,9 +2254,7 @@
             <div class="modal-content glass-modal-content">
                 <button class="modal-close-btn" onclick="App.closeSectorSelectorModal()"><i class="fa-solid fa-xmark"></i></button>
                 <h3 class="panel-title" style="margin-bottom: 20px; text-align: center; color: #ffffff !important;"><i class="fa-solid fa-layer-group" style="color: var(--teal-primary); margin-right: 8px;"></i>Selecione o Setor</h3>
-                <div class="sector-grid" id="sector-selection-list">
-                    <!-- Dynamic rendering from JS -->
-                </div>
+                <!-- Grid de setores foi movido para a Home -->
             </div>
         </div>
         <!-- [/LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] -->

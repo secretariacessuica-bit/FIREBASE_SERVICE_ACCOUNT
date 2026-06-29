@@ -1040,9 +1040,9 @@ const App = {
                 } else {
                     premiumNextContainer.innerHTML = `
                         <div class="premium-next-scale-card" onclick="App.handleMobileNavClick('escala')" style="align-items: center; text-align: center; justify-content: center; padding: 12px; cursor: pointer;">
-                            <i class="fa-regular fa-calendar-times" style="font-size: 1.5rem; opacity: 0.5; margin-bottom: 5px; color: white;"></i>
-                            <h4 style="margin: 0; color: white; font-weight: 700; font-size: 0.9rem;">Escala Livre</h4>
-                            <p style="opacity: 0.8; margin: 0; font-size: 0.8rem; color: #8AA6A3;">Toque para ver sua escala e equipe.</p>
+                            <i class="fa-regular fa-calendar-check" style="font-size: 1.5rem; opacity: 0.5; margin-bottom: 5px; color: white;"></i>
+                            <h4 style="margin: 0; color: white; font-weight: 700; font-size: 0.9rem;">Nenhuma Pendência</h4>
+                            <p style="opacity: 0.8; margin: 0; font-size: 0.8rem; color: #8AA6A3;">Tudo certo por enquanto. Toque para ver a escala geral.</p>
                         </div>
                     `;
                 }
@@ -1682,6 +1682,11 @@ const App = {
 
             // Smart check for non-scheduled members (v3.6.22)
             const userSectorEscalas = escalas.filter(e => e.membroId === this.currentUser.id && e.statusPresenca !== 'Recusada');
+            
+            // Modo Imersivo: Persistência do Plantão
+            const hasActiveService = userSectorEscalas.some(e => e.statusServico === 'Em andamento');
+            this.toggleBottomNav(!hasActiveService);
+
             if (userSectorEscalas.length === 0 && !this.forceShowFullScales) {
                 console.log('userSectorEscalas', 'Vazio (0 escalas)');
                 this.renderNoScalesActionCards(container);
@@ -3624,6 +3629,7 @@ const App = {
             );
             // Save active service ID to local session
             localStorage.setItem(`active_service_${escalaId}`, servicoId);
+            this.toggleBottomNav(false); // Modo Imersivo: Plantão Iniciado
             this.showToast('Serviço iniciado! Bom trabalho.', 'success');
             this.loadAndRenderMemberScales();
         } catch (e) {
@@ -3659,6 +3665,7 @@ const App = {
         try {
             await DbService.finalizarServico(servicoId, escalaId, obs);
             localStorage.removeItem(`active_service_${escalaId}`);
+            this.toggleBottomNav(true); // Modo Imersivo: Plantão Encerrado
             
             this.closeServicoFechamentoModal();
             this.showToast('Trabalho concluído e presença registrada!', 'success');
@@ -3688,6 +3695,7 @@ const App = {
     },
 
     async openFechamentoCultoModal() {
+        this.toggleBottomNav(false); // Modo Imersivo: Fechamento de Culto
         if (!this.adminSelectedCultoId) {
             this.showToast('Por favor, selecione um culto primeiro.', 'warning');
             return;
@@ -3740,6 +3748,7 @@ const App = {
     },
 
     closeFechamentoCultoModal() {
+        this.toggleBottomNav(true); // Modo Imersivo: Restaurar
         document.getElementById('modal-culto-fechamento').classList.remove('active');
     },
 
