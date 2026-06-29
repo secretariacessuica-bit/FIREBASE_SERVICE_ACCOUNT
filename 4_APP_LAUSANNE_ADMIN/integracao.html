@@ -8,8 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js?v=70.3.78"></script>
-    <script src="js/auth-manager.js?v=70.3.78"></script>
+    <script src="js/firebase-config.js?v=70.3.79"></script>
+    <script src="js/auth-manager.js?v=70.3.79"></script>
 
     <script>
         (function() {
@@ -634,62 +634,110 @@
     </div>
 
     <script>
+        var _previousNovosCount = -1;
+        var currentUserRole = null;
+        var currentUserData = null;
         var db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
         var _monitors = [];
         var _dataCache = {};
-        var _previousNovosCount = -1;
 
         // ========== AUTH ==========
-        window.addEventListener('message', function(e) {
-            if (e.data && e.data.type === 'MASTER_BYPASS_SIGNAL') {
-                if (firebase.auth().currentUser || window._autoLogging) return;
-                window._autoLogging = true;
-                AuthManager.login('integracao', e.data.pin).then(r => {
-                    window._autoLogging = false;
-                    if (r.success) initApp();
-                }).catch(() => { window._autoLogging = false; });
-            }
-        });
-
         document.addEventListener('DOMContentLoaded', function() {
-            firebase.auth().onAuthStateChanged(function(user) {
-                if (user) {
-                    initApp();
-                } else {
-                    var pin = localStorage.getItem('current_session_pin');
-                    if (pin && pin.trim()) {
-                        window._autoLogging = true;
-                        AuthManager.login('integracao', pin).then(r => {
-                            window._autoLogging = false;
-                            if (r.success) initApp();
-                        }).catch(() => { window._autoLogging = false; });
+            firebase.auth().onAuthStateChanged(async function(user) {
+                if (!user) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                try {
+                    const doc = await db.collection("users").doc(user.uid).get();
+                    if (!doc.exists) {
+                        window.location.href = 'index.html';
+                        return;
                     }
+                    const data = doc.data();
+                    if (data.ativo !== true) {
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    if (data.role !== "monitor" && data.role !== "admin") {
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    initApp();
+                } catch (error) {
+                    console.error("Erro na validação independente:", error);
+                    window.location.href = 'index.html';
                 }
             });
         });
 
         // ========== INIT ==========
         function initApp() {
-            loadMonitors();
-            listenNovos();
-            listenMonitoramento();
-            listenPosSaida();
-            listenConcluidos();
+            var user = firebase.auth().currentUser;
+            if (!user) return;
+
+            db.collection('users').doc(user.uid).get().then(doc => {
+                if (doc.exists) {
+                    currentUserData = doc.data();
+                    currentUserRole = currentUserData.role;
+                }
+                loadMonitors();
+                listenNovos();
+                listenMonitoramento();
+                listenPosSaida();
+                listenConcluidos();
+                applyTabPermissions();
+            }).catch(err => {
+                console.error("Error loading user info in integracao:", err);
+                loadMonitors();
+                listenNovos();
+                listenMonitoramento();
+                listenPosSaida();
+                listenConcluidos();
+            });
+        }
+
+        function applyTabPermissions() {
+            if (currentUserRole === 'monitor') {
+                var navNovos = document.getElementById('nav-novos');
+                if (navNovos) navNovos.style.display = 'none';
+                
+                var pills = document.querySelectorAll('.tab-pill');
+                pills.forEach(pill => {
+                    if (pill.getAttribute('onclick') && pill.getAttribute('onclick').includes("'novos'")) {
+                        pill.style.display = 'none';
+                    }
+                });
+
+                var activeTab = document.getElementById('tab-novos');
+                if (activeTab && activeTab.classList.contains('active')) {
+                    switchTab('monitor', document.getElementById('nav-monitor'));
+                }
+            }
         }
 
         function loadMonitors() {
-            db.collection('monitores').where('active', '==', true).get().then(snap => {
+            db.collection('users').where('role', '==', 'monitor').where('ativo', '==', true).get().then(snap => {
                 _monitors = [];
-                snap.forEach(doc => _monitors.push({ id: doc.id, ...doc.data() }));
+                snap.forEach(doc => {
+                    var data = doc.data();
+                    _monitors.push({ id: doc.id, name: data.nome || data.name || '', ...data });
+                });
             });
         }
 
         // ========== LISTENERS ==========
         function listenNovos() {
-            db.collection('integracao')
+            var query = db.collection('integracao')
               .where('integ_stage', '==', 'Novos Amigos')
-              .where('status', '==', 'em_integracao')
-              .onSnapshot(snap => {
+              .where('status', '==', 'em_integracao');
+
+            var user = firebase.auth().currentUser;
+            if (currentUserRole === 'monitor' && user) {
+                query = query.where('monitorId', '==', user.uid);
+            }
+
+            query.onSnapshot(snap => {
                 var count = snap.size;
                 updateBadge('novos', count);
 
@@ -715,10 +763,16 @@
         }
 
         function listenMonitoramento() {
-            db.collection('integracao')
+            var query = db.collection('integracao')
               .where('integ_stage', '==', 'Em Monitoramento')
-              .where('status', '==', 'em_integracao')
-              .onSnapshot(snap => {
+              .where('status', '==', 'em_integracao');
+
+            var user = firebase.auth().currentUser;
+            if (currentUserRole === 'monitor' && user) {
+                query = query.where('monitorId', '==', user.uid);
+            }
+
+            query.onSnapshot(snap => {
                 updateBadge('monitor', snap.size);
                 if (snap.empty) {
                     document.getElementById('list-monitor').innerHTML = '<div class="empty-state"><i class="fas fa-eye-slash"></i><p>Ninguém em monitoramento</p></div>';
@@ -736,10 +790,16 @@
         }
 
         function listenPosSaida() {
-            db.collection('integracao')
+            var query = db.collection('integracao')
               .where('integ_stage', '==', 'Pós-Saída')
-              .where('status', '==', 'pos_saida')
-              .onSnapshot(snap => {
+              .where('status', '==', 'pos_saida');
+
+            var user = firebase.auth().currentUser;
+            if (currentUserRole === 'monitor' && user) {
+                query = query.where('monitorId', '==', user.uid);
+            }
+
+            query.onSnapshot(snap => {
                 updateBadge('possaida', snap.size);
                 if (snap.empty) {
                     document.getElementById('list-possaida').innerHTML = '<div class="empty-state"><i class="fas fa-seedling"></i><p>Nenhuma pessoa nesta fase</p></div>';
@@ -757,9 +817,15 @@
         }
 
         function listenConcluidos() {
-            db.collection('integracao')
-              .where('status', '==', 'concluido')
-              .onSnapshot(snap => {
+            var query = db.collection('integracao')
+              .where('status', '==', 'concluido');
+
+            var user = firebase.auth().currentUser;
+            if (currentUserRole === 'monitor' && user) {
+                query = query.where('monitorId', '==', user.uid);
+            }
+
+            query.onSnapshot(snap => {
                 if (snap.empty) {
                     document.getElementById('list-concluidos').innerHTML = '<div class="empty-state"><i class="fas fa-check-circle"></i><p>Histórico vazio</p></div>';
                     return;
@@ -986,6 +1052,10 @@
 
             if (!monitor) { alert('Selecione um monitor.'); return; }
 
+            // Find monitor ID
+            var monitorObj = _monitors.find(m => m.name === monitor);
+            var monitorId = monitorObj ? monitorObj.id : '';
+
             var now = firebase.firestore.FieldValue.serverTimestamp();
             var entry = {
                 action: 'Monitor Designado',
@@ -997,6 +1067,8 @@
 
             db.collection('integracao').doc(id).update({
                 monitor: monitor,
+                monitorNome: monitor,
+                monitorId: monitorId,
                 companion: companion,
                 monitoring_start: now,
                 integ_stage: 'Em Monitoramento',
@@ -1023,9 +1095,15 @@
 
             if (!id) return;
 
-            db.collection('integracao').doc(id).update({
+            var updates = {
                 companion: integratorName
-            }).then(() => {
+            };
+            if (currentUserRole === 'monitor' && firebase.auth().currentUser) {
+                updates.monitorId = firebase.auth().currentUser.uid;
+                updates.monitorNome = currentUserData ? (currentUserData.name || currentUserData.nome || '') : '';
+            }
+
+            db.collection('integracao').doc(id).update(updates).then(() => {
                 var entry = {
                     action: 'Integrador Atualizado',
                     by: 'Equipa',
@@ -1033,9 +1111,14 @@
                     stage: 'Em Monitoramento',
                     date: new Date().toLocaleDateString('pt-PT')
                 };
-                return db.collection('integracao').doc(id).update({
+                var timelineUpdates = {
                     timeline: firebase.firestore.FieldValue.arrayUnion(entry)
-                });
+                };
+                if (currentUserRole === 'monitor' && firebase.auth().currentUser) {
+                    timelineUpdates.monitorId = firebase.auth().currentUser.uid;
+                    timelineUpdates.monitorNome = currentUserData ? (currentUserData.name || currentUserData.nome || '') : '';
+                }
+                return db.collection('integracao').doc(id).update(timelineUpdates);
             }).then(() => {
                 closeModal('modal-edit-integrador');
                 showToast('Atualizado', 'Integrador atualizado com sucesso!');
@@ -1161,6 +1244,10 @@
                 timeline: firebase.firestore.FieldValue.arrayUnion(entry)
             };
             if (activities.length > 0) updates.parallel_activities = activities;
+            if (currentUserRole === 'monitor' && firebase.auth().currentUser) {
+                updates.monitorId = firebase.auth().currentUser.uid;
+                updates.monitorNome = currentUserData ? (currentUserData.name || currentUserData.nome || '') : '';
+            }
 
             db.collection('integracao').doc(id).update(updates).then(() => {
                 closeModal('modal-acolhimento');
@@ -1224,12 +1311,18 @@
                 date: new Date().toLocaleDateString('pt-PT')
             };
 
-            db.collection('integracao').doc(id).update({
+            var updates = {
                 integ_stage: 'Pós-Saída',
                 status: 'pos_saida',
                 post_exit_start: now,
                 timeline: firebase.firestore.FieldValue.arrayUnion(entry)
-            }).then(() => {
+            };
+            if (currentUserRole === 'monitor' && firebase.auth().currentUser) {
+                updates.monitorId = firebase.auth().currentUser.uid;
+                updates.monitorNome = currentUserData ? (currentUserData.name || currentUserData.nome || '') : '';
+            }
+
+            db.collection('integracao').doc(id).update(updates).then(() => {
                 closeModal('modal-release');
             }).catch(e => alert('Erro: ' + e.message));
         }
@@ -1277,14 +1370,20 @@
                 date: new Date().toLocaleDateString('pt-PT')
             };
 
-            db.collection('integracao').doc(id).update({
+            var updates = {
                 integ_stage: 'Concluído',
                 status: 'concluido',
                 final_responsible: responsible,
                 final_area: area,
                 concluded_at: firebase.firestore.FieldValue.serverTimestamp(),
                 timeline: firebase.firestore.FieldValue.arrayUnion(entry)
-            }).then(() => {
+            };
+            if (currentUserRole === 'monitor' && firebase.auth().currentUser) {
+                updates.monitorId = firebase.auth().currentUser.uid;
+                updates.monitorNome = currentUserData ? (currentUserData.name || currentUserData.nome || '') : '';
+            }
+
+            db.collection('integracao').doc(id).update(updates).then(() => {
                 closeModal('modal-conclude');
             }).catch(e => alert('Erro: ' + e.message));
         }

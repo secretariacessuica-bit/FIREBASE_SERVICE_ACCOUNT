@@ -7,6 +7,17 @@ const AuthManager = {
     // Current user's role (cached for session) - UPGRADED to localStorage for v60.0 Supernova
     role: (localStorage.getItem('session_role') === 'media' ? 'altar' : localStorage.getItem('session_role')) || null,
 
+    async resolveAuthenticatedRoute(user) {
+        if (!user) throw new Error("Sem usuário autenticado");
+        const snap = await db.collection("users").doc(user.uid).get();
+        if (!snap.exists) throw new Error("Usuário sem permissão de acesso.\nEntre em contato com o administrador.");
+        const data = snap.data();
+        if (data.ativo !== true) throw new Error("Usuário inativo.\nEntre em contato com o administrador.");
+        if (!["admin", "monitor"].includes(data.role)) throw new Error("Perfil inválido.\nEntre em contato com o administrador.");
+        
+        return data.role === "admin" ? "admin" : "integracao";
+    },
+
     /**
      * Initialize Auth Listener
      */
@@ -27,56 +38,19 @@ const AuthManager = {
         firebase.auth().onAuthStateChanged(async (user) => {
             if (user) {
                 console.log("User Authenticated:", user.email);
-                
-                // --- IMMEDIATE FALLBACK v60.0 ---
-                // Set role from email right away so UI doesn't flicker
-                // BUT: Only if not already set by Master PIN login
-                const fallbackRole = this.getRoleFromEmail(user.email);
-                const ssoPin = localStorage.getItem('current_session_pin');
-                const isMasterAuth = ssoPin === 'Lausanne25';
-
-                if (fallbackRole && (!this.role || this.role === 'guest' || !isMasterAuth)) {
-                    this.role = fallbackRole;
+                try {
+                    const route = await this.resolveAuthenticatedRoute(user);
+                    this.role = route === "admin" ? "admin" : "monitor";
                     localStorage.setItem('session_role', this.role);
-                    console.log("Role Applied (Email Fallback):", this.role);
-                }
-
-                // Synchronize role from Firestore for final authority (Async)
-                if (isMasterAuth) {
-                    // [v70.3.1] MASTER FLEXIBILITY: Allow role override via URL if master
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const requestedRole = urlParams.get('role');
-                    if (requestedRole && requestedRole !== this.role) {
-                        console.log("🛡️ Master Session: Switching role to", requestedRole);
-                        this.role = requestedRole;
-                        localStorage.setItem('session_role', requestedRole);
-                    } else {
-                        console.log("🛡️ Master Session Protected: Keeping role", this.role);
-                    }
+                    
                     // Call global callback if defined
                     if (typeof window.onAuthSuccess === 'function') {
-                        window.onAuthSuccess(user, this.role);
+                        window.onAuthSuccess(user, route);
                     }
-                    return; 
-                }
-                try {
-                    const userDoc = await db.collection('users').doc(user.uid).get();
-                    if (userDoc.exists) {
-                        const userData = userDoc.data();
-                        if (userData.role) {
-                            this.role = userData.role;
-                            localStorage.setItem('session_role', this.role);
-                            console.log("Active Role (Final Authority):", this.role);
-                        }
-                    } else {
-                        console.log("ℹ️ No Firestore doc found. Maintaining Email-based Role:", this.role);
-                    }
-                } catch (e) {
-                    console.error("🔑 Error fetching role from Firestore:", e);
-                }
-                // Call global callback if defined
-                if (typeof window.onAuthSuccess === 'function') {
-                    window.onAuthSuccess(user, this.role);
+                } catch (err) {
+                    console.error("🔑 Auth verification failed:", err.message);
+                    alert(err.message);
+                    await AuthManager.logout();
                 }
             } else {
                 console.log("User Logged Out");
@@ -140,55 +114,39 @@ const AuthManager = {
         return 'guest';
     },
 
-    async login(department, pin) {
-        if (!department || !pin || pin === "undefined") {
+    async login(email, password) {
+        if (!email || !password) {
             console.warn("🔐 AuthManager: Login blocked - Missing credentials.");
             return { success: false, error: "Missing credentials" };
         }
-        let email = this.EMAIL_MAP[department] || `${department}@catedral.ch`;
-        
-        // --- AUTH STRATEGY v60.0 ---
-        let finalPin = pin;
 
         try {
-            if (pin === "Lausanne25") {
-                console.log("Master Auth Proceeding for:", department);
-                localStorage.setItem('current_session_pin', pin);
-                localStorage.setItem('session_role', department); // Preserve the intended role!
-                this.role = department;
-                email = "pastor@catedral.ch";
-                finalPin = "Lausanne25";
-            }
-
-            const result = await firebase.auth().signInWithEmailAndPassword(email, finalPin);
+            const result = await firebase.auth().signInWithEmailAndPassword(email, password);
             console.log("Login Success:", result.user.email);
             
-            // If it was Master Auth, we've already set the role. 
-            // Otherwise, AuthManager.init will handle role from email.
-            if (pin !== "Lausanne25") {
-                this.role = this.getRoleFromEmail(result.user.email);
-                localStorage.setItem('session_role', this.role);
+            try {
+                const userDoc = await db.collection('users').doc(result.user.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (userData.ativo !== true || (userData.role !== 'monitor' && userData.role !== 'admin')) {
+                        await firebase.auth().signOut();
+                        return { success: false, error: "Usuário sem permissão de acesso.\nEntre em contato com o administrador." };
+                    }
+                    this.role = userData.role;
+                    localStorage.setItem('session_role', this.role);
+                } else {
+                    await firebase.auth().signOut();
+                    return { success: false, error: "Usuário sem permissão de acesso.\nEntre em contato com o administrador." };
+                }
+            } catch (fsErr) {
+                console.error("Firestore user check failed during login:", fsErr);
+                await firebase.auth().signOut();
+                return { success: false, error: "Erro ao validar permissões de acesso no Firestore." };
             }
 
             localStorage.setItem('last_logged_email', result.user.email);
-            localStorage.setItem('current_session_pin', pin);
             return { success: true };
         } catch (error) {
-            // --- SMART FALLBACK v70.1 (LAUSANNE HARDENING) ---
-            // If primary altar email fails, try fallback
-            if ((department === 'altar' || department === 'midia') && email === 'midia@catedral.ch') {
-                console.warn("🔄 Primary Altar Login Failed. Trying Fallback (altar@catedral.ch)...");
-                try {
-                    const fallbackResult = await firebase.auth().signInWithEmailAndPassword('altar@catedral.ch', finalPin);
-                    console.log("✅ Fallback Login Success:", fallbackResult.user.email);
-                    localStorage.setItem('last_logged_email', fallbackResult.user.email);
-                    localStorage.setItem('current_session_pin', pin);
-                    return { success: true };
-                } catch (fallbackError) {
-                    console.error("❌ Fallback Login also failed:", fallbackError.message);
-                }
-            }
-
             console.error("❌ Login Failed:", error.code, error.message);
             return { success: false, error: error.message };
         }
@@ -224,12 +182,28 @@ const AuthManager = {
                 // If role not current, fetch it once
                 if (!this.role || this.role === 'guest') {
                     const userDoc = await db.collection('users').doc(user.uid).get();
-                    this.role = userDoc.exists ? userDoc.data().role : 'guest';
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        if (userData.ativo !== true || (userData.role !== 'monitor' && userData.role !== 'admin')) {
+                            resolve(false);
+                            return;
+                        }
+                        this.role = userData.role;
+                    } else {
+                        resolve(false);
+                        return;
+                    }
                     localStorage.setItem('session_role', this.role);
                 }
 
-                if (this.role === 'admin') resolve(true); // Admin overrides all
-                resolve(this.role === requiredRole);
+                if (requiredRole === 'admin' && this.role === 'admin') {
+                    resolve(true);
+                } else if (requiredRole === 'integracao' && this.role === 'monitor') {
+                    resolve(true);
+                } else {
+                    alert("Usuário sem permissão para este módulo.");
+                    resolve(false);
+                }
             });
         });
     }

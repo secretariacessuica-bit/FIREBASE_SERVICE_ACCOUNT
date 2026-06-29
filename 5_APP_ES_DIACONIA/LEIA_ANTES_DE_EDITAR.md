@@ -11,65 +11,83 @@
 |---|---|
 | **Congregação** | CES Lausanne (Produção) |
 | **Tipo** | Aplicativo PWA Standalone — Controle de escalas e serviços diaconais |
-| **Status Geral** | 🟢 **CONCLUÍDO COM SUCESSO / HOMOLOGADO EM PRODUÇÃO** |
-| **Modelo Operacional** | **Híbrido de Transição** (Hospedagem no domínio legado apontando para banco de dados novo) |
+| **Status Geral** | 🟢 **ESTÁVEL / PRODUÇÃO VALIDADA / FCM EM VALIDAÇÃO FINAL** |
+| **Modelo Operacional** | **Híbrido de Transição** (Hospedagem atual no legado / pronto para migração Infomaniak) |
 | **Faturamento** | **Plano Spark (100% Gratuito)**. Cloud Functions e plano Blaze **NÃO** autorizados. |
-| **Impacto ao Usuário** | **Zero**. Nenhuma reinstalação do PWA exigida dos obreiros ou supervisores. |
+| **PWA & Instalação** | **Instalador Integrado Ativo** (captura instalação e solicita notificações automaticamente) |
 
 ---
 
-## ⚙️ 2. AMBIENTES E DIRETRIZES DO FIREBASE
+## ⚙️ 2. AMBIENTES E DIRETRIZES DO FIREBASE & INFOMANIAK
 
-O mapeamento de projetos e hospedagens no Firebase está estruturado da seguinte forma:
+O mapeamento de projetos, hospedagens e redirecionamento está estruturado da seguinte forma:
 
 | Ambiente | Projeto Firebase ID | Domínio/URL de Hospedagem | Status Operacional |
 | :--- | :--- | :--- | :--- |
 | **Legado (Transição)** | `catedral-connect-267b2` | `https://catedral-connect-267b2.web.app` | **ATIVO** (Servindo o PWA híbrido) |
-| **Produção Novo** | `diaconia-a38f1` | `https://diaconia-a38f1.web.app` | **ATIVO** (Novo Firestore + Espelho do PWA) |
+| **Produção Novo** | `diaconia-a38f1` | `https://diaconia-a38f1.web.app` | **ATIVO** (Firestore de produção + PWA) |
+| **Hospedagem Oficial** | *(Pronto para migrar)* | **Infomaniak** (ex: `diaconia.cesbulle.ch`) | **CONFIGURAÇÃO PRONTA** |
 | **Desenvolvimento** | `ces-diaconia-dev` | `https://ces-diaconia-dev.web.app` | **ATIVO** (Para testes isolados) |
 
 > [!IMPORTANT]
-> **Fonte Oficial de Configurações:** As chaves de API, IDs de aplicativo e credenciais de conexão do SDK para os ambientes de produção e desenvolvimento **NÃO** devem ser duplicados neste documento. A única fonte oficial de credenciais é o arquivo [firebase-config.js](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/js/firebase-config.js).
+> **Hospedagem no Infomaniak:** Ao subir os arquivos estáticos para o Infomaniak, **é obrigatório** cadastrar o novo domínio na lista de **Domínios Autorizados** no console do Firebase (Authentication -> Settings -> Authorized Domains). O SSL/HTTPS Let's Encrypt deve estar ativo no painel da Infomaniak para que a API de PWA/Notificações funcione.
+> A única fonte oficial de credenciais de conexão é o arquivo [firebase-config.js](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/js/firebase-config.js).
 
 ---
 
 ## 🔒 3. ARQUITETURA DE SEGURANÇA E BANCO DE DADOS
 
-### Estrutura de Coleções Limpas (Sem Prefixo) no novo Firestore:
-O prefixo `diaconia_escala_` foi eliminado na base nova. As coleções operam com nomes limpos:
-* `/membros`: Perfis dos obreiros (campo `senha` em texto plano foi 100% excluído).
-* `/credenciais`: Protegido. Armazena `passwordHash` (SHA-256) e `passwordSalt` individuais gerados no client-side.
+### Coleções do Firestore:
+
+* `/membros`: Armazena os perfis dos obreiros. Usuários ativos possuem `status == "ativo"`. Administradores possuem `perfil == "admin"`. Aproximadamente 8.000 membros foram auditados e nenhum utiliza mais o campo legado `senha`.
+* `/credenciais`: Protegido. Armazena `passwordHash` (SHA-256 com salt) e `passwordSalt` gerados no client-side. Cada documento tem o mesmo ID do documento correspondente em `/membros`.
 * `/setores`: Configurações de cores, ícones e funções dos setores de atuação.
 * `/cultos` e `/escalas`: Planejamento de liturgias e voluntários associados.
 * `/produtos` e `/historico_estoque`: Controle de reposição e movimentação de materiais de limpeza/manutenção.
 * `/avisos`, `/disponibilidades`, `/mensagens_supervisao`, `/historico_substituicoes` e `/escalas_arquivadas`.
 
 ### Regras de Acesso e Autenticação (Spark-friendly):
-1. **Autenticação Anônima Obrigatória**: O aplicativo faz login anônimo temporário via Firebase Auth (`signInAnonymously()`) no carregamento. **O provedor de login anônimo deve estar ativado no Firebase Console para que o app funcione.**
-2. **Firestore Rules**:
+1. **Autenticação Anônima Obrigatória**: O aplicativo faz login anônimo temporário via Firebase Auth (`signInAnonymously()`) no carregamento. Firebase Authentication **não é utilizado para autenticação real de usuários** — serve exclusivamente para satisfazer as regras de segurança do Firestore.
+2. **Autenticação Real via Firestore**: A autenticação real é realizada pelas coleções `membros` e `credenciais`. Firebase Authentication é utilizado exclusivamente para `signInAnonymously()`, satisfazendo as regras de segurança do Firestore. Apenas usuários com `status == "ativo"` podem acessar. Administradores possuem `perfil == "admin"`.
+3. **Compatibilidade Legada**: A função `validateLegacyPassword()` permanece no código por compatibilidade e **não deve ser removida sem autorização explícita**.
+4. **Firestore Rules**:
    * Acesso geral permitido apenas para sessões autenticadas (`allow read, write: if request.auth != null`).
    * A coleção `/credenciais` tem bloqueio de listagem global a nível de banco de dados (`allow list: if false`), permitindo apenas a consulta individual por ID (`allow get: if request.auth != null`) para validação do hash.
-3. **Criptografia**: Processada inteiramente no cliente via Web Crypto API no navegador, garantindo que hashes e salts nunca circulem de forma vulnerável na rede.
+5. **Criptografia**: Processada inteiramente no cliente via Web Crypto API, garantindo que hashes e salts nunca circulem de forma vulnerável na rede.
 
 ---
 
-## ⚡ 4. BENCHMARK DE DESEMPENHO (LATÊNCIA DO NOVO BANCO)
+## ⚡ 4. FUNCIONALIDADES ATIVAS & DESBLOQUEADAS
 
-A latência foi medida disparando consultas paralelas reais via REST API. O novo banco dedicado se provou **111.6 ms mais rápido** do que a infraestrutura legada em média:
+Recentemente, o sistema foi atualizado com a remoção dos bloqueios legados da Fase 4A, reativando recursos essenciais:
 
-* **Membros**: 515 ms ➡️ **309 ms** (Redução de **40%** na latência)
-* **Cultos**: 424 ms ➡️ **364 ms** (Redução de **14%** na latência)
-* **Escalas**: 455 ms ➡️ **386 ms** (Redução de **15%** na latência)
-* **Média Geral de Carregamento**: **353 ms** (Novo) vs **464.6 ms** (Legado)
+* **Escalas e Calendário Mensal**:
+  * O método `navigateToNextService` está totalmente ativo, permitindo ver detalhes de cada escala.
+  * O **Calendário Mensal Premium** (`openMonthlyCalendar` e `showMonthlyCalendar`) foi desbloqueado e está integrado à Home dos obreiros.
+* **Instalador PWA Customizado**:
+  * Captura do evento `beforeinstallprompt` ativada.
+  * Um card estilizado de **"Instalar no Celular"** aparece dinamicamente no menu **Perfil** se o app não estiver instalado.
+* **Guia de Otimização de Segundo Plano**:
+  * Assim que as notificações são ativadas, o app dispara um modal explicativo customizado por sistema operacional (**Android** e **iOS/iPhone**), ensinando os obreiros a desativar a otimização de bateria para garantir a recepção dos alertas mesmo com o app fechado.
+* **Firebase Cloud Messaging (FCM)**:
+  * Service Worker registrado e operacional (`sw-notifications.js`).
+  * Token FCM gerado corretamente, associado ao documento do membro autenticado e armazenado em `membros.fcmTokens`.
+  * Notificações em foreground e background implementadas.
+  * Push Engine operacional.
+  * Validação atual concentrada na entrega ponta a ponta.
+* **GitHub Actions**:
+  * Secret `FIREBASE_SERVICE_ACCOUNT` configurado no repositório.
+  * Workflow de envio de notificações operacional.
+  * Cron automático ativo.
 
 ---
 
 ## 📂 5. ARQUIVOS CRÍTICOS DO SISTEMA
 
-* [index.html](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/index.html): Interface principal de escalas e diaconia.
-* [js/app.js](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/js/app.js): Lógica de controle do SPA (sessões, navegação, PWA).
-* [js/db.js](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/js/db.js): Camada CRUD de banco de dados (controle de cache e conversão de datas).
-* [js/firebase-config.js](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/js/firebase-config.js): SDK de configuração e controle de redirecionamento dinâmico de conexões por domínio.
+* [index.html](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/index.html): Interface principal de escalas e diaconia. Contém o card de instalação PWA.
+* [js/app.js](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/js/app.js): Lógica de controle do SPA (sessões, navegação, PWA, controle de diálogos de bateria e notificações).
+* [js/db.js](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/js/db.js): Camada CRUD de banco de dados (controle de cache e conversão de datas). Contém `authenticateUser`, `hashPassword`, `generateSalt` e `validateLegacyPassword`.
+* [js/firebase-config.js](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/js/firebase-config.js): SDK de configuração e controle de redirecionamento dinâmico de conexões.
 * [sw-notifications.js](file:///c:/Users/Wande/Documents/ia/5_APP_ES_DIACONIA/sw-notifications.js): Service Worker de notificações e cache offline.
 * [firestore.rules](file:///c:/Users/Wande/Documents/ia/firestore.rules): Regras de segurança de acesso ativo do Firestore.
 * [firestore.indexes.json](file:///c:/Users/Wande/Documents/ia/firestore.indexes.json): Índices compostos exigidos para filtros complexos.
@@ -82,25 +100,8 @@ A latência foi medida disparando consultas paralelas reais via REST API. O novo
    * Sempre confirme o ambiente correto do Firebase CLI antes de realizar o deploy:
      * Para Produção: `firebase use diaconia-a38f1`
      * Para Desenvolvimento: `firebase use ces-diaconia-dev`
-2. **Separação de Módulos**:
-   * Nunca utilize Project IDs ou arquivos do aplicativo Bulle ou Lausanne admin neste módulo.
-3. **Deploy do App**:
+2. **Deploy do App**:
    * Subir apenas a hospedagem deste módulo: `firebase deploy --only hosting:diaconia`
    * Subir regras e índices associados: `firebase deploy --only firestore`
-4. **Histórico de Restauração**:
+3. **Backup Final**:
    * Salvar backups estruturais em: `3_LAUSANNE_ARQUIVO_HISTORICO/REPOSITORIO_DE_RESTAURACAO_E_VERSOES/`
-
----
-
-## 🗺️ 7. ROADMAP E MONITORAMENTO
-
-Durante o período de estabilização pós-migração (30 a 60 dias), as seguintes etapas devem ser seguidas:
-
-* **Passo 1: Monitoramento de Tráfego do Legado (`catedral-connect-267b2`)**
-  * Verificar nos painéis do Firebase Console se o tráfego de leitura/escrita de banco e hosting no projeto antigo caiu para zero.
-  * Garantir que o aplicativo Bulle ou outros sistemas não compartilham recursos ativos no projeto legado antes de desativar.
-* **Passo 2: Protocolo Formal de Descomissionamento**
-  * **Auditoria Completa:** Revisão de logs e conexões residuais na base antiga.
-  * **Validação de Dependências:** Garantia absoluta de que nenhuma outra filial ou sistema (ex: Bulle) consome coleções neste projeto.
-  * **Backup Final:** Exportação completa de segurança de todos os dados históricos.
-  * **Aprovação Explícita:** Obtenção de autorização formal dos responsáveis antes de qualquer desativação definitiva de rotas ou dados do projeto legado.

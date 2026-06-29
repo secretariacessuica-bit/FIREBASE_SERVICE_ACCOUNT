@@ -70,7 +70,8 @@ const App = {
             funcoes: ["Limpeza geral", "Salão e banheiros", "Áreas externas", "Reposição de produtos"],
             cor: "#14b8a6",
             themeClass: "theme-limpeza",
-            icon: "fa-solid fa-broom"
+            icon: "fa-solid fa-broom",
+            tipoOperacao: 'continua'
         }
     },
 
@@ -105,6 +106,32 @@ const App = {
         
         const sector = this.sectorsData[sectorId];
         return sector ? sector.funcoes : [];
+    },
+
+    isExclusiveContinuousMember(user) {
+        if (!user) return false;
+        
+        let userSectors = [];
+        if (Array.isArray(user.setores)) {
+            userSectors = user.setores;
+        } else if (user.setor) {
+            userSectors = [user.setor];
+        }
+        
+        if (userSectors.length === 0) return false;
+        
+        // Verifica se TODOS os setores válidos deste usuário são de operação contínua
+        let hasAnySector = false;
+        const isExclusive = userSectors.every(sId => {
+            if (!sId) return true; // ignora vazios
+            const config = this.sectorsData[sId];
+            if (!config) return false; // Se o setor não existe no dicionário, assumimos culto por segurança
+            
+            hasAnySector = true;
+            return config.tipoOperacao === 'continua';
+        });
+        
+        return hasAnySector && isExclusive;
     },
 
     adjustEscalaFormFields() {
@@ -847,6 +874,16 @@ const App = {
             const welcomeUserName = document.getElementById('welcome-user-name');
             if (welcomeUserName) welcomeUserName.innerText = names[0];
             
+            // Etapa 1: Ocultar aba de Escalas se for membro exclusivamente contínuo
+            const navBtnEscalas = document.getElementById('nav-btn-escalas');
+            if (navBtnEscalas) {
+                if (this.isExclusiveContinuousMember(this.currentUser)) {
+                    navBtnEscalas.style.display = 'none';
+                } else {
+                    navBtnEscalas.style.display = 'flex';
+                }
+            }
+
             // Set role display
             const selRole = document.getElementById('selector-profile-role');
             if (selRole) {
@@ -7301,14 +7338,29 @@ const App = {
             for (const pendencia of rejections) {
                 console.log(`[IA SUBSTITUIÇÃO] Pendência: culto ${pendencia.cultoNome || pendencia.cultoId} / função ${pendencia.funcao}`);
                 
+                // --- AJUSTE 03.3: Identificar o contexto do culto ---
+                const cultoAssociado = this.cultosData ? this.cultosData.find(c => c.id === pendencia.cultoId) : null;
+                const modeloEscala = cultoAssociado ? (cultoAssociado.modeloEscala || 'Manter Existente') : 'Manter Existente';
+                const isLivreOuTodos = (modeloEscala === 'Escala Livre' || modeloEscala === 'Culto Completo');
+
                 // Critérios eliminatórios
                 const elegiveis = membros.filter(m => {
                     if (m.statusOperacional !== 'Disponível') return false;
                     
-                    const noSetor = m.setor === pendencia.setorId || (m.setores && m.setores.includes(pendencia.setorId));
-                    if (!noSetor) return false;
+                    // --- AJUSTE 03.3: Regra de isolamento de setores de apoio ---
+                    const setoresBloqueados = ['limpeza', 'manutencao'];
+                    if (setoresBloqueados.includes(m.setor) && !setoresBloqueados.includes(pendencia.setorId)) {
+                        return false;
+                    }
                     
-                    if (m.funcaoPrincipal !== pendencia.funcao && m.funcaoSecundaria !== pendencia.funcao && m.funcao !== pendencia.funcao) return false;
+                    // --- AJUSTE 03.3: Flexibilidade para Escala Livre / Culto Completo ---
+                    if (!isLivreOuTodos) {
+                        const noSetor = m.setor === pendencia.setorId || (m.setores && m.setores.includes(pendencia.setorId));
+                        if (!noSetor) return false;
+                        
+                        if (m.funcaoPrincipal !== pendencia.funcao && m.funcaoSecundaria !== pendencia.funcao && m.funcao !== pendencia.funcao) return false;
+                    }
+
                     if (m.id === pendencia.membroId) return false;
                     if (m.participaSubstituicao === 'Não' || m.participaSubstituicao === false) return false;
                     

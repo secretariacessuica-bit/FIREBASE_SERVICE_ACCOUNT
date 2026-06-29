@@ -38,15 +38,15 @@
         - Master Bypass Activated
         - Corporate Edition
     -->
-    <script src="js/firebase-config.js?v=70.3.78"></script>
-    <script src="js/auth-manager.js?v=70.3.78"></script>
+    <script src="js/firebase-config.js?v=70.3.79"></script>
+    <script src="js/auth-manager.js?v=70.3.79"></script>
     <!-- Core Reception Logic v70.3.78 -->
-    <script src="js/reception_kids_logic.js?v=70.3.78"></script>
+    <script src="js/reception_kids_logic.js?v=70.3.79"></script>
     <link rel="stylesheet" href="css/style-v2.css?v=64.0.0">
     <link rel="stylesheet" href="css/mobile-v2.css?v=64.0.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        <link rel="stylesheet" href="css/admin-v2.css?v=70.3.78">
+        <link rel="stylesheet" href="css/admin-v2.css?v=70.3.79">
     <style>
         /* === ANTIGRAVITY 2.0 CORE CLEANUP === */
         * { box-sizing: border-box; }
@@ -729,9 +729,39 @@
                         <i class="fas fa-user-plus" style="font-size:3rem; color:var(--gold-accent); margin-bottom:20px;"></i>
                         <h2 style="margin:0; font-size:1.5rem;">Cadastrar Nova Decisão</h2>
                         <p style="opacity:0.8; max-width:400px; margin:15px auto 25px;">Inicie o processo de integração para novos visitantes, convertidos ou transferências.</p>
-                        <button onclick="openMembershipWizard()" style="background:var(--gold-accent); color:black; border:none; border-radius:12px; padding:15px 30px; font-weight:800; font-size:1rem; cursor:pointer; font-family:'Outfit'; box-shadow:0 10px 20px rgba(201,160,80,0.3);">
-                             <i class="fas fa-edit"></i> ABRIR FICHA DE CADASTRO
-                        </button>
+                        <div style="display:flex; gap:15px; justify-content:center; flex-wrap:wrap;">
+                            <button onclick="openMembershipWizard()" style="background:var(--gold-accent); color:black; border:none; border-radius:12px; padding:15px 30px; font-weight:800; font-size:1rem; cursor:pointer; font-family:'Outfit'; box-shadow:0 10px 20px rgba(201,160,80,0.3);">
+                                 <i class="fas fa-edit"></i> ABRIR FICHA DE CADASTRO
+                            </button>
+                            <button onclick="openExistingPersonSearchModal()" style="background:#1f2937; color:white; border:1px solid #374151; border-radius:12px; padding:15px 30px; font-weight:800; font-size:1rem; cursor:pointer; font-family:'Outfit'; transition: 0.3s;" onmouseover="this.style.borderColor='var(--gold-accent)'" onmouseout="this.style.borderColor='#374151'">
+                                 <i class="fas fa-search"></i> PESSOA EXISTENTE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: Buscar Pessoa Existente -->
+                <div id="modal-existing-search" class="modal-overlay" style="display:none;">
+                    <div class="modal-content" style="max-width:500px; padding:30px !important;">
+                        <button onclick="closeExistingPersonSearchModal()" style="position:absolute; top:20px; right:20px; background:none; border:none; font-size:1.8rem; cursor:pointer; color:#999; width:auto; padding:0; line-height:1;">&times;</button>
+                        
+                        <div style="text-align:center; margin-bottom:25px;">
+                            <i class="fas fa-search" style="font-size:2rem; color:var(--gold-accent); margin-bottom:10px;"></i>
+                            <h2 style="margin:0; font-family:'Outfit'; font-size:1.4rem;">Buscar Pessoa</h2>
+                            <p style="color:#888; font-size:0.85rem; margin-top:4px;">Pesquise por nome ou telefone na base de dados</p>
+                        </div>
+
+                        <div style="margin-bottom:20px;">
+                            <input type="text" id="existing-search-input" placeholder="Digite nome ou telefone..." onkeyup="handleExistingPersonSearch(event)" style="width:100%; padding:12px 16px; border-radius:10px; border:2px solid #e2e8f0; font-family:'Outfit'; font-size:0.95rem; outline:none; transition: 0.3s;" onfocus="this.style.borderColor='var(--gold-accent)'" onblur="this.style.borderColor='#e2e8f0'">
+                        </div>
+
+                        <div id="existing-search-results" style="max-height:250px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+                            <div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:20px;">Digite algo para iniciar a busca.</div>
+                        </div>
+
+                        <div style="display:flex; gap:12px;">
+                            <button onclick="closeExistingPersonSearchModal()" style="flex:1; background:#f3f4f6; color:#333; border:none; border-radius:14px; height:48px; cursor:pointer; font-weight:700; font-family:'Outfit';">Fechar</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1514,138 +1544,44 @@
          */
         async function initSupernova() {
             console.log("🚀 Supernova v70.3.60: Engine Started.");
-            
-            // [v70.3.61] Robust Unified Session Listener
-            const authHandshake = new Promise((resolve) => {
-                let resolved = false;
-                let promptTimeout = null;
 
-                const safeResolve = () => {
-                    if (resolved) return;
-                    resolved = true;
-                    if (promptTimeout) {
-                        clearTimeout(promptTimeout);
-                        promptTimeout = null;
-                    }
-                    resolve();
-                };
-
-                // 1. Immediate resolution if already authenticated
-                if (firebase.auth().currentUser) {
-                    console.log("💎 Auth Handshake: Session found immediately.");
-                    safeResolve();
+            firebase.auth().onAuthStateChanged(async (user) => {
+                if (!user) {
+                    console.log("Sem sessão auth ativa. Fazendo logout.");
+                    window.location.href = 'index.html';
                     return;
                 }
 
-                // 1b. Master Bypass Auto-Login
-                if (isBypass) {
-                    console.log("👑 Master Bypass Ativo, iniciando login Firebase...");
-                    AuthManager.login('admin', 'Lausanne25').then(() => {
-                        console.log("👑 Master Bypass Autenticado com sucesso!");
-                        safeResolve();
-                    }).catch(err => {
-                        console.error("Master Bypass Login Error:", err);
-                        safeResolve();
-                    });
-                    return;
-                }
-
-                // 2. Listen for parent shell postMessages (Master bypass)
-                window.addEventListener('message', function(event) {
-                    if (event.data.type === 'MASTER_BYPASS_SIGNAL') {
-                        if (resolved || firebase.auth().currentUser || window._isAutoLoggingIn) {
-                            console.log("💎 Master Bypass Received but session is already active or logging in. Ignoring.");
-                            return;
-                        }
-                        console.log("💎 Master Bypass Received. Authenticating...");
-                        AuthManager.login('admin', event.data.pin).then(safeResolve);
-                    }
-                });
-
-                // 3. Listen for Firebase Auth state changes
-                const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
-                    if (user) {
-                        console.log("💎 Auth Handshake: Session resolved via Auth State Change.");
-                        unsubscribe();
-                        safeResolve();
-                    }
-                });
-
-                // 4. Stored PIN Auto-login (Eliminates double prompt race conditions)
-                const storedPin = localStorage.getItem('current_session_pin');
-                if (storedPin && storedPin !== 'undefined' && storedPin.trim() !== '') {
-                    console.log("💎 Auth Handshake: Auto-logging in using stored session pin.");
-                    window._isAutoLoggingIn = true;
-                    AuthManager.login('admin', storedPin).then((res) => {
-                        window._isAutoLoggingIn = false;
-                        if (res.success) {
-                            unsubscribe();
-                            safeResolve();
-                        }
-                    }).catch((e) => {
-                        window._isAutoLoggingIn = false;
-                        console.warn("Auto-login failed:", e);
-                    });
-                }
-
-                // 5. Fallback Manual prompt (Only after 3 seconds if all else fails)
-                promptTimeout = setTimeout(async () => {
-                    if (resolved) return;
-
-                    // If inside an iframe, skip manual prompt fallback
-                    if (window.self !== window.top) {
-                        console.log("💎 Auth Handshake: Inside iframe, skipping manual prompt fallback.");
+                try {
+                    const doc = await db.collection("users").doc(user.uid).get();
+                    if (!doc.exists) {
+                        console.log("Documento de usuário não encontrado.");
+                        window.location.href = 'index.html';
                         return;
                     }
 
-                    // If an auto-login is currently in progress, wait for it to finish
-                    if (window._isAutoLoggingIn) {
-                        console.log("💎 Auth Handshake: Auto-login in progress, waiting for result...");
-                        let waitCount = 0;
-                        while (window._isAutoLoggingIn && waitCount < 10) {
-                            await new Promise(r => setTimeout(r, 500));
-                            waitCount++;
-                        }
-                        if (resolved) return;
+                    const data = doc.data();
+                    if (data.ativo !== true) {
+                        console.log("Usuário inativo.");
+                        window.location.href = 'index.html';
+                        return;
                     }
 
-                    if (firebase.auth().currentUser) {
-                        console.log("💎 Auth Handshake: Session found (Timeout Fallback).");
-                        unsubscribe();
-                        safeResolve();
-                    } else {
-                        console.warn("💎 Auth Handshake: No session or stored credentials. Requesting PIN.");
-                        const pin = prompt("🔐 Acesso Restrito (SECRETARIA)\nInsira o PIN de Administrador:");
-                        if (pin) {
-                            const res = await AuthManager.login('admin', pin);
-                            if (res.success) {
-                                unsubscribe();
-                                safeResolve();
-                            } else {
-                                alert("PIN Incorreto. Acesso Negado.");
-                                window.location.href = 'index.html';
-                            }
-                        } else {
-                            window.location.href = 'index.html';
-                        }
+                    if (data.role !== "admin") {
+                        console.log("Usuário sem permissão (não é admin).");
+                        window.location.href = 'index.html';
+                        return;
                     }
-                }, 3000);
+
+                    console.log("✅ Validação Independente OK. Starting Data Engine.");
+                    initGlobalLiveObservers();
+                    loadDashboard();
+                } catch (error) {
+                    console.error("Erro na validação independente:", error);
+                    window.location.href = 'index.html';
+                }
             });
-
-            await authHandshake;
-            console.log("✅ Auth Handshake OK. Starting Data Engine.");
-            
-            _toast("Lausanne Hub", "Sessão Master Ativa.", "success");
-            initGlobalLiveObservers();
-            loadDashboard();
         }
-
-        firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
-                console.log("Admin: Estado de Auth Atualizado -> Ativo");
-                loadDashboard();
-            }
-        });
 
         function initAdminMonitor() {
             loadDashboard();
@@ -1831,7 +1767,7 @@
                 } catch (e) {
                     // AUTO-RETRY LOGIC v50.3 GOLD
                     if ((e.code === 'permission-denied' || e.message.includes('permissions')) && retryCount < 3) {
-                        console.log(`⚠️ Admin Data: Auth Handshake pendente... tentando novamente (${retryCount + 1}/3)`);
+                        console.log(`⚠️ Admin Data: Aguardando Auth Firebase... tentando novamente (${retryCount + 1}/3)`);
                         await new Promise(resolve => setTimeout(resolve, 1500));
                         return getPeopleKidsData(true, retryCount + 1);
                     }
@@ -3982,6 +3918,155 @@
             return null;
         }
 
+        async function iniciarJornada(personId) {
+            try {
+                // 1. Ler o documento em people
+                const docSnap = await db.collection('people').doc(personId).get();
+                if (!docSnap.exists) {
+                    alert("Erro: Pessoa não encontrada na base de dados.");
+                    return;
+                }
+                const person = docSnap.data();
+                
+                // 2. Obter nome e contato
+                const name = person.name || person.nome || "";
+                const rawContact = person.contact || person.phone || person.whatsapp || "";
+                
+                // 3. Normalizar o telefone
+                const telefoneNormalizado = rawContact.replace(/[^\d]/g, '');
+
+                // 4. Procurar em integracao por personId
+                const searchIdSnap = await db.collection('integracao')
+                    .where('personId', '==', personId)
+                    .where('status', 'in', ['em_integracao', 'pos_saida'])
+                    .get();
+
+                if (!searchIdSnap.empty) {
+                    console.log("DUPLICIDADE");
+                    alert("Esta pessoa já possui uma Jornada de Integração ativa.");
+                    return;
+                }
+
+                // 5. Procurar em integracao por contato se telefone_normalizado existir
+                if (telefoneNormalizado) {
+                    const searchPhoneSnap = await db.collection('integracao')
+                        .where('contact', '==', telefoneNormalizado)
+                        .where('status', 'in', ['em_integracao', 'pos_saida'])
+                        .get();
+
+                    if (!searchPhoneSnap.empty) {
+                        console.log("DUPLICIDADE");
+                        alert("Esta pessoa já possui uma Jornada de Integração ativa.");
+                        return;
+                    }
+                }
+
+                // 6. Criar nova jornada
+                const newJourney = {
+                    personId: personId,
+                    name: name,
+                    contact: telefoneNormalizado,
+                    entry_date: firebase.firestore.FieldValue.serverTimestamp(),
+                    entry_source: "secretaria",
+                    integ_stage: "Novos Amigos",
+                    status: "em_integracao",
+                    monitor: "",
+                    companion: "",
+                    monitoring_start: null,
+                    post_exit_start: null,
+                    concluded_at: null,
+                    final_responsible: "",
+                    timeline: [],
+                    parallel_activities: [],
+                    createdBy: firebase.auth().currentUser?.email || "sistema",
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                console.log("CRIANDO JORNADA", newJourney);
+                const docRef = await db.collection('integracao').add(newJourney);
+                console.log("DOC CRIADO", docRef.id);
+                alert("Jornada iniciada com sucesso.");
+
+                // Atualizar a interface sem alterar o fluxo existente
+                loadPeople(true);
+
+            } catch (e) {
+                console.error("ERRO JORNADA", e);
+                alert("Ocorreu um erro ao iniciar a jornada: " + e.message);
+            }
+        }
+
+        window.openExistingPersonSearchModal = function() {
+            document.getElementById('modal-existing-search').style.display = 'flex';
+            document.getElementById('existing-search-input').value = '';
+            document.getElementById('existing-search-input').focus();
+            document.getElementById('existing-search-results').innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:20px;">Digite algo para iniciar a busca.</div>';
+        };
+
+        window.closeExistingPersonSearchModal = function() {
+            document.getElementById('modal-existing-search').style.display = 'none';
+        };
+
+        window.handleExistingPersonSearch = async function(event) {
+            const query = event.target.value.trim().toLowerCase();
+            const resultsContainer = document.getElementById('existing-search-results');
+            
+            if (query.length < 2) {
+                resultsContainer.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:20px;">Digite pelo menos 2 caracteres para buscar.</div>';
+                return;
+            }
+
+            try {
+                resultsContainer.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Buscando...</div>';
+                
+                // Get data (using our existing cache of people to keep it fast, or querying if not available)
+                const snapshot = await db.collection('people').get();
+                const matched = [];
+                
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    const name = (d.name || d.field_1 || '').toLowerCase();
+                    const phone = (d.phone || d.field_21 || d.contact || '').replace(/[^\d]/g, '');
+                    const cleanQuery = query.replace(/[^\d]/g, '');
+                    
+                    if (name.includes(query) || (cleanQuery && phone.includes(cleanQuery))) {
+                        matched.push({ id: doc.id, name: d.name || d.field_1 || 'Sem nome', phone: d.phone || d.field_21 || 'Sem telefone', type: d.type || 'Visitante' });
+                    }
+                });
+
+                if (matched.length === 0) {
+                    resultsContainer.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:20px;">Nenhuma pessoa encontrada.</div>';
+                    return;
+                }
+
+                let html = '';
+                matched.forEach(p => {
+                    html += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0; font-family:'Outfit';">
+                            <div>
+                                <div style="font-weight:700; font-size:0.88rem; color:#1e293b;">${p.name}</div>
+                                <div style="font-size:0.75rem; color:#64748b;">${p.phone} · <span style="font-weight:700; text-transform:uppercase;">${p.type}</span></div>
+                            </div>
+                            <button onclick="iniciarJornadaFromModal('${p.id}')" style="background:var(--gold-accent); color:black; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-size:0.75rem; font-weight:800; font-family:'Outfit';">
+                                Iniciar
+                            </button>
+                        </div>
+                    `;
+                });
+                resultsContainer.innerHTML = html;
+
+            } catch (e) {
+                console.error("Erro na busca:", e);
+                resultsContainer.innerHTML = '<div style="text-align:center; color:#ef4444; font-size:0.85rem; padding:20px;">Erro ao buscar pessoas.</div>';
+            }
+        };
+
+        window.iniciarJornadaFromModal = async function(personId) {
+            closeExistingPersonSearchModal();
+            await iniciarJornada(personId);
+        };
+
         // --- AUTOMATIC CLASSIFICATION ENGINE (v48.13.1) ---
         // --- AUTOMATIC CLASSIFICATION ENGINE (v51.2.26) ---
         function getProfileCategory(data) {
@@ -4577,6 +4662,7 @@
                             <td style="max-width:250px; line-height:1.3;">${latestNote}</td>
                             <td style="text-align:right;">
                                 <div style="display:flex; gap:8px; justify-content:flex-end;">
+                                    ${cat === 'Visitante' ? `<button onclick="iniciarJornada('${d.id}')" style="background:#d4af37; color:black; border:none; border-radius:8px; width:30px; height:30px; cursor:pointer;" title="Iniciar Jornada"><i class="fas fa-route" style="font-size:0.8rem;"></i></button>` : ''}
                                     <button onclick="viewProfile('${d.id}', '${d.original_collection || (cat === 'Criança' ? 'kids' : 'people')}')" style="background:#111827; color:white; border:none; border-radius:8px; width:30px; height:30px; cursor:pointer;" title="Ver Perfil"><i class="fas fa-user-pen" style="font-size:0.8rem;"></i></button>
                                     <button onclick="deletePerson('${d.id}','${name}', '${d.original_collection || (cat === 'Criança' ? 'kids' : 'people')}')" style="background:#fee2e2; color:#ef4444; border:none; border-radius:8px; width:30px; height:30px; cursor:pointer;" title="Remover"><i class="fas fa-trash" style="font-size:0.8rem;"></i></button>
                                 </div>
@@ -6592,7 +6678,7 @@
         function loadNotifLeaders() {
             // Firestore requires auth. Bypass only helps with UI visibility.
             if (!firebase.auth().currentUser) {
-                console.log("ℹ️ Auth Handshake in progress... skipping leaders load.");
+                console.log("ℹ️ Auth Firebase pendente... skipping leaders load.");
                 return;
             }
             
