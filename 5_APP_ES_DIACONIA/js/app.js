@@ -879,16 +879,6 @@ const App = {
             const welcomeUserName = document.getElementById('welcome-user-name');
             if (welcomeUserName) welcomeUserName.innerText = names[0];
             
-            // Etapa 1: Ocultar aba de Escalas se for membro exclusivamente contínuo
-            const navBtnEscalas = document.getElementById('nav-btn-escalas');
-            if (navBtnEscalas) {
-                if (this.isExclusiveContinuousMember(this.currentUser)) {
-                    navBtnEscalas.style.display = 'none';
-                } else {
-                    navBtnEscalas.style.display = 'flex';
-                }
-            }
-
             // Set role display
             const selRole = document.getElementById('selector-profile-role');
             if (selRole) {
