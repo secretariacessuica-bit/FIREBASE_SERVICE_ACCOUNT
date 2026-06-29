@@ -124,7 +124,12 @@ const App = {
         let hasAnySector = false;
         const isExclusive = userSectors.every(sId => {
             if (!sId) return true; // ignora vazios
-            const config = this.sectorsData[sId];
+            
+            // Normalização para valores legados (ex: "Limpeza " -> "limpeza")
+            let normalizedId = String(sId).trim().toLowerCase();
+            normalizedId = normalizedId.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            
+            const config = this.sectorsData[normalizedId];
             if (!config) return false; // Se o setor não existe no dicionário, assumimos culto por segurança
             
             hasAnySector = true;
