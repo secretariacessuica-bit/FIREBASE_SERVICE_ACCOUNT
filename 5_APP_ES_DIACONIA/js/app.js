@@ -1192,7 +1192,7 @@ const App = {
                     
                     if (funcoesVagas > 0) {
                         alertasHtml += `
-                            <div class="premium-next-scale-card" onclick="App.navigateTo('view-admin')" style="align-items: center; justify-content: space-between; padding: 12px; cursor: pointer; flex-direction: row; border-left: 4px solid #F59E0B;">
+                            <div class="premium-next-scale-card" onclick="document.getElementById('nav-btn-painel').click()" style="align-items: center; justify-content: space-between; padding: 12px; cursor: pointer; flex-direction: row; border-left: 4px solid #F59E0B;">
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <div style="background: rgba(245,158,11,0.15); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                         <i class="fa-solid fa-clipboard-user" style="font-size: 1.1rem; color: #F59E0B;"></i>
@@ -1214,7 +1214,7 @@ const App = {
                     const reposicoesPendentes = this.cachedReposicoes ? this.cachedReposicoes.filter(r => r.status === 'Pendente').length : 0;
                     if (reposicoesPendentes > 0) {
                         alertasHtml += `
-                            <div class="premium-next-scale-card" onclick="App.openRepositorCompraModal()" style="align-items: center; justify-content: space-between; padding: 12px; cursor: pointer; flex-direction: row; border-left: 4px solid #F59E0B;">
+                            <div class="premium-next-scale-card" onclick="document.getElementById('nav-btn-servicos').click()" style="align-items: center; justify-content: space-between; padding: 12px; cursor: pointer; flex-direction: row; border-left: 4px solid #F59E0B;">
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <div style="background: rgba(245,158,11,0.15); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                         <i class="fa-solid fa-box-open" style="font-size: 1.1rem; color: #F59E0B;"></i>
