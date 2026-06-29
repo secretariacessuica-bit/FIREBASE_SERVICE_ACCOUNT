@@ -172,24 +172,31 @@
                 CES Diaconia © 2024 - Todos os direitos reservados
             </div>
 
-            <!-- Bottom Navigation Bar (v3.10) -->
-            <nav class="selector-bottom-nav" style="justify-content: center; padding: 10px 0;">
+            <!-- Bottom Navigation Bar (v4.0) -->
+            <nav class="selector-bottom-nav" id="main-bottom-nav" style="justify-content: center; padding: 10px 0; transition: transform 0.3s ease, opacity 0.3s ease;">
                 <div class="selector-nav-actions" style="width: 100%; justify-content: space-around; gap: 0;">
-                    <button class="nav-action-btn active" id="nav-btn-home" onclick="App.navigateTo('view-setor-select'); App.setActiveNavBtn('nav-btn-home');" style="color: var(--teal-primary);" title="Mural">
+                    <button class="nav-action-btn active" id="nav-btn-home" onclick="App.navigateTo('view-setor-select'); App.setActiveNavBtn('nav-btn-home');" style="color: var(--teal-primary);" title="Início">
                         <i class="fa-solid fa-house"></i>
-                        <span>Mural</span>
+                        <span>Início</span>
                     </button>
                     <button class="nav-action-btn" id="nav-btn-escalas" onclick="App.openMinhasEscalasModal(); App.setActiveNavBtn('nav-btn-escalas');" title="Escalas">
                         <i class="fa-regular fa-calendar-days"></i>
                         <span>Escalas</span>
                     </button>
-                    <button class="nav-action-btn" id="nav-btn-perfil" onclick="App.openMeuPerfilModal(); App.setActiveNavBtn('nav-btn-perfil');" title="Perfil">
-                        <i class="fa-regular fa-circle-user"></i>
-                        <span>Perfil</span>
+                    
+                    <!-- Botões Dinâmicos (3º Botão) -->
+                    <button class="nav-action-btn" id="nav-btn-painel" onclick="App.switchAdminTab('dashboard'); App.setActiveNavBtn('nav-btn-painel');" title="Painel" style="display: none;">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>Painel</span>
                     </button>
-                    <button class="nav-action-btn" id="nav-btn-mais" onclick="App.openMaisModal(); App.setActiveNavBtn('nav-btn-mais');" title="Mais">
-                        <i class="fa-solid fa-ellipsis"></i>
-                        <span>Mais</span>
+                    <button class="nav-action-btn" id="nav-btn-servicos" onclick="App.switchMemberTab('reposicao'); App.setActiveNavBtn('nav-btn-servicos');" title="Serviços" style="display: none;">
+                        <i class="fa-solid fa-briefcase"></i>
+                        <span>Serviços</span>
+                    </button>
+
+                    <button class="nav-action-btn" id="nav-btn-mais" onclick="App.openMaisModal(); App.setActiveNavBtn('nav-btn-mais');" title="Menu">
+                        <i class="fa-solid fa-bars"></i>
+                        <span>Menu</span>
                     </button>
                 </div>
             </nav>

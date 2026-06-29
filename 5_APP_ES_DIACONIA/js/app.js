@@ -518,11 +518,42 @@ const App = {
             this.navigateTo('view-setor-select');
         }
 
+        // Construir barra inferior dinamicamente
+        this.buildBottomNav();
+
         // ── Notificações Push ────────────────────────────────────
         this.setupNotifications();
     },
 
     // ── SISTEMA DE NOTIFICAÇÕES ──────────────────────────────────────
+
+    buildBottomNav() {
+        const isAdmin = this.currentUser && this.currentUser.perfil === 'admin';
+        const isRepositor = this.currentUser && this.currentUser.eRepositor === true;
+        
+        const btnPainel = document.getElementById('nav-btn-painel');
+        const btnServicos = document.getElementById('nav-btn-servicos');
+        
+        if (btnPainel) btnPainel.style.display = 'none';
+        if (btnServicos) btnServicos.style.display = 'none';
+
+        if (isAdmin) {
+            if (btnPainel) btnPainel.style.display = 'flex';
+        } else if (isRepositor) {
+            if (btnServicos) btnServicos.style.display = 'flex';
+        }
+    },
+
+    toggleBottomNav(show) {
+        const nav = document.getElementById('main-bottom-nav');
+        if (nav) {
+            if (show) {
+                nav.classList.remove('bottom-nav-hidden');
+            } else {
+                nav.classList.add('bottom-nav-hidden');
+            }
+        }
+    },
 
     _notificationInterval: null,   // Reference to the setInterval for reminders
     _swRegistration: null,          // Service Worker registration reference

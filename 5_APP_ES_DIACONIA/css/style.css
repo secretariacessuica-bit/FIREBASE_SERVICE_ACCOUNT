@@ -6695,7 +6695,7 @@ table.admin-table tr:hover td {
 }
 
 
-/* Bottom Navigation Bar for Selector View (v3.6.6) */
+/* Bottom Navigation Bar (Selector/Mural) */
 .selector-bottom-nav {
     position: fixed !important;
     bottom: 24px !important;
@@ -6738,6 +6738,13 @@ table.admin-table tr:hover td {
     font-size: 0.85rem !important;
     color: #14b8a6 !important;
     text-transform: none !important;
+}
+
+/* Modo Imersivo */
+.bottom-nav-hidden {
+    transform: translateY(100%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 .selector-nav-actions {
