@@ -1297,75 +1297,26 @@
             <form id="membro-form" onsubmit="App.handleMembroSave(event)">
                 <input type="hidden" id="membro-form-id">
                 
-                <div class="form-group">
-                    <label for="membro-nome">Nome Completo</label>
-                    <div class="input-icon-wrapper">
-                        <i class="fa-solid fa-user"></i>
-                        <input type="text" id="membro-nome" required placeholder="Ex: João da Silva">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="membro-foto-url">URL da Foto do Perfil (opcional)</label>
-                    <div class="input-icon-wrapper">
-                        <i class="fa-solid fa-image"></i>
-                        <input type="url" id="membro-foto-url" placeholder="Ex: https://url-da-foto.com/foto.jpg">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="membro-data-nascimento">Data de Nascimento (opcional)</label>
-                    <div class="input-icon-wrapper">
-                        <i class="fa-solid fa-cake-candles"></i>
-                        <input type="date" id="membro-data-nascimento">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="membro-email">E-mail de Login</label>
-                    <div class="input-icon-wrapper">
-                        <i class="fa-solid fa-envelope"></i>
-                        <input type="email" id="membro-email" required placeholder="joao@diaconia.com">
-                    </div>
-                </div>
-                
-                <div class="form-grid">
+                <!-- SEÇÃO 1 - IDENTIFICAÇÃO -->
+                <div style="margin-bottom: 25px;">
+                    <h4 style="font-size: 0.95rem; color: var(--navy-dark); margin-bottom: 15px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;"><i class="fa-solid fa-address-card" style="color: var(--teal-primary); margin-right: 8px;"></i>Identificação</h4>
+                    
                     <div class="form-group">
-                        <label for="membro-senha">Senha</label>
+                        <label for="membro-nome">Nome Completo</label>
                         <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-key"></i>
-                            <input type="text" id="membro-senha" required placeholder="Senha de acesso">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="membro-perfil">Perfil</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-shield-halved"></i>
-                            <select id="membro-perfil" required onchange="App.handleMembroPerfilChange(this.value)">
-                                <option value="membro">Membro</option>
-                                <option value="admin">Administrador</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="membro-setor-funcao-fields" style="display: flex; flex-direction: column; gap: 15px;">
-                    <div class="form-group">
-                        <label style="font-weight: 600; color: var(--navy-dark); margin-bottom: 8px; display: block;">Setores de Atuação (Selecione um ou mais)</label>
-                        <div id="membro-setores-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 12px; background: rgba(0,0,0,0.02); border-radius: 12px; border: 1px solid rgba(0,0,0,0.08);">
-                            <!-- Generado dinamicamente via JS -->
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="membro-funcao">Função / Observação Geral</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-address-card"></i>
-                            <input type="text" id="membro-funcao" list="membro-funcao-sugestoes" placeholder="Ex: Portaria, Limpeza Geral, Reparos" style="padding-left: 45px;" required>
-                            <datalist id="membro-funcao-sugestoes"></datalist>
+                            <i class="fa-solid fa-user"></i>
+                            <input type="text" id="membro-nome" required placeholder="Ex: João da Silva">
                         </div>
                     </div>
                     
                     <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label for="membro-data-nascimento">Data de Nascimento (opcional)</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-cake-candles"></i>
+                                <input type="date" id="membro-data-nascimento">
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label for="membro-sexo">Sexo</label>
                             <div class="input-icon-wrapper">
@@ -1376,20 +1327,62 @@
                                 </select>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="membro-foto-url">URL da Foto do Perfil (opcional)</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-image"></i>
+                            <input type="url" id="membro-foto-url" placeholder="Ex: https://url-da-foto.com/foto.jpg">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 2 - ACESSO -->
+                <div style="margin-bottom: 25px;">
+                    <h4 style="font-size: 0.95rem; color: var(--navy-dark); margin-bottom: 15px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;"><i class="fa-solid fa-lock" style="color: var(--teal-primary); margin-right: 8px;"></i>Acesso e Segurança</h4>
+                    
+                    <div class="form-group">
+                        <label for="membro-email">E-mail de Login</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-envelope"></i>
+                            <input type="email" id="membro-email" required placeholder="joao@diaconia.com">
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div class="form-group">
-                            <label for="membro-disponibilidade">Disponibilidade Geral</label>
+                            <label for="membro-senha">Senha</label>
                             <div class="input-icon-wrapper">
-                                <i class="fa-solid fa-calendar-days"></i>
-                                <select id="membro-disponibilidade" required style="padding-left: 45px;">
-                                    <option value="Sempre Disponível">Sempre Disponível</option>
-                                    <option value="Disponível para Escala" selected>Disponível para Escala</option>
-                                    <option value="Consultar Primeiro">Consultar Primeiro</option>
+                                <i class="fa-solid fa-key"></i>
+                                <input type="text" id="membro-senha" required placeholder="Senha de acesso">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="membro-perfil">Perfil de Acesso</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <select id="membro-perfil" required onchange="App.handleMembroPerfilChange(this.value)">
+                                    <option value="membro">Membro</option>
+                                    <option value="admin">Administrador</option>
                                 </select>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <!-- SEÇÃO 3 - ALOCAÇÃO OPERACIONAL -->
+                <div id="membro-setor-funcao-fields" style="margin-bottom: 25px;">
+                    <h4 style="font-size: 0.95rem; color: var(--navy-dark); margin-bottom: 15px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;"><i class="fa-solid fa-network-wired" style="color: var(--teal-primary); margin-right: 8px;"></i>Alocação Operacional</h4>
+                    
+                    <div class="form-group">
+                        <label style="font-weight: 600; color: var(--navy-dark); margin-bottom: 8px; display: block;">Setores de Atuação (Selecione um ou mais)</label>
+                        <div id="membro-setores-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 12px; background: rgba(0,0,0,0.02); border-radius: 12px; border: 1px solid rgba(0,0,0,0.08);">
+                            <!-- Generado dinamicamente via JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
                         <div class="form-group">
                             <label for="membro-funcao-principal">Função Principal</label>
                             <div class="input-icon-wrapper" style="margin-bottom: 8px;">
@@ -1412,7 +1405,33 @@
                         </div>
                     </div>
 
-                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="membro-funcao">Função / Observação Geral (Legado)</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-address-card"></i>
+                            <input type="text" id="membro-funcao" list="membro-funcao-sugestoes" placeholder="Ex: Portaria, Limpeza Geral, Reparos" style="padding-left: 45px;" required>
+                            <datalist id="membro-funcao-sugestoes"></datalist>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 4 - DISPONIBILIDADE E SUBSTITUIÇÃO -->
+                <div style="margin-bottom: 25px;">
+                    <h4 style="font-size: 0.95rem; color: var(--navy-dark); margin-bottom: 15px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;"><i class="fa-solid fa-calendar-check" style="color: var(--teal-primary); margin-right: 8px;"></i>Disponibilidade e Substituição</h4>
+                    
+                    <div class="form-group">
+                        <label for="membro-disponibilidade">Disponibilidade Geral</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-calendar-days"></i>
+                            <select id="membro-disponibilidade" required style="padding-left: 45px;">
+                                <option value="Sempre Disponível">Sempre Disponível</option>
+                                <option value="Disponível para Escala" selected>Disponível para Escala</option>
+                                <option value="Consultar Primeiro">Consultar Primeiro</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
                         <div class="form-group">
                             <label for="membro-participa-substituicao">Participa de Substituição?</label>
                             <div class="input-icon-wrapper">
@@ -1437,83 +1456,95 @@
                     </div>
                 </div>
                 
-                <div class="form-group" style="margin-top: 10px; margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; color: var(--navy-dark);">
-                        <input type="checkbox" id="membro-e-repositor" style="width: 20px; height: 20px; accent-color: var(--navy-primary); margin: 0; cursor: pointer;">
-                        <span>É Repositor / Comprador autorizado</span>
-                    </label>
-                </div>
-                
-                <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                <!-- SEÇÃO 5 - FUNÇÕES ADICIONAIS -->
+                <div style="margin-bottom: 25px;">
+                    <h4 style="font-size: 0.95rem; color: var(--navy-dark); margin-bottom: 15px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;"><i class="fa-solid fa-toolbox" style="color: var(--teal-primary); margin-right: 8px;"></i>Funções Adicionais</h4>
+                    
                     <div class="form-group">
-                        <label for="membro-status">Status Cadastral</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-circle-info"></i>
-                            <select id="membro-status" required>
-                                <option value="ativo">Ativo</option>
-                                <option value="inativo">Inativo</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="membro-status-operacional">Status Operacional</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-user-clock"></i>
-                            <select id="membro-status-operacional" required onchange="App.toggleAfastamentoDatesFields(this.value)">
-                                <option value="Disponível" selected>Disponível</option>
-                                <option value="Férias">Férias</option>
-                                <option value="Afastado">Afastado</option>
-                                <option value="Licença Médica">Licença Médica</option>
-                                <option value="Viagem / Intercâmbio">Viagem / Intercâmbio</option>
-                                <option value="Inativo Temporário">Inativo Temporário</option>
-                            </select>
-                        </div>
+                        <label style="display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; color: var(--navy-dark); background: rgba(0,0,0,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05);">
+                            <input type="checkbox" id="membro-e-repositor" style="width: 20px; height: 20px; accent-color: var(--navy-primary); margin: 0; cursor: pointer;">
+                            <span>É Repositor / Comprador autorizado</span>
+                        </label>
                     </div>
                 </div>
 
-                <div id="afastamento-dates-fields" style="display: none; flex-direction: column; gap: 15px; margin-top: 15px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06);">
-                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--navy-dark); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 6px; margin-bottom: 5px;">
-                        <i class="fa-solid fa-plane-departure" style="margin-right: 4px;"></i> Detalhes do Afastamento
-                    </div>
+                <!-- SEÇÃO 6 - CICLO DE VIDA E STATUS -->
+                <div style="margin-bottom: 25px;">
+                    <h4 style="font-size: 0.95rem; color: var(--navy-dark); margin-bottom: 15px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;"><i class="fa-solid fa-heart-pulse" style="color: var(--teal-primary); margin-right: 8px;"></i>Ciclo de Vida e Status</h4>
+                    
                     <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div class="form-group">
-                            <label for="membro-afastamento-inicio">Data Inicial</label>
+                            <label for="membro-status">Status Cadastral</label>
                             <div class="input-icon-wrapper">
-                                <i class="fa-solid fa-calendar-day"></i>
-                                <input type="date" id="membro-afastamento-inicio">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <select id="membro-status" required>
+                                    <option value="ativo">Ativo</option>
+                                    <option value="inativo">Inativo</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="membro-afastamento-fim">Data Final Prevista</label>
+                            <label for="membro-status-operacional">Status Operacional</label>
                             <div class="input-icon-wrapper">
-                                <i class="fa-solid fa-calendar-check"></i>
-                                <input type="date" id="membro-afastamento-fim">
+                                <i class="fa-solid fa-user-clock"></i>
+                                <select id="membro-status-operacional" required onchange="App.toggleAfastamentoDatesFields(this.value)">
+                                    <option value="Disponível" selected>Disponível</option>
+                                    <option value="Férias">Férias</option>
+                                    <option value="Afastado">Afastado</option>
+                                    <option value="Licença Médica">Licença Médica</option>
+                                    <option value="Viagem / Intercâmbio">Viagem / Intercâmbio</option>
+                                    <option value="Inativo Temporário">Inativo Temporário</option>
+                                </select>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="membro-afastamento-motivo">Motivo</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-comment-dots"></i>
-                            <input type="text" id="membro-afastamento-motivo" placeholder="Ex: Viagem de trabalho">
+
+                    <!-- Detalhes do Afastamento (condicional) -->
+                    <div id="afastamento-dates-fields" style="display: none; flex-direction: column; gap: 15px; margin-top: 15px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06);">
+                        <div style="font-weight: 700; font-size: 0.85rem; color: var(--navy-dark); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 6px; margin-bottom: 5px;">
+                            <i class="fa-solid fa-plane-departure" style="margin-right: 4px;"></i> Detalhes do Afastamento
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="membro-afastamento-obs">Observações da Supervisão</label>
-                        <textarea id="membro-afastamento-obs" rows="2" placeholder="Observações adicionais para a supervisão..." style="width: 100%; border-radius: 8px; border: 1px solid #CBD5E1; padding: 8px; font-family: inherit; font-size: 0.85rem; resize: none; box-sizing: border-box;"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="membro-afastamento-retorno">Retorno Automático?</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-arrows-spin"></i>
-                            <select id="membro-afastamento-retorno">
-                                <option value="Sim" selected>Sim (Reativa automaticamente ao expirar)</option>
-                                <option value="Não">Não (Aguardar confirmação da supervisão)</option>
-                            </select>
+                        <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="form-group">
+                                <label for="membro-afastamento-inicio">Data Inicial</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="fa-solid fa-calendar-day"></i>
+                                    <input type="date" id="membro-afastamento-inicio">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="membro-afastamento-fim">Data Final Prevista</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="fa-solid fa-calendar-check"></i>
+                                    <input type="date" id="membro-afastamento-fim">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="membro-afastamento-motivo">Motivo</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-comment-dots"></i>
+                                <input type="text" id="membro-afastamento-motivo" placeholder="Ex: Viagem de trabalho">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="membro-afastamento-obs">Observações da Supervisão</label>
+                            <textarea id="membro-afastamento-obs" rows="2" placeholder="Observações adicionais para a supervisão..." style="width: 100%; border-radius: 8px; border: 1px solid #CBD5E1; padding: 8px; font-family: inherit; font-size: 0.85rem; resize: none; box-sizing: border-box;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="membro-afastamento-retorno">Retorno Automático?</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-arrows-spin"></i>
+                                <select id="membro-afastamento-retorno">
+                                    <option value="Sim" selected>Sim (Reativa automaticamente ao expirar)</option>
+                                    <option value="Não">Não (Aguardar confirmação da supervisão)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
+                <!-- BOTOES DE AÇÃO -->
                 <div style="display: flex; gap: 15px; margin-top: 25px;">
                     <button type="button" class="btn-secondary" onclick="App.closeMembroFormModal()" style="color: var(--navy-dark); border-color: #E2E8F0;">Cancelar</button>
                     <button type="submit" class="btn-primary" style="flex: 2;">Salvar Membro</button>

@@ -4877,7 +4877,7 @@ const App = {
             fields.style.display = 'none';
             document.getElementById('membro-funcao').required = false;
         } else {
-            fields.style.display = 'flex';
+            fields.style.display = 'block';
             document.getElementById('membro-funcao').required = true;
         }
     },
