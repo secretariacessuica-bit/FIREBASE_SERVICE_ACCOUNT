@@ -204,11 +204,11 @@
                     </button>
                     
                     <!-- Botões Dinâmicos (3º Botão) -->
-                    <button class="nav-action-btn" id="nav-btn-painel" onclick="App.switchAdminTab('dashboard'); App.setActiveNavBtn('nav-btn-painel');" title="Painel" style="display: none;">
+                    <button class="nav-action-btn" id="nav-btn-painel" onclick="App.navigateTo('view-admin'); App.switchAdminTab('dashboard'); App.setActiveNavBtn('nav-btn-painel');" title="Painel" style="display: none;">
                         <i class="fa-solid fa-chart-line"></i>
                         <span>Painel</span>
                     </button>
-                    <button class="nav-action-btn" id="nav-btn-servicos" onclick="App.switchMemberTab('reposicao'); App.setActiveNavBtn('nav-btn-servicos');" title="Serviços" style="display: none;">
+                    <button class="nav-action-btn" id="nav-btn-servicos" onclick="App.navigateTo('view-member'); App.switchMemberTab('reposicao'); App.setActiveNavBtn('nav-btn-servicos');" title="Serviços" style="display: none;">
                         <i class="fa-solid fa-briefcase"></i>
                         <span>Serviços</span>
                     </button>
