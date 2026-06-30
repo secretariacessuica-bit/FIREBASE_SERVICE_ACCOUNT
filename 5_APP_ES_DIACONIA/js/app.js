@@ -302,7 +302,7 @@ const App = {
 
     // --- INITIALIZATION ---
     async init() {
-        console.log("Initializing CES Diaconia App...");
+        console.log("Initializing App...");
         
         // Wait for Firebase database to run first verification/seeding
         if (typeof DbService !== 'undefined') {
@@ -4620,7 +4620,7 @@ const App = {
             case 'produtos': return 'Produtos Cadastrados';
             case 'relatorios': return 'Métricas e Relatórios';
             case 'avisos': return 'Mural de Informativos';
-            default: return 'CES Diaconia';
+            default: return 'Diaconato';
         }
     },
 
@@ -9445,9 +9445,9 @@ const App = {
     showSobre() {
         this.showAlert(
             `<div style="text-align: center; font-family: inherit;">
-                <h4 style="margin: 0 0 10px 0; color: var(--navy-dark); font-weight: 800;">ES Diaconia v3.10.5</h4>
-                <p style="font-size: 0.88rem; color: var(--slate-gray); line-height: 1.5; margin-bottom: 15px;">
-                    Aplicativo inteligente para gerenciamento, escalas e comunicação da Diaconia.
+                <h4 style="margin: 0 0 10px 0; color: var(--navy-dark); font-weight: 800;">Diaconato v3.10.5</h4>
+                <p style="font-size: 0.9rem; color: var(--slate-gray); line-height: 1.5; margin: 0;">
+                    Aplicativo inteligente para gerenciamento, escalas e comunicação do Diaconato.
                 </p>
                 <div style="font-size: 0.78rem; color: #94A3B8; border-top: 1px solid #E2E8F0; padding-top: 10px;">
                     Desenvolvido com ❤️ para a Catedral.
@@ -9535,7 +9535,7 @@ const App = {
         if (msgModal) msgModal.classList.remove('active');
         this.showAlert(
             `<div style="text-align: left;">
-                <p style="font-size: 0.88rem; margin-bottom: 15px; color: var(--slate-gray);">Envie uma mensagem direta para a supervisão da Diaconia:</p>
+                <p style="font-size: 0.88rem; margin-bottom: 15px; color: var(--slate-gray);">Envie uma mensagem direta para a supervisão do Diaconato:</p>
                 <textarea id="mensagem-supervisao-texto" rows="4" placeholder="Escreva sua mensagem aqui..." style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
                 <button onclick="App.enviarMensagemSupervisaoDirect()" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700;">Enviar Mensagem</button>
             </div>`,
@@ -9566,7 +9566,7 @@ const App = {
         if (msgModal) msgModal.classList.remove('active');
         this.showAlert(
             `<div style="text-align: left;">
-                <p style="font-size: 0.88rem; margin-bottom: 15px; color: var(--slate-gray);">Ajude-nos a melhorar o ES Diaconia! Deixe suas sugestões ou relate problemas:</p>
+                <p style="font-size: 0.88rem; margin-bottom: 15px; color: var(--slate-gray);">Ajude-nos a melhorar o Diaconato! Deixe suas sugestões ou relate problemas:</p>
                 <textarea id="feedback-app-texto" rows="4" placeholder="Escreva seu feedback..." style="width:100%; border: 1px solid #E2E8F0; border-radius:12px; padding:10px; font-family:inherit; font-size:0.88rem; box-sizing:border-box; resize:none;"></textarea>
                 <button onclick="App.enviarFeedbackApp()" class="btn-primary" style="width:100%; margin-top:15px; padding:12px; border-radius:10px; font-weight:700;">Enviar Feedback</button>
             </div>`,
@@ -11270,7 +11270,7 @@ const App = {
                     paraUsuarioId: 'admin_default',
                     paraUsuarioNome: 'Supervisor Geral',
                     titulo: 'Vaga Aberta por Afastamento',
-                    mensagem: `O obreiro ${originalMembroNome} foi removido da escala de ${esc.funcao || 'Diaconia'} no ${esc.cultoNome || 'Culto'} em ${esc.data.split('-').reverse().join('/')} devido a afastamento (${motivo}).`,
+                    mensagem: `O obreiro ${originalMembroNome} foi removido da escala de ${esc.funcao || 'Diaconato'} no ${esc.cultoNome || 'Culto'} em ${esc.data.split('-').reverse().join('/')} devido a afastamento (${motivo}).`,
                     tipo: 'alerta'
                 });
             }
