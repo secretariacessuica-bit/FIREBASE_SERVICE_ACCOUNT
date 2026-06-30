@@ -2149,7 +2149,7 @@ const App = {
                         <p style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 15px;"><i class="fa-regular fa-clock"></i> Início previsto: ${e.horarioInicio}</p>
                         
                         ${e.statusPresenca === 'Pendente' ? `
-                            <button class="btn-primary" style="width: 100%; background: #10B981; border: none; font-weight: 700; font-size: 0.9rem; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);" onclick="App.confirmPresence('${e.id}', '${e.setorId}')">
+                            <button class="btn-primary" style="width: 100%; background: #10B981; border: none; font-weight: 700; font-size: 0.9rem; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);" onclick="App.handleConfirmPresenca('${e.id}', 'Confirmada')">
                                 <i class="fa-solid fa-check-double"></i> Aceitar Plantão
                             </button>
                         ` : `
@@ -3892,7 +3892,11 @@ const App = {
             localStorage.setItem(`active_service_${escalaId}`, servicoId);
             this.toggleBottomNav(false); // Modo Imersivo: Plantão Iniciado
             this.showToast('Serviço iniciado! Bom trabalho.', 'success');
-            this.loadAndRenderMemberScales();
+            if (this.isOperationalSector(this.activeSectorId)) {
+                this.renderOperacionalDashboard();
+            } else {
+                this.loadAndRenderMemberScales();
+            }
         } catch (e) {
             this.showAlert('Erro ao iniciar o serviço no banco.', 'Erro');
         }
