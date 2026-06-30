@@ -33,16 +33,23 @@ let selectedConfig = firebaseConfigProd;
 let useLegacyNamespace = false;
 
 const hostname = window.location.hostname;
-if (hostname === 'catedral-connect-267b2.web.app' || hostname === 'catedral-connect-267b2.firebaseapp.com') {
-    selectedConfig = firebaseConfigProd; // CONECTAR AO NOVO PROJETO (diaconia-a38f1)
-    useLegacyNamespace = false; // USAR COLEÇÕES LIMPAS (SEM NAMESPACE)
-    console.log("Diaconia rodando no domínio Legado, mas conectando ao novo Firebase de PRODUÇÃO (diaconia-a38f1) com coleções limpas.");
-} else if (hostname === 'ces-diaconia-dev.web.app' || hostname === 'localhost' || hostname === '127.0.0.1') {
+const isDefinitiveDomain = (hostname === 'diaconato.ch' || hostname === 'www.diaconato.ch');
+const isCurrentOfficialDomain = (hostname === 'diaconia-a38f1.web.app' || hostname === 'diaconia-a38f1.firebaseapp.com');
+const isLegacyDomain = (hostname === 'catedral-connect-267b2.web.app' || hostname === 'catedral-connect-267b2.firebaseapp.com');
+const isDevDomain = (hostname === 'ces-diaconia-dev.web.app' || hostname === 'localhost' || hostname === '127.0.0.1');
+
+if (isDefinitiveDomain || isCurrentOfficialDomain || isLegacyDomain) {
+    selectedConfig = firebaseConfigProd;
+    useLegacyNamespace = false;
+    console.log(`Diaconia rodando no ambiente de PRODUÇÃO (${hostname}) com coleções limpas.`);
+} else if (isDevDomain) {
     selectedConfig = firebaseConfigDev;
+    useLegacyNamespace = false;
     console.log("Diaconia rodando no AMBIENTE DE DESENVOLVIMENTO (Dev) com coleções limpas.");
 } else {
     selectedConfig = firebaseConfigProd;
-    console.log("Diaconia rodando no AMBIENTE DE PRODUÇÃO (Prod) com coleções limpas.");
+    useLegacyNamespace = false;
+    console.warn(`Hostname desconhecido (${hostname}). Utilizando PRODUÇÃO como fallback de segurança.`);
 }
 
 // 2. Inicializar o Firebase
