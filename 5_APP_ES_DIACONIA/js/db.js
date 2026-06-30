@@ -224,16 +224,43 @@ const DbService = {
             
             // Garantir sessão ativa para passar pelas regras de segurança
             if (!firebase.auth().currentUser) {
-                console.log("[Segurança] Iniciando sessão anônima temporária...");
+                console.log("[Auth-Diag] Iniciando sessão anônima temporária...");
                 await firebase.auth().signInAnonymously();
             }
+            console.log(`[Auth-Diag] Sessão anônima ativa. UID temporário: ${firebase.auth().currentUser.uid}`);
 
             // Buscar membro ativo pelo nome normalizado
+            console.log(`[Auth-Diag] Executando query em 'membros' para nomeNormalizado: "${nomeNorm}"`);
             const snap = await db.collection('membros')
                 .where('nomeNormalizado', '==', nomeNorm)
                 .where('status', '==', 'ativo')
                 .limit(1)
                 .get();
+
+            // DIAGNÓSTICO AVANÇADO (Detectar Duplicidade usando limit(1) e orderBy para burlar a restrição de listagem de forma legal)
+            try {
+                const snapDesc = await db.collection('membros')
+                    .where('nomeNormalizado', '==', nomeNorm)
+                    .where('status', '==', 'ativo')
+                    .orderBy(firebase.firestore.FieldPath.documentId(), 'desc')
+                    .limit(1)
+                    .get();
+
+                if (!snap.empty && !snapDesc.empty) {
+                    const docFirst = snap.docs[0];
+                    const docLast = snapDesc.docs[0];
+
+                    if (docFirst.id !== docLast.id) {
+                        console.log(`[Auth-Diag] ATENÇÃO: MÚLTIPLOS DOCUMENTOS ENCONTRADOS para "${nomeNorm}"! (Pelo menos 2)`);
+                        console.log(`[Auth-Diag] Documento A (Ascendente) -> ID: ${docFirst.id.substring(0,3)}***${docFirst.id.substring(docFirst.id.length-3)}, Perfil: ${docFirst.data().perfil}, Nome: ${docFirst.data().nome}`);
+                        console.log(`[Auth-Diag] Documento B (Descendente) -> ID: ${docLast.id.substring(0,3)}***${docLast.id.substring(docLast.id.length-3)}, Perfil: ${docLast.data().perfil}, Nome: ${docLast.data().nome}`);
+                    } else {
+                        console.log(`[Auth-Diag] Apenas 1 documento existe no banco para "${nomeNorm}".`);
+                    }
+                }
+            } catch (diagErr) {
+                console.warn("[Auth-Diag] Aviso: não foi possível executar diagnóstico secundário de duplicidade.", diagErr.message);
+            }
 
             let matchedDoc = null;
             let mData = null;
@@ -241,19 +268,14 @@ const DbService = {
             if (!snap.empty) {
                 matchedDoc = snap.docs[0];
                 mData = matchedDoc.data();
+                console.log("[Auth-Diag] Membro SELECIONADO para o login:");
+                console.log(`[Auth-Diag] ID: ${matchedDoc.id.substring(0, 3)}***${matchedDoc.id.substring(matchedDoc.id.length - 3)}`);
+                console.log(`[Auth-Diag] perfil: ${mData.perfil || 'vazio'}`);
+                console.log(`[Auth-Diag] nome: ${mData.nome}`);
+                console.log(`[Auth-Diag] nomeNormalizado: ${mData.nomeNormalizado}`);
+                console.log(`[Auth-Diag] status: ${mData.status}`);
             } else {
-                // Fallback legado temporário: buscar varrendo todos os membros ativos
-                const allActiveSnap = await db.collection('membros')
-                    .where('status', '==', 'ativo')
-                    .get();
-
-                allActiveSnap.forEach(doc => {
-                    const docData = doc.data();
-                    if (this.normalizeStr(docData.nome) === nomeNorm) {
-                        matchedDoc = doc;
-                        mData = docData;
-                    }
-                });
+                console.log("[Auth-Diag] Membro NÃO ENCONTRADO na query.");
             }
 
             if (!matchedDoc) {
@@ -261,6 +283,10 @@ const DbService = {
             }
 
             const membroId = matchedDoc.id;
+            const maskedId = membroId.substring(0, 3) + '***' + membroId.substring(membroId.length - 3);
+            console.log(`[Auth-Diag] ID do Membro resolvido (parcial): ${maskedId}`);
+
+            console.log(`[Auth-Diag] Tentando ler credenciais/${maskedId}...`);
             const credRef = db.collection('credenciais').doc(membroId);
             const credSnap = await credRef.get();
 
@@ -268,17 +294,19 @@ const DbService = {
             let needsMigration = false;
 
             if (credSnap.exists) {
+                console.log("[Auth-Diag] Documento de credencial EXISTE.");
                 const credData = credSnap.data();
                 const computedHash = await this.hashPassword(password, credData.passwordSalt);
-                if (computedHash === credData.passwordHash) {
-                    passwordMatch = true;
-                }
+                passwordMatch = (computedHash === credData.passwordHash);
+                console.log(`[Auth-Diag] Comparação de hash concluída. Result: ${passwordMatch}`);
             } else if (mData.senha) {
-                // Senha legado em texto plano
+                console.log("[Auth-Diag] Credencial não existe, testando senha em texto plano legado.");
                 if (mData.senha === password) {
                     passwordMatch = true;
                     needsMigration = true;
                 }
+            } else {
+                console.log("[Auth-Diag] Documento de credencial NÃO EXISTE e sem senha legada.");
             }
 
             if (!passwordMatch) {
@@ -748,12 +776,17 @@ const DbService = {
         this.limparCache('escalas');
     },
 
-    // --- SERVIï¿½OS & EXECUï¿½ï¿½O ---
+    // --- SERVIÇOS & EXECUÇÃO ---
     async iniciarServico(escalaId, membroId, membroNome, setorId, funcao, data, horarioInicio, horarioFim) {
-        // Update Escala status
-        await db.collection('escalas').doc(escalaId).update({
-            statusServico: 'Em andamento'
-        });
+        const agora = new Date();
+        const horaReal = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+        
+        // Update Escala status apenas se for uma escala real
+        if (escalaId && escalaId !== 'extra') {
+            await db.collection('escalas').doc(escalaId).update({
+                statusServico: 'Em andamento'
+            });
+        }
 
         // Add to active services
         const servicoRef = await db.collection('servicos').add({
@@ -764,11 +797,21 @@ const DbService = {
             funcao,
             data,
             horarioInicio,
+            horarioInicioReal: horaReal,
             horarioFim,
             iniciadoEm: firebase.firestore.FieldValue.serverTimestamp(),
             status: 'Em andamento',
             observacoes: ""
         });
+        
+        if (setorId === 'limpeza' || setorId === 'manutencao') {
+            await this.addAviso({
+                titulo: "🟢 Início de Expediente Operacional",
+                conteudo: `O membro ${membroNome} iniciou seu serviço de ${funcao} no setor ${setorId} às ${horaReal}.`,
+                tipo: "info",
+                dataCriacao: agora.toISOString()
+            });
+        }
 
         return servicoRef.id;
     },
@@ -784,10 +827,12 @@ const DbService = {
         });
 
         // Update corresponding scale
-        await db.collection('escalas').doc(escalaId).update({
-            statusServico: 'Finalizado',
-            observacoes: observacoes
-        });
+        if (escalaId && escalaId !== 'extra') {
+            await db.collection('escalas').doc(escalaId).update({
+                statusServico: 'Finalizado',
+                observacoes: observacoes
+            });
+        }
     },
 
     async fecharCulto(cultoId, statusEscalas) {

@@ -6758,7 +6758,7 @@ table.admin-table tr:hover td {
     border: none !important;
     padding: 4px 8px !important;
     cursor: pointer !important;
-    display: flex !important;
+    display: flex;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
