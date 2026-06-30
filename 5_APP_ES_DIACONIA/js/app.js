@@ -2136,7 +2136,7 @@ const App = {
                         <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 15px;">
                             Iniciado às ${myActiveService.horarioInicioReal || myActiveService.horarioInicio}
                         </div>
-                        <button class="btn-primary" style="width: 100%; background: #EF4444; border: none; font-weight: 700; font-size: 0.9rem; padding: 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);" onclick="App.confirmFinishService('${myActiveService.id}')">
+                        <button class="btn-primary" style="width: 100%; background: #EF4444; border: none; font-weight: 700; font-size: 0.9rem; padding: 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);" onclick="App.confirmFinishService('${myActiveService.id}', '${myActiveService.escalaId}')">
                             <i class="fa-solid fa-stop"></i> Finalizar Expediente
                         </button>
                     </div>
@@ -3896,6 +3896,14 @@ const App = {
         } catch (e) {
             this.showAlert('Erro ao iniciar o serviço no banco.', 'Erro');
         }
+    },
+
+    confirmFinishService(servicoId, escalaId) {
+        if (!servicoId) return;
+        document.getElementById('fechamento-servico-id').value = servicoId;
+        document.getElementById('fechamento-escala-id').value = (escalaId && escalaId !== 'undefined') ? escalaId : 'extra';
+        document.getElementById('fechamento-observacoes').value = '';
+        document.getElementById('modal-servico-fechamento').classList.add('active');
     },
 
     handleFinishServiceModal(escalaId) {
