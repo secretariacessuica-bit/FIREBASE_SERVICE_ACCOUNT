@@ -1047,10 +1047,9 @@ const App = {
     // --- VIEW 2: SECTOR SELECTION SCREEN ---
     async renderSectorSelectionScreen() {
         this.markMuralAsRead();
-        const container = document.getElementById('sector-selection-list');
-        if (!container) return;
-        container.innerHTML = '<div style="text-align: center; padding: 30px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--teal-primary);"></i><p style="margin-top: 10px; font-size: 0.9rem;">Carregando...</p></div>';
+        this.markMuralAsRead();
         
+
         // Populate user initials and welcome name
         if (this.currentUser) {
             const names = this.currentUser.nome.split(' ');
@@ -1409,94 +1408,9 @@ const App = {
                     alertasContainer.style.display = 'none';
                 }
             }
-            // -------------------------------------------------------------
-
-            // Render Sector Cards (Horizontal Launcher)
-            container.innerHTML = '';
-            
-            // Format container as horizontal scroll
-            container.style.display = 'flex';
-            container.style.flexWrap = 'nowrap';
-            container.style.overflowX = 'auto';
-            container.style.gap = '14px';
-            container.style.padding = '5px 5px 20px 5px';
-            container.style.scrollbarWidth = 'none'; // Firefox
-            container.style.msOverflowStyle = 'none'; // IE/Edge
-
-            const userSetor = this.currentUser ? this.currentUser.setor : null;
-            const userSetores = this.currentUser ? (this.currentUser.setores || (this.currentUser.setor ? [this.currentUser.setor] : [])) : [];
-            const isAdmin = this.currentUser ? this.currentUser.perfil === 'admin' : false;
-
-            for (const [key, sector] of Object.entries(this.sectorsData)) {
-                // Filter out other sectors if member
-                if (!isAdmin) {
-                    const belongs = userSetores.includes(key) || userSetor === key;
-                    if (!belongs) {
-                        continue;
-                    }
-                }
-
-                let iconClass = sector.icon || 'fa-solid fa-calendar';
-
-                // Check badges state for this sector
-                const sectorEscalas = escalas.filter(e => e.setorId === key);
-                let userSectorEscalas = [];
-                if (this.currentUser) {
-                    if (this.currentUser.perfil === 'admin') {
-                        userSectorEscalas = sectorEscalas;
-                    } else {
-                        userSectorEscalas = sectorEscalas.filter(e => e.membroId === this.currentUser.id);
-                    }
-                }
-
-                const hasPendencia = userSectorEscalas.some(e => e.statusPresenca === 'Pendente');
-                const hasServicoHoje = userSectorEscalas.some(e => e.data === hojeStr && (e.statusPresenca === 'Confirmada' || e.statusServico === 'Em andamento'));
-
-                let badgeHtml = '';
-                if (hasPendencia) {
-                    badgeHtml = `<div style="position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background: #EF4444; border-radius: 50%; border: 2px solid white;"></div>`;
-                } else if (hasServicoHoje) {
-                    badgeHtml = `<div style="position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background: #10B981; border-radius: 50%; border: 2px solid white;"></div>`;
-                }
-
-                const card = document.createElement('div');
-                card.className = `sector-launcher-shortcut`;
-                
-                // Estilos inline do atalho (formato app launcher)
-                card.style.display = 'flex';
-                card.style.flexDirection = 'column';
-                card.style.alignItems = 'center';
-                card.style.justifyContent = 'flex-start';
-                card.style.minWidth = '85px';
-                card.style.maxWidth = '100px';
-                card.style.height = '85px';
-                card.style.background = 'transparent';
-                card.style.border = 'none';
-                card.style.boxShadow = 'none';
-                card.style.padding = '4px 2px';
-                card.style.cursor = 'pointer';
-                card.style.flexShrink = '0';
-                card.style.transition = 'opacity 0.2s ease';
-                
-                card.onclick = () => {
-                    this.activeSectorId = key;
-                    this.memberActiveTab = 'escala';
-                    this.navigateTo('view-member');
-                };
-
-                card.innerHTML = `
-                    <div style="position: relative; width: 56px; height: 56px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.03); border-radius: 16px;">
-                        ${badgeHtml}
-                        <i class="${iconClass}" style="color: ${sector.cor}; font-size: 1.45rem;"></i>
-                    </div>
-                    <span style="font-size: 0.72rem; font-weight: 600; color: #475569; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px;">${sector.nome}</span>
-                `;
-
-                container.appendChild(card);
-            }
+            // A renderização dos atalhos de Setores Operacionais foi desativada.
         } catch (e) {
             console.error("Error rendering sector selection screen:", e);
-            container.innerHTML = '<div style="color: red; text-align: center; padding: 20px;">Erro ao carregar dados.</div>';
         }
     },
 
@@ -1792,8 +1706,6 @@ const App = {
     // VIEW 3: MEMBER PORTAL
     // ==========================================================================
     loadAndRenderMemberPortal() {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
-        console.log("DEBUG: loadAndRenderMemberPortal called, activeSectorId:", this.activeSectorId);
         
         if (!this.activeSectorId && this.currentUser) {
             const targetSector = this.currentUser.setor || (Array.isArray(this.currentUser.setores) && this.currentUser.setores[0]);
@@ -1835,13 +1747,6 @@ const App = {
     },
 
     switchMemberTab(tabName, el = null) {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
-        console.log("DEBUG: switchMemberTab called with tabName:", tabName, "el:", el ? "not null" : "null", "showingMonthlyCalendar before:", this.showingMonthlyCalendar);
-        if (el) {
-            this.showingMonthlyCalendar = false;
-        } else if (tabName !== 'escala') {
-            this.showingMonthlyCalendar = false;
-        }
         this.memberActiveTab = tabName;
         
         // Set nav item active
@@ -1882,7 +1787,6 @@ const App = {
     },
 
     switchMemberPeriod(period, el) {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         this.memberPeriod = period;
         document.querySelectorAll('.segment-item').forEach(item => item.classList.remove('active'));
         el.classList.add('active');
@@ -1890,19 +1794,12 @@ const App = {
     },
 
     adjustMemberWeek(offset) {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         const days = this.memberPeriod === 'week' ? 7 : 30;
         this.memberCurrentDate.setDate(this.memberCurrentDate.getDate() + (offset * days));
         this.loadAndRenderMemberScales();
     },
 
     async loadAndRenderMemberScales() {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
-        console.log("DEBUG: loadAndRenderMemberScales called, showingMonthlyCalendar:", this.showingMonthlyCalendar);
-        if (this.showingMonthlyCalendar) {
-            this.showMonthlyCalendar();
-            return;
-        }
         const container = document.getElementById('member-scales-list');
         container.innerHTML = `<div style="text-align: center; padding: 30px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--theme-color);"></i><p style="margin-top: 10px; font-size: 0.9rem;">Buscando escalas...</p></div>`;
 
@@ -3654,24 +3551,6 @@ const App = {
         }
     },
 
-    openMonthlyCalendar() {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
-        console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa bloqueada de acessar o calendário mensal legado.');
-        this.showToast('O calendário legado foi desativado.', 'warning');
-        return;
-    },
-
-    showMonthlyCalendar() {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
-        console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa de renderizar o calendário legado.');
-        return;
-
-        const nextHighlight = document.getElementById('next-service-highlight');
-        if (nextHighlight) {
-            nextHighlight.style.display = 'none';
-        }
-        this.renderPremiumCalendar(false);
-    },
 
     changeMemberCalendarMonth(offset) {
         this.memberCurrentDate.setMonth(this.memberCurrentDate.getMonth() + offset);
@@ -4537,7 +4416,6 @@ const App = {
 
     // Load member stats on profile tab
     async loadMemberProfileStats() {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
         try {
             const escalas = await DbService.getEscalas(this.activeSectorId);
             const userEscalas = escalas.filter(e => e.membroId === this.currentUser.id);
@@ -9880,19 +9758,6 @@ const App = {
             console.error("Error loading cleaning materials:", e);
             container.innerHTML = '<div style="text-align:center; padding: 20px; color: #EF4444;"><i class="fa-solid fa-triangle-exclamation" style="margin-bottom: 10px; font-size: 1.5rem;"></i><br>Erro ao carregar materiais.</div>';
         }
-    },
-
-    openSectorSelectorModal() {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
-        console.warn('[LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES] Tentativa bloqueada de abrir o modal-sector-selector.');
-        this.showToast('Este seletor foi desativado. Use a nova Home Premium.', 'warning');
-        return;
-    },
-
-    closeSectorSelectorModal() {
-        // [LEGADO - FASE 4A - PREVISTO PARA REMOÇÃO APÓS 7-15 DIAS SEM INCIDENTES]
-        const modal = document.getElementById('modal-sector-selector');
-        if (modal) modal.style.display = 'none';
     },
 
     openCommunicationModal() {
