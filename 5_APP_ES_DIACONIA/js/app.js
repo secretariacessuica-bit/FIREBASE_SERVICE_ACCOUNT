@@ -812,7 +812,7 @@ const App = {
 
         // Register Service Worker
         try {
-            this._swRegistration = await navigator.serviceWorker.register('/sw-notifications.js?v=3.10.5U', { scope: '/' });
+            this._swRegistration = await navigator.serviceWorker.register('/sw-notifications.js?v=3.11.0-PWA', { scope: '/' });
             console.log('[Notificações] Service Worker registrado:', this._swRegistration.scope);
         } catch (err) {
             console.warn('[Notificações] Falha ao registrar Service Worker:', err);
@@ -954,14 +954,22 @@ const App = {
     },
 
     async saveTokenToFirestore(token) {
-        if (!this.currentUser) return;
+        if (!this.currentUser || !token) return;
+
+        const tokenKey = `fcm_token_atual_${this.currentUser.id}`;
+        const savedToken = localStorage.getItem(tokenKey);
+        
+        if (savedToken === token) {
+            return;
+        }
+
         try {
             const memberRef = window.db.collection('membros').doc(this.currentUser.id);
             await memberRef.set({
                 fcmTokens: firebase.firestore.FieldValue.arrayUnion(token)
             }, { merge: true });
             
-            localStorage.setItem('fcm_token_atual', token);
+            localStorage.setItem(tokenKey, token);
             console.log('[FCM] Token salvo no membro:', this.currentUser.id);
         } catch (error) {
             console.error('[FCM] Erro ao salvar token no Firestore:', error);
@@ -969,15 +977,19 @@ const App = {
     },
 
     async removeTokenFromFirestore() {
-        const token = localStorage.getItem('fcm_token_atual');
-        if (!token || !this.currentUser) return;
+        if (!this.currentUser) return;
+        
+        const tokenKey = `fcm_token_atual_${this.currentUser.id}`;
+        const token = localStorage.getItem(tokenKey);
+        
+        if (!token) return;
         
         try {
             const memberRef = window.db.collection('membros').doc(this.currentUser.id);
             await memberRef.update({
                 fcmTokens: firebase.firestore.FieldValue.arrayRemove(token)
             });
-            localStorage.removeItem('fcm_token_atual');
+            localStorage.removeItem(tokenKey);
             console.log('[FCM] Token desvinculado do membro.');
         } catch (error) {
             console.error('[FCM] Erro ao desvincular token:', error);
