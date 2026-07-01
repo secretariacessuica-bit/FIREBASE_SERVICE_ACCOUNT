@@ -6637,6 +6637,71 @@ const App = {
                 }
             }
 
+            let generatedDates = [];
+            const baseDate = new Date(data + 'T12:00:00');
+            
+            if (!id && this.isOperationalSector(setorId) && repValue !== 'unica') {
+                const occurrences = 12;
+                for (let i = 0; i < occurrences; i++) {
+                    if (repValue === 'mensal') {
+                        const targetMonthStart = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1, 12, 0, 0);
+                        const expectedMonth = targetMonthStart.getMonth();
+                        const weekOrdinal = Math.ceil(baseDate.getDate() / 7);
+                        const dayOfWeek = baseDate.getDay();
+                        
+                        const firstDayOffset = (dayOfWeek - targetMonthStart.getDay() + 7) % 7;
+                        
+                        const occDate = new Date(targetMonthStart);
+                        occDate.setDate(1 + firstDayOffset + (weekOrdinal - 1) * 7);
+                        
+                        if (occDate.getMonth() !== expectedMonth) {
+                            occDate.setDate(occDate.getDate() - 7);
+                        }
+                        generatedDates.push(this.formatLocalISOString(occDate).split('T')[0]);
+                    } else if (repValue === 'semanal') {
+                        const occDate = new Date(baseDate);
+                        occDate.setDate(occDate.getDate() + (i * 7));
+                        generatedDates.push(this.formatLocalISOString(occDate).split('T')[0]);
+                    }
+                }
+            } else {
+                generatedDates.push(data);
+            }
+
+            if (setorId === 'limpeza') {
+                const minDate = generatedDates.reduce((min, d) => d < min ? d : min, generatedDates[0]);
+                const prevMinDateObj = new Date(minDate + 'T12:00:00');
+                prevMinDateObj.setDate(prevMinDateObj.getDate() - 1);
+                const queryMinDate = this.formatLocalISOString(prevMinDateObj).split('T')[0];
+
+                const limpezaSnapshot = await db.collection('escalas')
+                    .where('setorId', '==', 'limpeza')
+                    .where('data', '>=', queryMinDate)
+                    .get();
+                    
+                const existingLimpezaDates = new Set();
+                limpezaSnapshot.forEach(doc => {
+                    if (id && doc.id === id) return;
+                    existingLimpezaDates.add(doc.data().data);
+                });
+
+                const allIntendedDates = new Set(generatedDates);
+
+                for (let d of generatedDates) {
+                    const dObj = new Date(d + 'T12:00:00');
+                    const prevObj = new Date(dObj); prevObj.setDate(prevObj.getDate() - 1);
+                    const nextObj = new Date(dObj); nextObj.setDate(nextObj.getDate() + 1);
+                    
+                    const prevStr = this.formatLocalISOString(prevObj).split('T')[0];
+                    const nextStr = this.formatLocalISOString(nextObj).split('T')[0];
+
+                    if (existingLimpezaDates.has(prevStr) || existingLimpezaDates.has(nextStr) ||
+                        allIntendedDates.has(prevStr) || allIntendedDates.has(nextStr)) {
+                        this.showAlert('Conflito na Limpeza: Não é permitido escalas em dias consecutivos. Deve haver pelo menos 1 dia livre entre as limpezas.');
+                        return;
+                    }
+                }
+            }
             const promises = [];
 
             for (const opt of selectedOptions) {
@@ -6673,26 +6738,7 @@ const App = {
                 }
 
                 if (!id && this.isOperationalSector(setorId) && repValue !== 'unica') {
-                    const baseDate = new Date(data + 'T12:00:00'); // Evita problemas de fuso horário
-                    const occurrences = 12; // Mensal is the only option now
-                    
-                    for (let i = 0; i < occurrences; i++) {
-                        const targetMonthStart = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1, 12, 0, 0);
-                        const expectedMonth = targetMonthStart.getMonth();
-                        const weekOrdinal = Math.ceil(baseDate.getDate() / 7);
-                        const dayOfWeek = baseDate.getDay();
-                        
-                        const firstDayOffset = (dayOfWeek - targetMonthStart.getDay() + 7) % 7;
-                        
-                        const occDate = new Date(targetMonthStart);
-                        occDate.setDate(1 + firstDayOffset + (weekOrdinal - 1) * 7);
-                        
-                        if (occDate.getMonth() !== expectedMonth) {
-                            occDate.setDate(occDate.getDate() - 7);
-                        }
-                        
-                        const occDataStr = this.formatLocalISOString(occDate).split('T')[0];
-                        
+                    for (const occDataStr of generatedDates) {
                         const payload = {
                             ...scalePayload,
                             data: occDataStr,

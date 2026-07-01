@@ -16,7 +16,7 @@ const firebaseConfigProd = {
 firebase.initializeApp(firebaseConfigProd);
 const messaging = firebase.messaging();
 
-const SW_VERSION = 'ces-diaconia-sw-v3.11.0-PWA';
+const SW_VERSION = 'ces-diaconia-sw-v3.11.1-PWA';
 const CACHE_NAME = SW_VERSION;
 const APP_URL = '/';
 
