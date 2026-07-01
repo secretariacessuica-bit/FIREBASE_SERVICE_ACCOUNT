@@ -3406,9 +3406,15 @@ const App = {
     showAdminCalendarOnly() {
         const calContainer = document.getElementById('admin-calendar-view-container');
         const detailContainer = document.getElementById('admin-selected-culto-section');
+        const opContainer = document.getElementById('admin-escalas-operacionais-container');
         if (calContainer && detailContainer) {
             calContainer.style.display = 'block';
             detailContainer.style.display = 'none';
+        }
+        
+        if (opContainer) {
+            opContainer.style.display = 'block';
+            this.renderEscalasOperacionais();
         }
         
         // Remove selections from calendar event pills
@@ -5847,19 +5853,26 @@ const App = {
             const calContainer = document.getElementById('admin-calendar-view-container');
             const detailContainer = document.getElementById('admin-selected-culto-section');
             
+            const opContainer = document.getElementById('admin-escalas-operacionais-container');
+            
             if (this.adminSelectedCultoId) {
                 const exists = this.cultosData.some(c => c.id === this.adminSelectedCultoId);
                 if (exists) {
                     if (calContainer) calContainer.style.display = 'none';
                     if (detailContainer) detailContainer.style.display = 'block';
+                    if (opContainer) opContainer.style.display = 'none';
                     this.selectAdminCulto(this.adminSelectedCultoId);
                     return;
                 }
             }
             
-            // Se nenhum culto estiver selecionado ou o selecionado não existir, mostra apenas o calendário
+            // Se nenhum culto estiver selecionado ou o selecionado não existir, mostra apenas o calendário e escalas operacionais
             if (calContainer) calContainer.style.display = 'block';
             if (detailContainer) detailContainer.style.display = 'none';
+            if (opContainer) {
+                opContainer.style.display = 'block';
+                this.renderEscalasOperacionais();
+            }
         } catch (e) {
             console.error("Erro ao carregar cultos:", e);
             // Exibe mensagem de erro no container correto
@@ -6298,7 +6311,7 @@ const App = {
     },
 
     async renderEscalasOperacionais() {
-        const container = document.getElementById('admin-escalas-sectors-accordion');
+        const container = document.getElementById('admin-escalas-operacionais-container');
         if (!container) return;
 
         container.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--teal-primary);"></i><p style="margin-top:10px; font-size:0.9rem;">Buscando escalas operacionais...</p></div>';
