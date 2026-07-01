@@ -4618,7 +4618,7 @@ const App = {
         });
 
         const aceitesPendentes = escalas.filter(e => {
-            if (e.statusPresenca !== 'Pendente' || !e.membroId || e.membroNome === 'Vaga Pendente') return false;
+            if (e.statusPresenca !== 'Pendente' || !e.membroId || e.membroNome === 'Vaga Pendente' || !e.cultoId) return false;
             const c = cultos.find(culto => culto.id === e.cultoId);
             return c && c.status !== 'Finalizado';
         });
@@ -6414,7 +6414,14 @@ const App = {
         horaFimInput.value = '17:00';
         horaFimInput.disabled = false;
 
-        document.getElementById('escala-setor').value = 'limpeza';
+        const setorSel = document.getElementById('escala-setor');
+        setorSel.innerHTML = '<option value="" disabled selected>Escolha o setor</option>';
+        Object.entries(this.sectorsData).forEach(([id, cfg]) => {
+            if (this.isOperationalSector(id)) {
+                setorSel.innerHTML += `<option value="${id}">${cfg.nome}</option>`;
+            }
+        });
+        setorSel.value = 'limpeza';
         await this.handleEscalaSetorChange('limpeza');
 
         document.getElementById('modal-escala-form').classList.add('active');
@@ -6670,8 +6677,19 @@ const App = {
                     const occurrences = 12; // Mensal is the only option now
                     
                     for (let i = 0; i < occurrences; i++) {
-                        const occDate = new Date(baseDate);
-                        occDate.setMonth(baseDate.getMonth() + i);
+                        const targetMonthStart = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1, 12, 0, 0);
+                        const expectedMonth = targetMonthStart.getMonth();
+                        const weekOrdinal = Math.ceil(baseDate.getDate() / 7);
+                        const dayOfWeek = baseDate.getDay();
+                        
+                        const firstDayOffset = (dayOfWeek - targetMonthStart.getDay() + 7) % 7;
+                        
+                        const occDate = new Date(targetMonthStart);
+                        occDate.setDate(1 + firstDayOffset + (weekOrdinal - 1) * 7);
+                        
+                        if (occDate.getMonth() !== expectedMonth) {
+                            occDate.setDate(occDate.getDate() - 7);
+                        }
                         
                         const occDataStr = this.formatLocalISOString(occDate).split('T')[0];
                         
