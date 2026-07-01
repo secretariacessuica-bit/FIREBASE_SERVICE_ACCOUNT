@@ -6038,8 +6038,8 @@ const App = {
         container.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--teal-primary);"></i><p style="margin-top:10px; font-size:0.9rem;">Buscando escalas...</p></div>';
         
         if (!this.adminSelectedCultoId) {
-            console.log("DEBUG: [loadAndRenderAdminEscalas] Nenhum culto selecionado (this.adminSelectedCultoId é nulo/undefined), abortando renderização.");
-            return;
+            console.log("DEBUG: [loadAndRenderAdminEscalas] Sem culto selecionado — exibindo escalas operacionais.");
+            return this.renderEscalasOperacionais();
         }
         
         try {
@@ -6064,7 +6064,7 @@ const App = {
             
             console.log("DEBUG: [loadAndRenderAdminEscalas] Renderizando acordeão de setores...");
             for (const sectorId in this.sectorsData) {
-                if (sectorId === 'limpeza' || sectorId === 'manutencao') continue;
+                if (this.isOperationalSector(sectorId)) continue;
                 const sector = this.sectorsData[sectorId];
                 const sectorEscalas = escalas.filter(e => e.setorId === sectorId);
                 
@@ -6297,6 +6297,116 @@ const App = {
         return this.sectorsData[sectorId]?.icon || 'fa-solid fa-calendar';
     },
 
+    async renderEscalasOperacionais() {
+        const container = document.getElementById('admin-escalas-sectors-accordion');
+        if (!container) return;
+
+        container.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--teal-primary);"></i><p style="margin-top:10px; font-size:0.9rem;">Buscando escalas operacionais...</p></div>';
+
+        try {
+            const todasEscalas = await DbService.getEscalas();
+            const opSetores = Object.keys(this.sectorsData).filter(id => this.isOperationalSector(id));
+            const escalasOp = todasEscalas.filter(e => opSetores.includes(e.setorId) && !e.cultoId);
+
+            container.innerHTML = '';
+
+            // Cabeçalho informativo
+            const header = document.createElement('div');
+            header.style.cssText = 'background: linear-gradient(135deg, #14b8a6, #0f172a); border-radius: 12px; padding: 16px 20px; color: white; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;';
+            header.innerHTML = '<i class="fa-solid fa-broom" style="font-size:1.4rem; opacity:0.9;"></i><div><div style="font-weight:700; font-size:1rem;">Escalas Operacionais Independentes</div><div style="font-size:0.8rem; opacity:0.85; margin-top:2px;">Limpeza e Manutenção — sem vínculo de culto</div></div>';
+            container.appendChild(header);
+
+            // Botão nova escala operacional
+            const btnNew = document.createElement('div');
+            btnNew.style.cssText = 'margin-bottom: 20px; text-align: right;';
+            btnNew.innerHTML = '<button onclick="App.openEscalaFormModalOperacional()" style="background: var(--teal-primary); color: white; border: none; border-radius: 8px; padding: 10px 18px; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;"><i class="fa-solid fa-plus"></i> Nova Escala Operacional</button>';
+            container.appendChild(btnNew);
+
+            if (escalasOp.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.cssText = 'text-align:center; padding:40px 20px; color:var(--slate-gray); font-size:0.9rem;';
+                empty.innerHTML = '<i class="fa-solid fa-calendar-xmark" style="font-size:2rem; opacity:0.4; display:block; margin-bottom:12px;"></i>Nenhuma escala operacional cadastrada.';
+                container.appendChild(empty);
+                return;
+            }
+
+            // Agrupar por setor
+            opSetores.forEach(sectorId => {
+                const sector = this.sectorsData[sectorId];
+                const escalasSetor = escalasOp.filter(e => e.setorId === sectorId);
+                if (escalasSetor.length === 0) return;
+
+                const section = document.createElement('div');
+                section.style.cssText = 'margin-bottom: 20px; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;';
+                section.style.borderLeft = `4px solid ${sector.cor}`;
+
+                const secHeader = document.createElement('div');
+                secHeader.style.cssText = `background: ${sector.cor}15; padding: 12px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #E2E8F0;`;
+                secHeader.innerHTML = `<i class="${sector.icon}" style="color:${sector.cor}; font-size:1.1rem;"></i><span style="font-weight:700; font-size:0.95rem; color:var(--navy-dark);">${sector.nome}</span><span style="font-size:0.8rem; color:var(--slate-gray); margin-left:auto;">${escalasSetor.length} escala(s)</span>`;
+                section.appendChild(secHeader);
+
+                const tableWrap = document.createElement('div');
+                tableWrap.style.cssText = 'overflow-x: auto;';
+                const table = document.createElement('table');
+                table.className = 'admin-table accordion-table';
+                table.style.cssText = 'box-shadow:none; border-radius:0;';
+                table.innerHTML = '<thead><tr><th>Data</th><th>Horário</th><th>Função</th><th>Voluntário</th><th>Presença</th><th>Ações</th></tr></thead>';
+                const tbody = document.createElement('tbody');
+
+                escalasSetor.forEach(e => {
+                    const dateParts = (e.data || '').split('-');
+                    const dObj = dateParts.length === 3 ? new Date(dateParts[0], dateParts[1]-1, dateParts[2]) : null;
+                    const dFormatado = dObj ? dObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) : (e.data || '-');
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="vertical-align:middle; font-weight:600;">${dFormatado}</td>
+                        <td style="vertical-align:middle;">${e.horarioInicio || '-'} – ${e.horarioFim || '-'}</td>
+                        <td style="vertical-align:middle;">${e.funcao || '-'}</td>
+                        <td style="vertical-align:middle;"><b>${e.membroNome || '-'}</b></td>
+                        <td style="vertical-align:middle;">${this.getPresenceBadgeHtml(e.statusPresenca)}</td>
+                        <td style="vertical-align:middle;">
+                            <div class="action-buttons">
+                                <button class="btn-table-action" onclick="App.handleEditEscala('${e.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn-table-action delete" onclick="App.handleDeleteEscala('${e.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                table.appendChild(tbody);
+                tableWrap.appendChild(table);
+                section.appendChild(tableWrap);
+                container.appendChild(section);
+            });
+        } catch (e) {
+            console.error('Erro ao carregar escalas operacionais:', e);
+            container.innerHTML = '<div style="color:red; text-align:center; padding:20px;">Erro ao carregar escalas operacionais.</div>';
+        }
+    },
+
+    async openEscalaFormModalOperacional() {
+        document.getElementById('escala-modal-title').innerText = "Nova Escala Operacional";
+        document.getElementById('escala-form-id').value = '';
+        document.getElementById('escala-form').reset();
+        document.getElementById('escala-cultoid').value = '';
+
+        const dataInput = document.getElementById('escala-data');
+        const horaInInput = document.getElementById('escala-horainicio');
+        const horaFimInput = document.getElementById('escala-horafim');
+        dataInput.value = this.formatLocalISOString(new Date()).split('T')[0];
+        dataInput.disabled = false;
+        horaInInput.value = '08:00';
+        horaInInput.disabled = false;
+        horaFimInput.value = '17:00';
+        horaFimInput.disabled = false;
+
+        document.getElementById('escala-setor').value = 'limpeza';
+        await this.handleEscalaSetorChange('limpeza');
+
+        document.getElementById('modal-escala-form').classList.add('active');
+    },
+
     openEscalaFormModalParaFuncao(sectorId, funcao) {
         const c = this.cultosData.find(item => item.id === this.adminSelectedCultoId);
         if (!c) return;
@@ -6416,7 +6526,7 @@ const App = {
         const repGroup = document.getElementById('escala-repeticao-group');
         if (repGroup) {
             const isNew = !document.getElementById('escala-form-id').value;
-            if (isNew && sectorId === 'limpeza') {
+            if (isNew && this.isOperationalSector(sectorId)) {
                 repGroup.style.display = 'block';
             } else {
                 repGroup.style.display = 'none';
@@ -6527,7 +6637,7 @@ const App = {
             const repSelect = document.getElementById('escala-repeticao');
             const repValue = repSelect ? repSelect.value : 'unica';
 
-            if (!id && setorId === 'limpeza' && repValue !== 'unica') {
+            if (!id && this.isOperationalSector(setorId) && repValue !== 'unica') {
                 const baseDate = new Date(data + 'T12:00:00'); // Evita problemas de fuso horário
                 const occurrences = repValue === 'mensal' ? 12 : 5;
                 const promises = [];
