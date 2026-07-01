@@ -1628,11 +1628,11 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="escala-membro">Membro Escalado</label>
-                    <div class="input-icon-wrapper">
-                        <i class="fa-solid fa-user"></i>
-                        <select id="escala-membro" required>
-                            <option value="" disabled selected>Selecione a função antes</option>
+                    <label for="escala-membro">Membro(s) Escalado(s) <span style="font-size:0.75rem; color:var(--slate-gray); font-weight:normal;">(Segure Ctrl para selecionar vários)</span></label>
+                    <div class="input-icon-wrapper" style="align-items: flex-start;">
+                        <i class="fa-solid fa-users" style="top: 15px;"></i>
+                        <select id="escala-membro" required multiple style="height: 120px; padding-top: 10px;">
+                            <option value="" disabled>Selecione a função antes</option>
                         </select>
                     </div>
                 </div>
@@ -1669,7 +1669,6 @@
                         <select id="escala-repeticao">
                             <option value="unica" selected>Única (Apenas esta data)</option>
                             <option value="mensal">Mensal (Gera 12 meses)</option>
-                            <option value="anual">Anual (Gera 5 anos)</option>
                         </select>
                     </div>
                 </div>

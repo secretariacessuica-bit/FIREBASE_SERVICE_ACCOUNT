@@ -6591,25 +6591,31 @@ const App = {
         const setorId = document.getElementById('escala-setor').value;
         const funcao = document.getElementById('escala-funcao').value;
         const scaleMembroSelect = document.getElementById('escala-membro');
-        const membroId = scaleMembroSelect.value;
-        const membroNome = scaleMembroSelect.options[scaleMembroSelect.selectedIndex].dataset.nome;
+        
+        const selectedOptions = Array.from(scaleMembroSelect.selectedOptions).filter(opt => opt.value);
+        
+        if (selectedOptions.length === 0) {
+            this.showAlert('Por favor, selecione ao menos um membro.');
+            return;
+        }
+
+        if (id && selectedOptions.length > 1) {
+            this.showAlert('Ao editar uma escala existente, selecione apenas um membro.');
+            return;
+        }
+
         const data = document.getElementById('escala-data').value;
         const horarioInicio = document.getElementById('escala-horainicio').value;
         const horarioFim = document.getElementById('escala-horafim').value;
         const observacoes = document.getElementById('escala-obs').value.trim();
-
-        if (!membroId) {
-            this.showAlert('Por favor, selecione um membro.');
-            return;
-        }
+        const repSelect = document.getElementById('escala-repeticao');
+        const repValue = repSelect ? repSelect.value : 'unica';
 
         try {
-            const scalePayload = {
+            const basePayload = {
                 origem: 'manual',
                 setorId,
                 funcao,
-                membroId,
-                membroNome,
                 data,
                 horarioInicio,
                 horarioFim,
@@ -6617,66 +6623,72 @@ const App = {
             };
             
             if (cultoId) {
-                scalePayload.cultoId = cultoId;
+                basePayload.cultoId = cultoId;
                 const c = this.cultosData.find(item => item.id === cultoId);
                 if (c) {
-                    scalePayload.cultoNome = c.nome;
+                    basePayload.cultoNome = c.nome;
                 }
             }
 
-            if (!id) {
-                scalePayload.statusPresenca = 'Pendente';
-                scalePayload.statusServico = 'Agendado';
-            } else {
-                try {
-                    const docRef = await db.collection('escalas').doc(id).get();
-                    if (docRef.exists) {
-                        const existing = docRef.data();
-                        if (existing.membroId !== membroId || 
-                            existing.data !== data || 
-                            existing.horarioInicio !== horarioInicio || 
-                            existing.horarioFim !== horarioFim ||
-                            existing.statusPresenca === 'Recusada') {
-                            scalePayload.statusPresenca = 'Pendente';
-                            scalePayload.statusServico = 'Agendado';
-                            scalePayload.rejeicaoResolvida = false;
+            const promises = [];
+
+            for (const opt of selectedOptions) {
+                const membroId = opt.value;
+                const membroNome = opt.dataset.nome;
+                
+                let scalePayload = {
+                    ...basePayload,
+                    membroId,
+                    membroNome
+                };
+
+                if (!id) {
+                    scalePayload.statusPresenca = 'Pendente';
+                    scalePayload.statusServico = 'Agendado';
+                } else {
+                    try {
+                        const docRef = await db.collection('escalas').doc(id).get();
+                        if (docRef.exists) {
+                            const existing = docRef.data();
+                            if (existing.membroId !== membroId || 
+                                existing.data !== data || 
+                                existing.horarioInicio !== horarioInicio || 
+                                existing.horarioFim !== horarioFim ||
+                                existing.statusPresenca === 'Recusada') {
+                                scalePayload.statusPresenca = 'Pendente';
+                                scalePayload.statusServico = 'Agendado';
+                                scalePayload.rejeicaoResolvida = false;
+                            }
                         }
+                    } catch (err) {
+                        console.error("Error checking existing scale:", err);
                     }
-                } catch (err) {
-                    console.error("Error checking existing scale:", err);
                 }
-            }
 
-            const repSelect = document.getElementById('escala-repeticao');
-            const repValue = repSelect ? repSelect.value : 'unica';
-
-            if (!id && this.isOperationalSector(setorId) && repValue !== 'unica') {
-                const baseDate = new Date(data + 'T12:00:00'); // Evita problemas de fuso horário
-                const occurrences = repValue === 'mensal' ? 12 : 5;
-                const promises = [];
-
-                for (let i = 0; i < occurrences; i++) {
-                    const occDate = new Date(baseDate);
-                    if (repValue === 'mensal') {
+                if (!id && this.isOperationalSector(setorId) && repValue !== 'unica') {
+                    const baseDate = new Date(data + 'T12:00:00'); // Evita problemas de fuso horário
+                    const occurrences = 12; // Mensal is the only option now
+                    
+                    for (let i = 0; i < occurrences; i++) {
+                        const occDate = new Date(baseDate);
                         occDate.setMonth(baseDate.getMonth() + i);
-                    } else if (repValue === 'anual') {
-                        occDate.setFullYear(baseDate.getFullYear() + i);
+                        
+                        const occDataStr = this.formatLocalISOString(occDate).split('T')[0];
+                        
+                        const payload = {
+                            ...scalePayload,
+                            data: occDataStr,
+                            statusPresenca: 'Pendente',
+                            statusServico: 'Agendado'
+                        };
+                        promises.push(DbService.saveEscala(null, payload));
                     }
-                    
-                    const occDataStr = this.formatLocalISOString(occDate).split('T')[0];
-                    
-                    const payload = {
-                        ...scalePayload,
-                        data: occDataStr,
-                        statusPresenca: 'Pendente',
-                        statusServico: 'Agendado'
-                    };
-                    promises.push(DbService.saveEscala(null, payload));
+                } else {
+                    promises.push(DbService.saveEscala(id ? id : null, scalePayload));
                 }
-                await Promise.all(promises);
-            } else {
-                await DbService.saveEscala(id ? id : null, scalePayload);
             }
+
+            await Promise.all(promises);
 
             this.closeEscalaFormModal();
             this.showToast('Escala gravada com sucesso!', 'success');
