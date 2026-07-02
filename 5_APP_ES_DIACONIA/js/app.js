@@ -5752,7 +5752,7 @@ const App = {
         try {
             console.log("Checking for legacy scales to migrate...");
             const escalas = await DbService.getEscalas();
-            const legacyScales = escalas.filter(e => !e.cultoId);
+            const legacyScales = escalas.filter(e => !e.cultoId && !this.isOperationalSector(e.setorId));
             
             if (legacyScales.length === 0) {
                 console.log("No legacy scales to migrate.");
