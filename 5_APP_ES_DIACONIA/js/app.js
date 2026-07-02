@@ -6363,25 +6363,82 @@ const App = {
                 const table = document.createElement('table');
                 table.className = 'admin-table accordion-table';
                 table.style.cssText = 'box-shadow:none; border-radius:0;';
-                table.innerHTML = '<thead><tr><th>Data</th><th>Horário</th><th>Função</th><th>Voluntário</th><th>Presença</th><th>Ações</th></tr></thead>';
+                table.innerHTML = '<thead><tr><th>Data / Turno</th><th>Status da Escala</th><th>Voluntários</th><th>Ações</th></tr></thead>';
                 const tbody = document.createElement('tbody');
 
+                // Agrupar por data, horários e função
+                const turnos = {};
                 escalasSetor.forEach(e => {
-                    const dateParts = (e.data || '').split('-');
+                    const key = `${e.data}_${e.horarioInicio || ''}_${e.horarioFim || ''}_${e.funcao || ''}`;
+                    if (!turnos[key]) {
+                        turnos[key] = {
+                            data: e.data,
+                            horarioInicio: e.horarioInicio,
+                            horarioFim: e.horarioFim,
+                            funcao: e.funcao,
+                            membros: []
+                        };
+                    }
+                    turnos[key].membros.push({
+                        id: e.id,
+                        nome: e.membroNome,
+                        statusPresenca: e.statusPresenca
+                    });
+                });
+
+                Object.values(turnos).forEach(t => {
+                    const dateParts = (t.data || '').split('-');
                     const dObj = dateParts.length === 3 ? new Date(dateParts[0], dateParts[1]-1, dateParts[2]) : null;
-                    const dFormatado = dObj ? dObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) : (e.data || '-');
+                    const dFormatado = dObj ? dObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) : (t.data || '-');
+                    
+                    let confirmadosCount = 0;
+                    let pendentesCount = 0;
+                    let listaMembrosHtml = '';
+                    let actionsHtml = '';
+                    
+                    t.membros.forEach(m => {
+                        const isConf = m.statusPresenca === 'Confirmada';
+                        if (isConf) confirmadosCount++;
+                        else pendentesCount++;
+                        
+                        const iconHtml = isConf ? '<i class="fa-solid fa-check" style="color:var(--emerald-success);"></i>' : '<i class="fa-regular fa-clock" style="color:var(--amber-warning);"></i>';
+                        const statusText = isConf ? 'Confirmado' : 'Pendente';
+                        
+                        listaMembrosHtml += `<div style="margin-bottom: 6px; font-size: 0.9rem;"><b>${m.nome || '-'}</b> &nbsp; ${iconHtml} <span style="font-size:0.8rem; color:var(--slate-gray);">${statusText}</span></div>`;
+                        
+                        actionsHtml += `
+                            <div style="margin-bottom: 6px; display: flex; gap: 4px;">
+                                <button class="btn-table-action" onclick="App.handleEditEscala('${m.id}')" title="Editar ${m.nome}" style="padding: 4px 8px;"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn-table-action delete" onclick="App.handleDeleteEscala('${m.id}')" title="Excluir ${m.nome}" style="padding: 4px 8px;"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        `;
+                    });
+                    
+                    const totalMembros = t.membros.length;
+                    const isFullyConfirmed = confirmadosCount === totalMembros && totalMembros > 0;
+                    const isFullyPending = pendentesCount === totalMembros && totalMembros > 0;
+                    
+                    let statusColor = isFullyConfirmed ? 'var(--emerald-success)' : (isFullyPending ? 'var(--amber-warning)' : 'var(--blue-light)');
+                    let statusTextGeral = isFullyConfirmed ? 'Completa' : (isFullyPending ? 'Pendente' : 'Parcial');
+                    
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td style="vertical-align:middle; font-weight:600;">${dFormatado}</td>
-                        <td style="vertical-align:middle;">${e.horarioInicio || '-'} – ${e.horarioFim || '-'}</td>
-                        <td style="vertical-align:middle;">${e.funcao || '-'}</td>
-                        <td style="vertical-align:middle;"><b>${e.membroNome || '-'}</b></td>
-                        <td style="vertical-align:middle;">${this.getPresenceBadgeHtml(e.statusPresenca)}</td>
-                        <td style="vertical-align:middle;">
-                            <div class="action-buttons">
-                                <button class="btn-table-action" onclick="App.handleEditEscala('${e.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                <button class="btn-table-action delete" onclick="App.handleDeleteEscala('${e.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-                            </div>
+                        <td style="vertical-align:top; border-bottom: 1px solid #eee;">
+                            <div style="font-weight:700; font-size:1rem; color:var(--navy-dark);">${dFormatado}</div>
+                            <div style="font-size:0.85rem; color:var(--slate-gray); margin-top:4px;"><i class="fa-regular fa-clock"></i> ${t.horarioInicio || '-'} – ${t.horarioFim || '-'}</div>
+                            <div style="font-size:0.85rem; color:var(--slate-gray); margin-top:2px;">${t.funcao || ''}</div>
+                        </td>
+                        <td style="vertical-align:top; border-bottom: 1px solid #eee;">
+                            <div style="margin-bottom: 8px;"><span class="badge" style="background:${statusColor}; color:white;">${statusTextGeral}</span></div>
+                            <div style="font-weight: 600; font-size:0.9rem;">${totalMembros} membro(s)</div>
+                            <div style="font-size: 0.85rem; color: var(--emerald-success); margin-top:2px;">${confirmadosCount} confirmado(s)</div>
+                            <div style="font-size: 0.85rem; color: var(--amber-warning); margin-top:2px;">${pendentesCount} pendente(s)</div>
+                        </td>
+                        <td style="vertical-align:top; border-bottom: 1px solid #eee;">
+                            ${listaMembrosHtml}
+                        </td>
+                        <td style="vertical-align:top; border-bottom: 1px solid #eee;">
+                            ${actionsHtml}
                         </td>
                     `;
                     tbody.appendChild(tr);
