@@ -6387,45 +6387,38 @@ const App = {
                     });
                 });
 
-                Object.values(turnos).forEach(t => {
+                // Separar em memória: ativos e concluídos
+                const todosOsTurnos    = Object.values(turnos);
+                const turnosAtivos     = todosOsTurnos.filter(t => !(t.membros.length > 0 && t.membros.every(m => m.statusServico === 'Finalizado')));
+                const turnosConcluidos = todosOsTurnos.filter(t =>   t.membros.length > 0 && t.membros.every(m => m.statusServico === 'Finalizado'));
+
+                // Função auxiliar para construir uma linha de turno
+                const buildTurnoRow = (t) => {
                     const dateParts = (t.data || '').split('-');
                     const dObj = dateParts.length === 3 ? new Date(dateParts[0], dateParts[1]-1, dateParts[2]) : null;
                     const dFormatado = dObj ? dObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) : (t.data || '-');
-                    
+
                     let confirmadosCount = 0;
                     let pendentesCount = 0;
                     let listaMembrosHtml = '';
                     let actionsHtml = '';
-                    
-                    // isTurnoConcluido: todos os membros com statusServico === 'Finalizado'
-                    const isTurnoConcluido = t.membros.length > 0 && t.membros.every(m => m.statusServico === 'Finalizado');
-                    // todosResponderam: nenhum membro com statusPresenca === null/undefined/Pendente
-                    const todosResponderam = t.membros.length > 0 && t.membros.every(m => m.statusPresenca && m.statusPresenca !== 'Pendente');
 
+                    const isTurnoConcluido = t.membros.length > 0 && t.membros.every(m => m.statusServico === 'Finalizado');
+                    const todosResponderam = t.membros.length > 0 && t.membros.every(m => m.statusPresenca && m.statusPresenca !== 'Pendente');
                     const turnoIds = JSON.stringify(t.membros.map(m => m.id));
 
                     t.membros.forEach(m => {
                         const isConf = m.statusPresenca === 'Confirmada';
-                        if (isConf) confirmadosCount++;
-                        else pendentesCount++;
-                        
+                        if (isConf) confirmadosCount++; else pendentesCount++;
                         const iconHtml = isConf ? '<i class="fa-solid fa-check" style="color:var(--emerald-success);"></i>' : '<i class="fa-regular fa-clock" style="color:var(--amber-warning);"></i>';
                         const statusText = isConf ? 'Confirmado' : 'Pendente';
-                        
                         listaMembrosHtml += `<div style="margin-bottom: 6px; font-size: 0.9rem;"><b>${m.nome || '-'}</b> &nbsp; ${iconHtml} <span style="font-size:0.8rem; color:var(--slate-gray);">${statusText}</span></div>`;
-                        
-                        actionsHtml += `
-                            <div style="margin-bottom: 6px; display: flex; gap: 4px;">
-                                <button class="btn-table-action" onclick="App.handleEditEscala('${m.id}')" title="Editar ${m.nome}" style="padding: 4px 8px;"><i class="fa-solid fa-pen"></i></button>
-                                <button class="btn-table-action delete" onclick="App.handleDeleteEscala('${m.id}')" title="Excluir ${m.nome}" style="padding: 4px 8px;"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        `;
+                        actionsHtml += `<div style="margin-bottom: 6px; display: flex; gap: 4px;"><button class="btn-table-action" onclick="App.handleEditEscala('${m.id}')" title="Editar" style="padding: 4px 8px;"><i class="fa-solid fa-pen"></i></button><button class="btn-table-action delete" onclick="App.handleDeleteEscala('${m.id}')" title="Excluir" style="padding: 4px 8px;"><i class="fa-solid fa-trash"></i></button></div>`;
                     });
-                    
+
                     const totalMembros = t.membros.length;
                     const isFullyPending = pendentesCount === totalMembros && totalMembros > 0;
 
-                    // Badge de status operacional
                     let statusColor, statusTextGeral;
                     if (isTurnoConcluido) {
                         statusColor = '#64748B'; statusTextGeral = 'Concluído';
@@ -6437,18 +6430,10 @@ const App = {
                         statusColor = 'var(--blue-light)'; statusTextGeral = 'Parcial';
                     }
 
-                    // Botão Encerrar Turno (somente quando não concluído)
-                    const btnEncerrar = isTurnoConcluido ? '' : `
-                        <div style="margin-top: 8px;">
-                            <button onclick="App.handleEncerrarTurnoOperacional('${turnoIds.replace(/'/g, "\\'")}')"
-                                style="background:#0f172a; color:white; border:none; border-radius:6px; padding:6px 12px; font-size:0.8rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                                <i class="fa-solid fa-flag-checkered"></i> Encerrar Turno
-                            </button>
-                        </div>`;
+                    const btnEncerrar = isTurnoConcluido ? '' : `<div style="margin-top: 8px;"><button onclick="App.handleEncerrarTurnoOperacional('${turnoIds.replace(/'/g, "\\'")}')" style="background:#0f172a; color:white; border:none; border-radius:6px; padding:6px 12px; font-size:0.8rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="fa-solid fa-flag-checkered"></i> Encerrar Turno</button></div>`;
 
-                    const trStyle = isTurnoConcluido ? 'opacity:0.65;' : '';
                     const tr = document.createElement('tr');
-                    tr.style.cssText = trStyle;
+                    tr.style.cssText = isTurnoConcluido ? 'opacity:0.65;' : '';
                     tr.innerHTML = `
                         <td style="vertical-align:top; border-bottom: 1px solid #eee;">
                             <div style="font-weight:700; font-size:1rem; color:var(--navy-dark);">${dFormatado}</div>
@@ -6462,20 +6447,53 @@ const App = {
                             <div style="font-size: 0.85rem; color: var(--amber-warning); margin-top:2px;">${pendentesCount} pendente(s)</div>
                             ${btnEncerrar}
                         </td>
-                        <td style="vertical-align:top; border-bottom: 1px solid #eee;">
-                            ${listaMembrosHtml}
-                        </td>
-                        <td style="vertical-align:top; border-bottom: 1px solid #eee;">
-                            ${actionsHtml}
-                        </td>
+                        <td style="vertical-align:top; border-bottom: 1px solid #eee;">${listaMembrosHtml}</td>
+                        <td style="vertical-align:top; border-bottom: 1px solid #eee;">${actionsHtml}</td>
                     `;
-                    tbody.appendChild(tr);
-                });
+                    return tr;
+                };
 
+                // Renderizar escalas ativas
+                turnosAtivos.forEach(t => tbody.appendChild(buildTurnoRow(t)));
 
                 table.appendChild(tbody);
                 tableWrap.appendChild(table);
                 section.appendChild(tableWrap);
+
+                // Renderizar seção Histórico (turnos concluídos) abaixo da tabela ativa
+                if (turnosConcluidos.length > 0) {
+                    const histHeader = document.createElement('div');
+                    histHeader.style.cssText = 'padding: 10px 16px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;';
+                    histHeader.id = `hist-header-${sectorId}`;
+                    histHeader.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color:#64748B; font-size:0.9rem;"></i><span style="font-weight:600; font-size:0.85rem; color:#64748B;">Histórico (${turnosConcluidos.length} turno(s) concluído(s))</span><i class="fa-solid fa-chevron-down" style="margin-left:auto; color:#94A3B8; font-size:0.8rem;" id="hist-icon-${sectorId}"></i>`;
+
+                    const histBody = document.createElement('div');
+                    histBody.id = `hist-body-${sectorId}`;
+                    histBody.style.display = 'none';
+
+                    const histTableWrap = document.createElement('div');
+                    histTableWrap.style.cssText = 'overflow-x: auto; background: #F8FAFC;';
+                    const histTable = document.createElement('table');
+                    histTable.className = 'admin-table accordion-table';
+                    histTable.style.cssText = 'box-shadow:none; border-radius:0; opacity:0.8;';
+                    histTable.innerHTML = '<thead><tr><th>Data / Turno</th><th>Status</th><th>Voluntários</th><th>Ações</th></tr></thead>';
+                    const histTbody = document.createElement('tbody');
+                    turnosConcluidos.forEach(t => histTbody.appendChild(buildTurnoRow(t)));
+                    histTable.appendChild(histTbody);
+                    histTableWrap.appendChild(histTable);
+                    histBody.appendChild(histTableWrap);
+
+                    histHeader.addEventListener('click', () => {
+                        const isOpen = histBody.style.display !== 'none';
+                        histBody.style.display = isOpen ? 'none' : 'block';
+                        const icon = document.getElementById(`hist-icon-${sectorId}`);
+                        if (icon) icon.style.transform = isOpen ? '' : 'rotate(180deg)';
+                    });
+
+                    section.appendChild(histHeader);
+                    section.appendChild(histBody);
+                }
+
                 container.appendChild(section);
             });
         } catch (e) {
