@@ -6382,7 +6382,8 @@ const App = {
                     turnos[key].membros.push({
                         id: e.id,
                         nome: e.membroNome,
-                        statusPresenca: e.statusPresenca
+                        statusPresenca: e.statusPresenca,
+                        statusServico: e.statusServico
                     });
                 });
 
@@ -6396,6 +6397,13 @@ const App = {
                     let listaMembrosHtml = '';
                     let actionsHtml = '';
                     
+                    // isTurnoConcluido: todos os membros com statusServico === 'Finalizado'
+                    const isTurnoConcluido = t.membros.length > 0 && t.membros.every(m => m.statusServico === 'Finalizado');
+                    // todosResponderam: nenhum membro com statusPresenca === null/undefined/Pendente
+                    const todosResponderam = t.membros.length > 0 && t.membros.every(m => m.statusPresenca && m.statusPresenca !== 'Pendente');
+
+                    const turnoIds = JSON.stringify(t.membros.map(m => m.id));
+
                     t.membros.forEach(m => {
                         const isConf = m.statusPresenca === 'Confirmada';
                         if (isConf) confirmadosCount++;
@@ -6415,13 +6423,32 @@ const App = {
                     });
                     
                     const totalMembros = t.membros.length;
-                    const isFullyConfirmed = confirmadosCount === totalMembros && totalMembros > 0;
                     const isFullyPending = pendentesCount === totalMembros && totalMembros > 0;
-                    
-                    let statusColor = isFullyConfirmed ? 'var(--emerald-success)' : (isFullyPending ? 'var(--amber-warning)' : 'var(--blue-light)');
-                    let statusTextGeral = isFullyConfirmed ? 'Completa' : (isFullyPending ? 'Pendente' : 'Parcial');
-                    
+
+                    // Badge de status operacional
+                    let statusColor, statusTextGeral;
+                    if (isTurnoConcluido) {
+                        statusColor = '#64748B'; statusTextGeral = 'Concluído';
+                    } else if (todosResponderam) {
+                        statusColor = 'var(--teal-primary)'; statusTextGeral = 'Todos responderam';
+                    } else if (isFullyPending) {
+                        statusColor = 'var(--amber-warning)'; statusTextGeral = 'Pendente';
+                    } else {
+                        statusColor = 'var(--blue-light)'; statusTextGeral = 'Parcial';
+                    }
+
+                    // Botão Encerrar Turno (somente quando não concluído)
+                    const btnEncerrar = isTurnoConcluido ? '' : `
+                        <div style="margin-top: 8px;">
+                            <button onclick="App.handleEncerrarTurnoOperacional('${turnoIds.replace(/'/g, "\\'")}')"
+                                style="background:#0f172a; color:white; border:none; border-radius:6px; padding:6px 12px; font-size:0.8rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-flag-checkered"></i> Encerrar Turno
+                            </button>
+                        </div>`;
+
+                    const trStyle = isTurnoConcluido ? 'opacity:0.65;' : '';
                     const tr = document.createElement('tr');
+                    tr.style.cssText = trStyle;
                     tr.innerHTML = `
                         <td style="vertical-align:top; border-bottom: 1px solid #eee;">
                             <div style="font-weight:700; font-size:1rem; color:var(--navy-dark);">${dFormatado}</div>
@@ -6433,6 +6460,7 @@ const App = {
                             <div style="font-weight: 600; font-size:0.9rem;">${totalMembros} membro(s)</div>
                             <div style="font-size: 0.85rem; color: var(--emerald-success); margin-top:2px;">${confirmadosCount} confirmado(s)</div>
                             <div style="font-size: 0.85rem; color: var(--amber-warning); margin-top:2px;">${pendentesCount} pendente(s)</div>
+                            ${btnEncerrar}
                         </td>
                         <td style="vertical-align:top; border-bottom: 1px solid #eee;">
                             ${listaMembrosHtml}
@@ -6444,6 +6472,7 @@ const App = {
                     tbody.appendChild(tr);
                 });
 
+
                 table.appendChild(tbody);
                 tableWrap.appendChild(table);
                 section.appendChild(tableWrap);
@@ -6453,6 +6482,14 @@ const App = {
             console.error('Erro ao carregar escalas operacionais:', e);
             container.innerHTML = '<div style="color:red; text-align:center; padding:20px;">Erro ao carregar escalas operacionais.</div>';
         }
+    },
+
+    async handleEncerrarTurnoOperacional(idsJson) {
+        const ids = JSON.parse(idsJson);
+        for (const id of ids) {
+            await DbService.saveEscala(id, { statusServico: 'Finalizado' });
+        }
+        this.renderEscalasOperacionais();
     },
 
     async openEscalaFormModalOperacional() {
