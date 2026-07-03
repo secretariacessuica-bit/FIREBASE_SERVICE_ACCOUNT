@@ -6786,15 +6786,15 @@ const App = {
                 prevMinDateObj.setDate(prevMinDateObj.getDate() - 1);
                 const queryMinDate = this.formatLocalISOString(prevMinDateObj).split('T')[0];
 
-                const limpezaSnapshot = await db.collection('escalas')
-                    .where('setorId', '==', 'limpeza')
-                    .where('data', '>=', queryMinDate)
-                    .get();
-                    
+                const todasEscalasLimpeza = await DbService.getEscalas();
+                const limpezaRecente = todasEscalasLimpeza.filter(e =>
+                    e.setorId === 'limpeza' && e.data >= queryMinDate
+                );
+
                 const existingLimpezaDates = new Set();
-                limpezaSnapshot.forEach(doc => {
-                    if (id && doc.id === id) return;
-                    existingLimpezaDates.add(doc.data().data);
+                limpezaRecente.forEach(e => {
+                    if (id && e.id === id) return;
+                    existingLimpezaDates.add(e.data);
                 });
 
                 const allIntendedDates = new Set(generatedDates);
