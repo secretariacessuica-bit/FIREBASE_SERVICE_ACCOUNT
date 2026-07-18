@@ -111,4 +111,22 @@ class OikosAvatar {
   String toJsonString() => jsonEncode(toJson());
 
   factory OikosAvatar.fromJsonString(String source) => OikosAvatar.fromJson(jsonDecode(source) as Map<String, dynamic>);
+
+  /// Retorna true se o valor de avatarAsset é um avatar dinâmico JSON (puro ou URL-encoded).
+  static bool isAvatarJson(String? value) {
+    if (value == null || value.isEmpty) return false;
+    return value.startsWith('{') || value.startsWith('%7B') || value.startsWith('%7b');
+  }
+
+  /// Tenta parsear um avatarAsset (JSON puro ou URL-encoded) para OikosAvatar.
+  /// Retorna null se falhar ou se não for um JSON de avatar.
+  static OikosAvatar? tryFromAvatarAsset(String? value) {
+    if (!isAvatarJson(value)) return null;
+    try {
+      final decoded = (value!.startsWith('{')) ? value : Uri.decodeComponent(value);
+      return OikosAvatar.fromJsonString(decoded);
+    } catch (_) {
+      return null;
+    }
+  }
 }

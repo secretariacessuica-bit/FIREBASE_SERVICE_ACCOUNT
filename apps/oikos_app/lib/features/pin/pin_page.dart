@@ -187,31 +187,22 @@ class _PinPageState extends ConsumerState<PinPage> with SingleTickerProviderStat
                         SizedBox(
                           height: 300,
                           child: () {
-                            final bool isCustomAvatar = widget.member.avatarAsset != null && 
-                                (widget.member.avatarAsset!.startsWith('{') || widget.member.avatarAsset!.startsWith('%7B'));
-
-                            if (isCustomAvatar) {
-                              OikosAvatar? avatar;
-                              try {
-                                final decodedAsset = widget.member.avatarAsset!.startsWith('%7B') 
-                                    ? Uri.decodeComponent(widget.member.avatarAsset!) 
-                                    : widget.member.avatarAsset!;
-                                avatar = OikosAvatar.fromJsonString(decodedAsset);
-                              } catch (_) {}
-
-                              if (avatar != null) {
-                                return Center(
-                                  child: SizedBox(
-                                    width: 200,
-                                    height: 300,
-                                    child: OikosAvatarRenderer(avatar: avatar),
-                                  ),
-                                );
-                              }
+                            // Usa o helper centralizado (suporta { e %7B)
+                            final customAvatar = OikosAvatar.tryFromAvatarAsset(widget.member.avatarAsset);
+                            if (customAvatar != null) {
+                              return Center(
+                                child: SizedBox(
+                                  width: 200,
+                                  height: 300,
+                                  child: OikosAvatarRenderer(avatar: customAvatar),
+                                ),
+                              );
                             }
 
-                            // Resolve asset path: prefer stored, fallback to emoji map
-                            String? assetPath = (widget.member.avatarAsset != null && widget.member.avatarAsset!.isNotEmpty && !isCustomAvatar) 
+                            // Asset est\u00e1tico (PNG): s\u00f3 se n\u00e3o for JSON
+                            final String? assetPath = (!OikosAvatar.isAvatarJson(widget.member.avatarAsset) &&
+                                widget.member.avatarAsset != null && 
+                                widget.member.avatarAsset!.isNotEmpty) 
                                 ? widget.member.avatarAsset 
                                 : _assetFromEmoji(widget.member.emoji);
                             return assetPath != null

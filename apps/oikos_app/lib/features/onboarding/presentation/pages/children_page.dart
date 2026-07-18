@@ -93,9 +93,10 @@ class _ChildrenPageState extends ConsumerState<ChildrenPage> {
                 final color = Color(int.parse(child.colorHex.replaceFirst('#', 'ff'), radix: 16));
                 
                 Widget avatarWidget = const Icon(Icons.person);
-                if (child.avatarAsset != null && child.avatarAsset!.startsWith('{')) {
+                final childAvatar = OikosAvatar.tryFromAvatarAsset(child.avatarAsset);
+                if (childAvatar != null) {
                   avatarWidget = ClipOval(
-                    child: OikosAvatarRenderer(avatar: OikosAvatar.fromJsonString(child.avatarAsset!)),
+                    child: OikosAvatarRenderer(avatar: childAvatar),
                   );
                 }
 

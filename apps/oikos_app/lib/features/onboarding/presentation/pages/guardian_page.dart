@@ -22,11 +22,8 @@ class _GuardianPageState extends ConsumerState<GuardianPage> {
     super.initState();
     final state = ref.read(onboardingWizardProvider);
     _controller = TextEditingController(text: state.guardian?.name ?? '');
-    if (state.guardian?.avatarAsset != null && state.guardian!.avatarAsset!.startsWith('{')) {
-      _customAvatar = OikosAvatar.fromJsonString(state.guardian!.avatarAsset!);
-    } else {
-      _customAvatar = OikosAvatar.defaultAvatar('guardian_1');
-    }
+    _customAvatar = OikosAvatar.tryFromAvatarAsset(state.guardian?.avatarAsset) 
+        ?? OikosAvatar.defaultAvatar('guardian_1');
   }
 
   @override

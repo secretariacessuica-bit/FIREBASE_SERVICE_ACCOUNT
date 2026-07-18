@@ -15,47 +15,40 @@ class AvatarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isCustomAvatar = member.avatarAsset != null && 
-        (member.avatarAsset!.startsWith('{') || member.avatarAsset!.startsWith('%7B'));
+    // Tenta parsear como avatar dinâmico (JSON puro ou URL-encoded)
+    final customAvatar = OikosAvatar.tryFromAvatarAsset(member.avatarAsset);
 
-    if (isCustomAvatar) {
-      OikosAvatar? avatar;
-      try {
-        final decodedAsset = member.avatarAsset!.startsWith('%7B') 
-            ? Uri.decodeComponent(member.avatarAsset!) 
-            : member.avatarAsset!;
-        avatar = OikosAvatar.fromJsonString(decodedAsset);
-      } catch (_) {}
-
-      if (avatar != null) {
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ClipOval(
-            child: Center(
-              child: SizedBox(
-                width: size * 1.5,
-                height: size * 1.5,
-                child: OikosAvatarRenderer(avatar: avatar, size: size * 1.5),
-              ),
+    if (customAvatar != null) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Center(
+            child: SizedBox(
+              width: size * 1.5,
+              height: size * 1.5,
+              child: OikosAvatarRenderer(avatar: customAvatar, size: size * 1.5),
             ),
           ),
-        );
-      }
+        ),
+      );
     }
 
-    if (member.avatarAsset != null && member.avatarAsset!.isNotEmpty && !isCustomAvatar) {
+    // Asset estático (PNG/JPG) — só se não for JSON
+    if (member.avatarAsset != null && 
+        member.avatarAsset!.isNotEmpty && 
+        !OikosAvatar.isAvatarJson(member.avatarAsset)) {
       return Container(
         width: size,
         height: size,
@@ -76,7 +69,7 @@ class AvatarWidget extends StatelessWidget {
       );
     }
     
-    // Fallback to emoji
+    // Fallback: emoji com cor do membro
     return Container(
       width: size,
       height: size,
