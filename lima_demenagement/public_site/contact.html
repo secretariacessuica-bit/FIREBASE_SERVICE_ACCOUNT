@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demander un Devis Gratuit | Contactez-nous | LIMA Solutions</title>
+    <meta name="description" content="Contactez LIMA Solutions pour obtenir un devis gratuit pour votre projet en Suisse Romande. Formulaire d'estimation en ligne ou contact par téléphone.">
+    <link rel="stylesheet" href="/style.css?v=2.1">
+    <!-- FontAwesome for clean icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+        <!-- Header/Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="logo">
+                <i class="fa-solid fa-cube"></i> LIMA Solutions
+            </a>
+            
+            <!-- Mobile Menu Toggle Button -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                Menu
+            </button>
+
+            <nav class="nav-links" id="nav-links">
+                <a href="/index.html">Accueil</a>
+                <a href="/services.html">Services</a>
+                <a href="/marketplace/index.html">Marketplace</a>
+                
+                <!-- Guides Dropdown -->
+                <div class="nav-dropdown" style="position: relative; display: inline-block;">
+                    <a href="#" class="nav-dropdown-toggle" onclick="toggleDropdown(event, 'guides-dropdown')">Guides <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i></a>
+                    <div id="guides-dropdown" class="dropdown-content" style="display: none; position: absolute; left: 0; background-color: var(--white); min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-gray); border-radius: var(--border-radius); z-index: 1010; margin-top: 5px;">
+                        <a href="/guides/checklist-demenagement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Checklist Déménagement</a>
+                        <a href="/guides/rendre-appartement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Rendre son appartement</a>
+                        <a href="/guides/nettoyage-obligatoire.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Nettoyage de remise</a>
+                        <a href="/guides/reboucher-trous-vis.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Reboucher les trous</a>
+                        <a href="/guides/caution-proprietaire.html" style="padding: 10px 15px; display: block; color: var(--text-dark); text-decoration: none;">Récupérer sa caution</a>
+                    </div>
+                </div>
+
+                <a href="/about.html">À Propos</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="/contact.html">Contact</a>
+                <a href="/portal/login.php" class="btn-portal-nav"><i class="fa-solid fa-user"></i> Espace Client</a>
+                <a href="/contact.html" class="btn-cta-nav">Demander un Devis</a>
+                
+                
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header Banner -->
+    <section class="page-header">
+        <h1>Demander un Devis & Nous Contacter</h1>
+        <p>Prenez contact avec notre équipe pour obtenir une estimation gratuite et personnalisée de votre projet.</p>
+    </section>
+
+    <!-- Main Content: Contact Info & Form -->
+    <main class="contact-section">
+        <div class="contact-container">
+            <!-- Left: Contact Details -->
+            <div class="contact-info">
+                <h2>LIMA Solutions</h2>
+                <p>N'hésitez pas à nous appeler directement ou à remplir le formulaire pour recevoir votre devis sous 24 heures.</p>
+                
+                <div class="info-list">
+                    <div class="info-item">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <div>
+                            <h4>Adresse de contact</h4>
+                            <p>Route d'Ecublens 2, 1020 Renens – Lausanne, Suisse</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <i class="fa-solid fa-phone"></i>
+                        <div>
+                            <h4>Téléphone</h4>
+                            <p><a href="tel:0783170474" style="color: var(--primary-teal); font-weight: 600;">+41 (0) 78 317 04 74</a></p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <i class="fa-solid fa-envelope"></i>
+                        <div>
+                            <h4>E-mail</h4>
+                            <p><a href="mailto:Limatransport23@hotmail.com" style="color: var(--primary-teal); font-weight: 600;">Limatransport23@hotmail.com</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Quote Request Form -->
+            <div class="contact-form-wrapper">
+                <h3>Estimer mon Projet</h3>
+                <form id="contact-form" class="contact-form">
+                    <!-- Honeypot anti-spam -->
+                    <div style="display: none;">
+                        <label for="fax_number_alt">Do not fill this field if you are human</label>
+                        <input type="text" name="fax_number_alt" id="fax_number_alt" autocomplete="off">
+                    </div>
+
+                    <!-- Hidden UTM fields for lead tracking -->
+                    <input type="hidden" name="utm_source" id="utm_source" value="">
+                    <input type="hidden" name="utm_medium" id="utm_medium" value="">
+                    <input type="hidden" name="utm_campaign" id="utm_campaign" value="">
+                    <input type="hidden" name="referer_url" id="referer_url" value="">
+
+                    <!-- Form Fields -->
+                    <div class="form-group">
+                        <label for="name" style="font-size: 13px; font-weight: 600; margin-bottom: 5px; display: block;">Nom complet *</label>
+                        <input type="text" name="name" id="name" placeholder="Ex: Jean Dupont" required maxlength="150">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email" style="font-size: 13px; font-weight: 600; margin-bottom: 5px; display: block;">Adresse e-mail *</label>
+                        <input type="email" name="email" id="email" placeholder="Ex: client@exemple.ch" required maxlength="150">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone" style="font-size: 13px; font-weight: 600; margin-bottom: 5px; display: block;">Téléphone</label>
+                        <input type="tel" name="phone" id="phone" placeholder="Ex: 078 123 45 67" maxlength="30">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;" class="form-row">
+                        <div class="form-group">
+                            <label for="origin_address" style="font-size: 13px; font-weight: 600; margin-bottom: 5px; display: block;">Adresse d'origine</label>
+                            <input type="text" name="origin_address" id="origin_address" placeholder="Ex: Rue du Simplon 12, Lausanne" maxlength="255">
+                        </div>
+                        <div class="form-group">
+                            <label for="destination_address" style="font-size: 13px; font-weight: 600; margin-bottom: 5px; display: block;">Adresse de destination</label>
+                            <input type="text" name="destination_address" id="destination_address" placeholder="Ex: Rue de la Gare 5, Renens" maxlength="255">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;" class="form-row">
+                        <div class="form-group">
+                            <label for="service_date" style="font-size: 13px; font-weight: 600; margin-bottom: 5px; display: block;">Date souhaitée</label>
+                            <input type="date" name="service_date" id="service_date">
+                        </div>
+                        <div class="form-group">
+                            <label for="volume_m3" style="font-size: 13px; font-weight: 600; margin-bottom: 5px; display: block;">Volume estimé (m³)</label>
+                            <input type="number" name="volume_m3" id="volume_m3" min="1" max="1000" placeholder="Ex: 25">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes" style="font-size: 13px; font-weight: 600; margin-bottom: 5px; display: block;">Détails ou remarques</label>
+                        <textarea name="notes" id="notes" rows="4" placeholder="Précisez ici les particularités (ex: piano, accès difficile, démontage nécessaire)..." maxlength="2000"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fa-solid fa-paper-plane"></i> Envoyer ma Demande
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-container">
+            <p>&copy; 2026 LIMA Solutions. Tous droits réservés.</p>
+            <p>Renens – Lausanne, Suisse | <a href="/portal/login.php">Espace Client</a> | <a href="/admin/login.php">Espace ERP</a> | <a href="/facture/index.html">Espace Facturation</a></p>
+        </div>
+    </footer>
+
+    <!-- UTM and Form submission logic -->
+    <script src="/app.js"></script>
+</body>
+</html>

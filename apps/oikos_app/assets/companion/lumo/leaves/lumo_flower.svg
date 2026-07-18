@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Stem -->
+  <line x1="50" y1="22" x2="50" y2="15" stroke="#388E3C" stroke-width="2"/>
+  <!-- Petals -->
+  <circle cx="50" cy="9" r="6" fill="#FFA726"/>
+  <circle cx="43" cy="13" r="5" fill="#FFB74D"/>
+  <circle cx="57" cy="13" r="5" fill="#FFB74D"/>
+  <circle cx="45" cy="6" r="5" fill="#FFB74D"/>
+  <circle cx="55" cy="6" r="5" fill="#FFB74D"/>
+  <!-- Center -->
+  <circle cx="50" cy="10" r="3" fill="#FFF59D"/>
+</svg>

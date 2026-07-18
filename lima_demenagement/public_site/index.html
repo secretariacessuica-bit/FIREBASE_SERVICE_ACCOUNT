@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIMA Solutions | Services de Déménagement, Nettoyage & Transports en Suisse</title>
+    <meta name="description" content="LIMA Solutions vous accompagne pour vos déménagements, nettoyages de fin de bail, transports logistiques et débarras dans toute la Suisse.">
+    <link rel="stylesheet" href="/style.css?v=2.1">
+    <!-- FontAwesome for clean icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+        <!-- Header/Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="logo">
+                <i class="fa-solid fa-cube"></i> LIMA Solutions
+            </a>
+            
+            <!-- Mobile Menu Toggle Button -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                Menu
+            </button>
+
+            <nav class="nav-links" id="nav-links">
+                <a href="/index.html">Accueil</a>
+                <a href="/services.html">Services</a>
+                <a href="/marketplace/index.html">Marketplace</a>
+                
+                <!-- Guides Dropdown -->
+                <div class="nav-dropdown" style="position: relative; display: inline-block;">
+                    <a href="#" class="nav-dropdown-toggle" onclick="toggleDropdown(event, 'guides-dropdown')">Guides <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i></a>
+                    <div id="guides-dropdown" class="dropdown-content" style="display: none; position: absolute; left: 0; background-color: var(--white); min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-gray); border-radius: var(--border-radius); z-index: 1010; margin-top: 5px;">
+                        <a href="/guides/checklist-demenagement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Checklist Déménagement</a>
+                        <a href="/guides/rendre-appartement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Rendre son appartement</a>
+                        <a href="/guides/nettoyage-obligatoire.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Nettoyage de remise</a>
+                        <a href="/guides/reboucher-trous-vis.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Reboucher les trous</a>
+                        <a href="/guides/caution-proprietaire.html" style="padding: 10px 15px; display: block; color: var(--text-dark); text-decoration: none;">Récupérer sa caution</a>
+                    </div>
+                </div>
+
+                <a href="/about.html">À Propos</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="/contact.html">Contact</a>
+                <a href="/portal/login.php" class="btn-portal-nav"><i class="fa-solid fa-user"></i> Espace Client</a>
+                <a href="/contact.html" class="btn-cta-nav">Demander un Devis</a>
+                
+                
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section" style="background: linear-gradient(135deg, rgba(5, 30, 45, 0.95), rgba(11, 60, 80, 0.9)), url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200') no-repeat center center/cover; padding: 140px 20px 60px; min-height: auto; text-align: left; display: block;">
+        <div class="nav-container" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; padding: 0;">
+            <div class="hero-content" style="margin: 0; max-width: 100%;">
+                <h1 style="font-size: 48px; font-weight: 800; margin-bottom: 15px; color: var(--white); line-height: 1.1;">LIMA Solutions</h1>
+                <p style="font-size: 16px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 25px; color: #38bdf8;">
+                    DÉMÉNAGEMENT &bull; NETTOYAGE &bull; TRANSPORT
+                </p>
+                <p style="font-size: 16px; margin-bottom: 30px; font-weight: 400; opacity: 0.9; line-height: 1.6;">
+                    Votre partenaire suisse de confiance pour des services professionnels et intégrés : de la gestion complète de votre mobilité résidentielle au nettoyage de bail et transport logistique.
+                </p>
+                <div class="hero-btns" style="justify-content: flex-start; gap: 15px;">
+                    <a href="/contact.html" class="btn btn-primary" style="background-color: #007a87; border-color: #007a87; padding: 12px 24px; font-size: 14px;">
+                        <i class="fa-solid fa-file-signature"></i> Obtenir un Devis Gratuit
+                    </a>
+                    <a href="/services.html" class="btn btn-secondary" style="border-color: var(--white); padding: 12px 24px; font-size: 14px;">
+                        <i class="fa-solid fa-circle-info"></i> Découvrir nos Prestations
+                    </a>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <img src="/assets/truck_mockup.png" alt="LIMA Solutions Truck" style="max-width: 100%; height: auto; border-radius: var(--border-radius); filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));" onerror="this.src='https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?q=80&w=600'">
+            </div>
+        </div>
+        
+        <!-- Trust Indicators Bar -->
+        <div class="nav-container" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.15); margin-top: 50px; padding: 20px 0 0; font-size: 13px; color: rgba(255,255,255,0.8); flex-wrap: wrap; gap: 15px;">
+            <div><i class="fa-solid fa-circle-check" style="color: #38bdf8; margin-right: 6px;"></i> Professionnels certifiés</div>
+            <div><i class="fa-solid fa-circle-check" style="color: #38bdf8; margin-right: 6px;"></i> Devis rapide</div>
+            <div><i class="fa-solid fa-circle-check" style="color: #38bdf8; margin-right: 6px;"></i> Assurance incluse</div>
+            <div><i class="fa-solid fa-circle-check" style="color: #38bdf8; margin-right: 6px;"></i> Suisse Romande</div>
+        </div>
+    </section>
+
+    <!-- Highlighted Marketplace Section -->
+    <section class="services-section" style="background-color: #f8fafc; padding: 60px 20px;">
+        <div class="nav-container" style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; padding: 0; background: var(--white); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; border: 1px solid #e2e8f0;">
+            <div style="padding: 40px; text-align: left;">
+                <span style="background-color: #e6f2f3; color: #007a87; padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; margin-bottom: 15px;">NOUVEAU</span>
+                <h2 style="color: #0f172a; font-size: 36px; font-weight: 800; margin-bottom: 15px;">Marketplace <span style="color: var(--primary-teal);">LIMA</span></h2>
+                <p style="color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 25px;">Achetez, vendez ou donnez des meubles et objets en toute simplicité. Local, sécurisé et de confiance.</p>
+                <a href="/marketplace/" class="btn btn-primary" style="background-color: var(--primary-teal); border-color: var(--primary-teal); padding: 12px 28px; font-size: 14px;">
+                    Visiter le Marketplace &rarr;
+                </a>
+                <div style="display: flex; gap: 15px; margin-top: 35px; font-size: 12px; color: #64748b;">
+                    <span><i class="fa-solid fa-chair" style="color: var(--primary-teal);"></i> Meubles</span>
+                    <span><i class="fa-solid fa-plug" style="color: var(--primary-teal);"></i> Électroménagers</span>
+                    <span><i class="fa-solid fa-couch" style="color: var(--primary-teal);"></i> Décoration</span>
+                    <span><i class="fa-solid fa-heart" style="color: var(--primary-teal);"></i> Dons & plus</span>
+                </div>
+            </div>
+            <div style="background: linear-gradient(135deg, #f0fdfa, var(--primary-teal-light)); height: 100%; display: flex; align-items: center; justify-content: center; padding: 40px; gap: 15px;">
+                <div style="background: white; border-radius: 8px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; width: 110px;">
+                    <img src="https://images.unsplash.com/photo-1592078615290-033ee584e267?q=80&w=150" style="width: 100%; height: 80px; object-fit: contain; margin-bottom: 8px;">
+                    <div style="font-weight: 700; font-size: 12px; color: #1e293b;">CHF 120</div>
+                </div>
+                <div style="background: white; border-radius: 8px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; width: 110px;">
+                    <img src="https://images.unsplash.com/photo-1581428982868-e410dd047a90?q=80&w=150" style="width: 100%; height: 80px; object-fit: contain; margin-bottom: 8px;">
+                    <div style="font-weight: 700; font-size: 12px; color: #1e293b;">CHF 80</div>
+                </div>
+                <div style="background: white; border-radius: 8px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; width: 110px;">
+                    <img src="https://images.unsplash.com/photo-1545241047-6083a3684587?q=80&w=150" style="width: 100%; height: 80px; object-fit: contain; margin-bottom: 8px;">
+                    <div style="font-weight: 700; font-size: 12px; color: #1e293b;">CHF 150</div>
+                </div>
+                <div style="background: white; border-radius: 8px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; width: 110px;">
+                    <img src="https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=150" style="width: 100%; height: 80px; object-fit: contain; margin-bottom: 8px;">
+                    <div style="font-weight: 700; font-size: 12px; color: #1e293b;">CHF 200</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Teaser Services Section -->
+    <section class="services-section" style="background-color: var(--white); padding: 60px 0;">
+        <div class="section-header">
+            <h2 style="font-size: 32px; font-weight: 800; color: #0f172a; margin-bottom: 10px;">Nos Services</h2>
+        </div>
+        <div class="services-grid" style="max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+            <!-- Service 1 -->
+            <div class="service-card" style="text-align: left; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="service-icon" style="margin: 0 0 15px 0; background-color: #e0f2fe; color: #0284c7; width: 50px; height: 50px; font-size: 20px;"><i class="fa-solid fa-truck"></i></div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Déménagement</h3>
+                    <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 15px;">Déménagements privés et professionnels en Suisse et à l'international.</p>
+                </div>
+                <a href="/services.html" class="btn btn-secondary" style="border-color: #e2e8f0; color: #0284c7; padding: 8px 15px; font-size: 12px; width: 100%; justify-content: space-between;">Obtenir un devis <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+            <!-- Service 2 -->
+            <div class="service-card" style="text-align: left; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="service-icon" style="margin: 0 0 15px 0; background-color: #ecfdf5; color: #059669; width: 50px; height: 50px; font-size: 20px;"><i class="fa-solid fa-broom"></i></div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Nettoyage Fin de Bail</h3>
+                    <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 15px;">Nettoyage professionnel garanti pour la remise de votre logement.</p>
+                </div>
+                <a href="/services.html" class="btn btn-secondary" style="border-color: #e2e8f0; color: #059669; padding: 8px 15px; font-size: 12px; width: 100%; justify-content: space-between;">Obtenir un devis <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+            <!-- Service 3 -->
+            <div class="service-card" style="text-align: left; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="service-icon" style="margin: 0 0 15px 0; background-color: #fef3c7; color: #d97706; width: 50px; height: 50px; font-size: 20px;"><i class="fa-solid fa-truck-ramp-box"></i></div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Transport & Livraison</h3>
+                    <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 15px;">Transport de meubles, colis et marchandises en toute sécurité.</p>
+                </div>
+                <a href="/services.html" class="btn btn-secondary" style="border-color: #e2e8f0; color: #d97706; padding: 8px 15px; font-size: 12px; width: 100%; justify-content: space-between;">Obtenir un devis <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+            <!-- Service 4 -->
+            <div class="service-card" style="text-align: left; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="service-icon" style="margin: 0 0 15px 0; background-color: var(--primary-teal-light); color: var(--primary-teal); width: 50px; height: 50px; font-size: 20px;"><i class="fa-solid fa-store"></i></div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Marketplace <span style="background-color: var(--primary-teal-light); color: var(--primary-teal); font-size: 9px; padding: 2px 6px; border-radius: 99px; margin-left: 5px;">NOUVEAU</span></h3>
+                    <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 15px;">Achetez, vendez ou donnez des meubles et objets en toute simplicité.</p>
+                </div>
+                <a href="/marketplace/" class="btn btn-secondary" style="border-color: #e2e8f0; color: var(--primary-teal); padding: 8px 15px; font-size: 12px; width: 100%; justify-content: space-between;">Visiter le Marketplace <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Proof Trust Bar -->
+    <section style="background-color: var(--primary-teal); padding: 30px 20px; color: white;">
+        <div class="nav-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; max-width: 1100px; margin: 0 auto; padding: 0;">
+            <div>
+                <div style="font-size: 32px; font-weight: 800; color: #38bdf8;">1'200+</div>
+                <div style="font-size: 13px; font-weight: 500; opacity: 0.9;">Déménagements réalisés</div>
+            </div>
+            <div>
+                <div style="font-size: 32px; font-weight: 800; color: #38bdf8;">98%</div>
+                <div style="font-size: 13px; font-weight: 500; opacity: 0.9;">Clients satisfaits</div>
+            </div>
+            <div>
+                <div style="font-size: 32px; font-weight: 800; color: #38bdf8;">100%</div>
+                <div style="font-size: 13px; font-weight: 500; opacity: 0.9;">Suisse Romande</div>
+            </div>
+            <div>
+                <div style="font-size: 32px; font-weight: 800; color: #38bdf8;">&lt; 24h</div>
+                <div style="font-size: 13px; font-weight: 500; opacity: 0.9;">Devis rapides</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Conseils & Guides Pratiques -->
+    <section class="page-content" style="padding: 60px 20px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; max-width: 1100px; margin: 0 auto 30px;">
+            <div style="text-align: left;">
+                <h2 style="font-size: 24px; font-weight: 800; color: #0f172a; margin-bottom: 5px;">Conseils & Guides Pratiques</h2>
+                <p style="font-size: 14px; color: #64748b; margin: 0;">Tout ce qu'il faut savoir pour réussir votre déménagement en Suisse.</p>
+            </div>
+            <a href="/faq.html" style="color: #007a87; font-weight: 700; font-size: 14px;">Voir tous les conseils &rarr;</a>
+        </div>
+        <div class="services-grid" style="max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+            <div class="service-card" style="text-align: left; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: space-between; background: white;">
+                <div>
+                    <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=150" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 12px;">
+                    <h4 style="font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">Entretien</h4>
+                    <h3 style="font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.4; margin-bottom: 10px;">Reboucher les trous de vis et chevilles</h3>
+                </div>
+                <a href="/guides/reboucher-trous-vis.html" style="color: #007a87; font-weight: 600; font-size: 12px;">Lire l'article &rarr;</a>
+            </div>
+            <div class="service-card" style="text-align: left; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: space-between; background: white;">
+                <div>
+                    <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=150" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 12px;">
+                    <h4 style="font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">Démarches</h4>
+                    <h3 style="font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.4; margin-bottom: 10px;">Comment rendre un appartement en Suisse ?</h3>
+                </div>
+                <a href="/guides/rendre-appartement.html" style="color: #007a87; font-weight: 600; font-size: 12px;">Lire l'article &rarr;</a>
+            </div>
+            <div class="service-card" style="text-align: left; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: space-between; background: white;">
+                <div>
+                    <img src="https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?q=80&w=150" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 12px;">
+                    <h4 style="font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">Nettoyage</h4>
+                    <h3 style="font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.4; margin-bottom: 10px;">Nettoyage de fin de bail : obligatoire ?</h3>
+                </div>
+                <a href="/guides/nettoyage-obligatoire.html" style="color: #007a87; font-weight: 600; font-size: 12px;">Lire l'article &rarr;</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action Banner -->
+    <section style="background-color: #083344; padding: 40px 20px; color: white; text-align: left;">
+        <div class="nav-container" style="display: flex; justify-content: space-between; align-items: center; padding: 0; max-width: 1100px; margin: 0 auto; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 8px; color: white;">Un projet en tête ?</h2>
+                <p style="font-size: 14px; opacity: 0.9; margin: 0;">Demandez votre devis gratuit en quelques clics et recevez une réponse rapide.</p>
+            </div>
+            <a href="/contact.html" class="btn btn-primary" style="background-color: white; color: #083344; border-color: white; font-weight: 700; padding: 12px 30px; font-size: 14px;">
+                Demander un Devis Gratuit &rarr;
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="main-footer" style="background-color: #f8fafc; color: #1e293b; padding: 60px 20px 20px; border-top: 1px solid #e2e8f0; text-align: left; margin-top: 0;">
+        <div class="nav-container" style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.2fr; gap: 40px; padding: 0; max-width: 1100px; margin: 0 auto 40px;">
+            <div>
+                <div class="logo" style="margin-bottom: 15px; font-size: 22px; font-weight: 800; color: #007a87;"><i class="fa-solid fa-cube"></i> LIMA Solutions</div>
+                <p style="font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 20px;">Votre partenaire de confiance pour tous vos besoins en déménagement, nettoyage, transport et plus encore.</p>
+                <div style="display: flex; gap: 15px;">
+                    <a href="#" style="color: #64748b; font-size: 18px;"><i class="fa-brands fa-facebook"></i></a>
+                    <a href="#" style="color: #64748b; font-size: 18px;"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#" style="color: #64748b; font-size: 18px;"><i class="fa-brands fa-whatsapp"></i></a>
+                </div>
+            </div>
+            <div>
+                <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 15px;">Liens rapides</h4>
+                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                    <li><a href="/services.html" style="color: #64748b;">Nos Services</a></li>
+                    <li><a href="/about.html" style="color: #64748b;">À Propos</a></li>
+                    <li><a href="/coverage.html" style="color: #64748b;">Couverture</a></li>
+                    <li><a href="/faq.html" style="color: #64748b;">FAQ</a></li>
+                    <li><a href="/marketplace/" style="color: #64748b;">Marketplace</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 15px;">Espace Client</h4>
+                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                    <li><a href="/portal/login.php" style="color: #64748b;">Connexion</a></li>
+                    <li><a href="/portal/login.php" style="color: #64748b;">Suivi de projet</a></li>
+                    <li><a href="/portal/login.php" style="color: #64748b;">Devis</a></li>
+                    <li><a href="/portal/login.php" style="color: #64748b;">Factures</a></li>
+                    <li><a href="/portal/login.php" style="color: #64748b;">Messages</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 15px;">Contact</h4>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 8px;"><i class="fa-solid fa-phone" style="margin-right: 8px; color: #007a87;"></i> +41 76 123 45 67</p>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 8px;"><i class="fa-solid fa-envelope" style="margin-right: 8px; color: #007a87;"></i> info@limasolutions.ch</p>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 8px;"><i class="fa-solid fa-location-dot" style="margin-right: 8px; color: #007a87;"></i> Suisse Romande 🇨🇭</p>
+            </div>
+        </div>
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 12px; color: #94a3b8; display: flex; justify-content: space-between; max-width: 1100px; margin: 0 auto; flex-wrap: wrap; gap: 10px;">
+            <p>&copy; 2026 LIMA Solutions. Tous droits réservés.</p>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <a href="#" style="color: #94a3b8;">Mentions légales</a>
+                <a href="#" style="color: #94a3b8;">Confidentialité</a>
+                <a href="#" style="color: #94a3b8;">Conditions générales</a>
+                <span style="color: #e2e8f0;">|</span>
+                <a href="/mobile/" style="color: #94a3b8; font-weight: 500;"><i class="fa-solid fa-lock" style="font-size: 0.75rem; margin-right: 4px;"></i> Espace Collaborateur</a>
+            </div>
+        </div>
+    </footer>
+    <script src="/app.js"></script>
+</body>
+</html>

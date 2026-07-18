@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Questions Fréquentes | Guide et Infos Pratiques | LIMA Solutions</title>
+    <meta name="description" content="Des questions sur votre déménagement, nettoyage ou transport en Suisse ? Retrouvez toutes les réponses concernant nos services, assurances et tarifs.">
+    <link rel="stylesheet" href="/style.css?v=2.1">
+    <!-- FontAwesome for clean icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+        <!-- Header/Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="logo">
+                <i class="fa-solid fa-cube"></i> LIMA Solutions
+            </a>
+            
+            <!-- Mobile Menu Toggle Button -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                Menu
+            </button>
+
+            <nav class="nav-links" id="nav-links">
+                <a href="/index.html">Accueil</a>
+                <a href="/services.html">Services</a>
+                <a href="/marketplace/index.html">Marketplace</a>
+                
+                <!-- Guides Dropdown -->
+                <div class="nav-dropdown" style="position: relative; display: inline-block;">
+                    <a href="#" class="nav-dropdown-toggle" onclick="toggleDropdown(event, 'guides-dropdown')">Guides <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i></a>
+                    <div id="guides-dropdown" class="dropdown-content" style="display: none; position: absolute; left: 0; background-color: var(--white); min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-gray); border-radius: var(--border-radius); z-index: 1010; margin-top: 5px;">
+                        <a href="/guides/checklist-demenagement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Checklist Déménagement</a>
+                        <a href="/guides/rendre-appartement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Rendre son appartement</a>
+                        <a href="/guides/nettoyage-obligatoire.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Nettoyage de remise</a>
+                        <a href="/guides/reboucher-trous-vis.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Reboucher les trous</a>
+                        <a href="/guides/caution-proprietaire.html" style="padding: 10px 15px; display: block; color: var(--text-dark); text-decoration: none;">Récupérer sa caution</a>
+                    </div>
+                </div>
+
+                <a href="/about.html">À Propos</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="/contact.html">Contact</a>
+                <a href="/portal/login.php" class="btn-portal-nav"><i class="fa-solid fa-user"></i> Espace Client</a>
+                <a href="/contact.html" class="btn-cta-nav">Demander un Devis</a>
+                
+                
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header Banner -->
+    <section class="page-header">
+        <h1>Questions Fréquentes (FAQ)</h1>
+        <p>Retrouvez les réponses aux questions les plus fréquentes concernant l'organisation de votre déménagement en Suisse.</p>
+    </section>
+
+    <!-- Page Content -->
+    <main class="page-content">
+        <div class="faq-accordion">
+            
+            <!-- FAQ 1 -->
+            <details class="faq-item">
+                <summary>Comment est calculé le volume (m³) ?</summary>
+                <div class="faq-answer">
+                    <p>Le volume de votre déménagement est calculé en mètres cubes (m³). Il correspond à l'espace total que vos meubles, cartons et objets occuperont dans le camion. En règle générale, on estime le volume en divisant la surface de votre logement par 2 (par exemple, un appartement de 60 m² correspond à environ 30 m³), mais cela peut varier selon votre niveau d'ameublement. Nous pouvons également effectuer une visite d'estimation gratuite à votre domicile pour calculer le volume exact.</p>
+                </div>
+            </details>
+
+            <!-- FAQ 2 -->
+            <details class="faq-item">
+                <summary>Combien de temps à l'avance dois-je réserver mon déménagement ?</summary>
+                <div class="faq-answer">
+                    <p>Nous vous recommandons de réserver votre déménagement 2 à 4 semaines à l'avance, particulièrement si vous prévoyez de déménager en fin de mois ou durant la période estivale, qui sont des périodes très demandées. Cependant, nous nous efforçons de répondre aux demandes urgentes ou de dernière minute selon la disponibilité de nos équipes et camions.</p>
+                </div>
+            </details>
+
+            <!-- FAQ 3 -->
+            <details class="faq-item">
+                <summary>La société LIMA Solutions fournit-elle les cartons et le matériel d'emballage ?</summary>
+                <div class="faq-answer">
+                    <p>Oui, absolument. Nous pouvons vous fournir tout le matériel nécessaire : cartons standards, cartons pour livres, penderies pour vêtements sur cintres, papier bulle, scotch et housses de protection pour matelas. Selon la formule choisie, notre équipe peut également se charger de l'emballage complet et sécurisé de vos objets fragiles et de vos effets personnels.</p>
+                </div>
+            </details>
+
+            <!-- FAQ 4 -->
+            <details class="faq-item">
+                <summary>Quelles assurances protègent mes marchandises pendant le transport ?</summary>
+                <div class="faq-answer">
+                    <p>Toutes nos prestations intègrent d'office une assurance Responsabilité Civile (RC) professionnelle complète qui couvre vos biens contre la casse, le vol ou les accidents pendant toute la durée de la manutention et du transport routier. Vos biens sont assurés à hauteur de leur valeur réelle déclarée (jusqu'à CHF 100'000.- par transport, avec possibilité d'extension sur demande).</p>
+                </div>
+            </details>
+
+            <!-- FAQ 5 -->
+            <details class="faq-item">
+                <summary>Comment fonctionne la garantie de livraison pour le nettoyage de fin de bail ?</summary>
+                <div class="faq-answer">
+                    <p>Notre service de nettoyage de fin de bail comprend une "garantie de remise des clés". Cela signifie que nous nous engageons à nettoyer votre ancien logement conformément aux exigences rigoureuses des régies immobilières suisses. Nous sommes présents à vos côtés le jour de l'état des lieux de sortie. Si la régie demande des retouches de nettoyage, nos agents s'en occupent immédiatement et gratuitement, vous garantissant ainsi la restitution de votre caution.</p>
+                </div>
+            </details>
+
+        </div>
+
+        <section style="text-align: center; margin-top: 60px; background-color: var(--primary-teal-light); padding: 40px; border-radius: var(--border-radius);">
+            <h3 style="color: var(--primary-teal-dark); margin-bottom: 15px;">Vous avez une autre question ?</h3>
+            <p style="color: var(--text-dark); margin-bottom: 25px;">Notre équipe commerciale est disponible pour vous répondre et vous guider pas à pas dans votre projet.</p>
+            <a href="/contact.html" class="btn btn-primary">Nous contacter pour en savoir plus</a>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-container">
+            <p>&copy; 2026 LIMA Solutions. Tous droits réservés.</p>
+            <p>Renens – Lausanne, Suisse | <a href="/portal/login.php">Espace Client</a> | <a href="/admin/login.php">Espace ERP</a> | <a href="/facture/index.html">Espace Facturation</a></p>
+        </div>
+    </footer>
+    <script src="/app.js"></script>
+</body>
+</html>

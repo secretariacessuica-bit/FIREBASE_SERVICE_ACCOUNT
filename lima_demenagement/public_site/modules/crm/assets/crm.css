@@ -1,0 +1,304 @@
+/* LIMA Solutions ERP - CRM Specific Stylesheet */
+
+.crm-container {
+    padding: 30px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.crm-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.crm-title-section h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-teal-dark);
+}
+
+.crm-title-section p {
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.crm-card {
+    background-color: var(--white);
+    border: 1px solid var(--border-gray);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+/* Search and Filter bar */
+.crm-search-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.crm-search-input-wrapper {
+    position: relative;
+    flex-grow: 1;
+}
+
+.crm-search-input-wrapper i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+}
+
+.crm-search-input {
+    width: 100%;
+    padding: 10px 14px 10px 40px;
+    border: 1px solid var(--border-gray);
+    border-radius: var(--border-radius);
+    outline: none;
+    font-family: inherit;
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.crm-search-input:focus {
+    border-color: var(--primary-teal);
+    box-shadow: 0 0 0 3px var(--primary-teal-light);
+}
+
+/* CRM Table */
+.crm-table-wrapper {
+    overflow-x: auto;
+}
+
+.crm-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 14px;
+}
+
+.crm-table th {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    font-weight: 700;
+    padding: 14px 16px;
+    border-bottom: 2px solid var(--border-gray);
+}
+
+.crm-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-gray);
+    color: var(--text-dark);
+    vertical-align: middle;
+}
+
+.crm-table tr:hover td {
+    background-color: var(--bg-light);
+}
+
+.crm-badge-code {
+    background-color: var(--bg-light);
+    color: var(--primary-teal-dark);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+    border: 1px solid var(--border-gray);
+}
+
+.crm-badge-tag {
+    background-color: #f1f5f9;
+    color: #475569;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+.crm-actions-cell {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-crm {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-gray);
+    cursor: pointer;
+    background-color: var(--white);
+    color: var(--text-dark);
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+}
+
+.btn-crm:hover {
+    background-color: var(--bg-light);
+}
+
+.btn-crm-primary {
+    background-color: var(--primary-teal);
+    color: var(--white);
+    border-color: var(--primary-teal);
+}
+
+.btn-crm-primary:hover {
+    background-color: var(--primary-teal-dark);
+    border-color: var(--primary-teal-dark);
+}
+
+.btn-crm-danger {
+    background-color: #fee2e2;
+    color: #ef4444;
+    border-color: #fecaca;
+}
+
+.btn-crm-danger:hover {
+    background-color: #ef4444;
+    color: var(--white);
+    border-color: #ef4444;
+}
+
+/* CRM Form layout */
+.crm-form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+
+@media (min-width: 768px) {
+    .crm-form-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.crm-form-section {
+    background-color: var(--white);
+    border: 1px solid var(--border-gray);
+    border-radius: var(--border-radius);
+    padding: 20px;
+}
+
+.crm-form-section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--primary-teal-dark);
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border-gray);
+    padding-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.crm-form-group {
+    margin-bottom: 14px;
+}
+
+.crm-form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-light);
+    margin-bottom: 6px;
+}
+
+.crm-form-group input, .crm-form-group select, .crm-form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-gray);
+    border-radius: var(--border-radius);
+    outline: none;
+    font-family: inherit;
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.crm-form-group input:focus, .crm-form-group select:focus, .crm-form-group textarea:focus {
+    border-color: var(--primary-teal);
+    box-shadow: 0 0 0 3px var(--primary-teal-light);
+}
+
+/* CRM Profile Layout */
+.crm-profile-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+
+@media (min-width: 992px) {
+    .crm-profile-layout {
+        grid-template-columns: 350px 1fr;
+    }
+}
+
+.crm-profile-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.crm-profile-main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.profile-avatar-card {
+    background-color: var(--white);
+    border: 1px solid var(--border-gray);
+    border-radius: var(--border-radius);
+    padding: 30px 20px;
+    text-align: center;
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: var(--primary-teal-light);
+    color: var(--primary-teal-dark);
+    font-size: 32px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px auto;
+}
+
+.profile-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.profile-code {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.placeholder-box {
+    border: 2px dashed var(--border-gray);
+    border-radius: var(--border-radius);
+    padding: 40px;
+    text-align: center;
+    color: var(--text-light);
+}
+
+.placeholder-box i {
+    font-size: 28px;
+    margin-bottom: 12px;
+}

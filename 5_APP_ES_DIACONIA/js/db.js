@@ -492,6 +492,10 @@ const DbService = {
         this.limparCache('produtos');
     },
 
+    async registrarSaidaEstoque({ produtoId, quantidade, retiradoPorNome }) {
+        return this.registrarMovimentacaoEstoque(produtoId, 'saida', quantidade, 'Saída para uso diário/Limpeza', retiradoPorNome);
+    },
+
     async registrarMovimentacaoEstoque(produtoId, tipo, quantidade, observacao, usuarioNome) {
         const prodDoc = await db.collection('produtos').doc(produtoId).get();
         if (!prodDoc.exists) {
@@ -626,6 +630,43 @@ const DbService = {
     async deleteAviso(id) {
         await db.collection('avisos').doc(id).delete();
         this.limparCache('avisos');
+    },
+
+    // --- TAREFAS (Zeladoria/Manutenção) CRUD ---
+    async getTarefas(setorId = null) {
+        let query = db.collection('tarefas');
+        if (setorId) {
+            query = query.where('setorId', '==', setorId);
+        }
+        const snap = await query.get();
+        let list = snap.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                dataCriacao: this.safeToDate(data.dataCriacao, new Date())
+            };
+        });
+        // Sort por dataCriacao decrescente
+        list.sort((a, b) => b.dataCriacao - a.dataCriacao);
+        return list;
+    },
+
+    async saveTarefa(data) {
+        data.dataCriacao = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('tarefas').add(data);
+    },
+
+    async updateTarefaStatus(id, newStatus) {
+        await db.collection('tarefas').doc(id).update({ status: newStatus });
+    },
+
+    async updateTarefa(id, data) {
+        await db.collection('tarefas').doc(id).update(data);
+    },
+
+    async deleteTarefa(id) {
+        await db.collection('tarefas').doc(id).delete();
     },
 
     // --- CULTOS CRUD ---
@@ -805,7 +846,7 @@ const DbService = {
         });
         
         if (setorId === 'limpeza' || setorId === 'manutencao') {
-            await this.addAviso({
+            await this.saveAviso({
                 titulo: "🟢 Início de Expediente Operacional",
                 conteudo: `O membro ${membroNome} iniciou seu serviço de ${funcao} no setor ${setorId} às ${horaReal}.`,
                 tipo: "info",

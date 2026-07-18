@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facture - LIMA Déménagement</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome for clean icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf.js CDN to generate high-quality PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- node-qrcode CDN for official Swiss QR Code generation -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Form/Document to be printed -->
+        <main class="invoice-document" id="invoice-document">
+            <!-- Header Section -->
+            <header class="invoice-header">
+                <div class="header-left">
+                    <h1 class="invoice-title">FACTURE</h1>
+                    <div class="company-details">
+                        <h2>LIMA Déménagement</h2>
+                        <p>Renens – Lausanne, Suisse</p>
+                        <p>Tél: 078 317 04 74</p>
+                        <p>Email: Limatransport23@hotmail.com</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="invoice-meta-table">
+                        <div class="meta-row">
+                            <div class="meta-label">Numéro de facture</div>
+                            <div class="meta-value">
+                                <input type="text" id="invoice-number" placeholder="Ex: 33" value="33">
+                            </div>
+                        </div>
+                        <div class="meta-row">
+                            <div class="meta-label">Date</div>
+                            <div class="meta-value">
+                                <input type="text" id="invoice-date" placeholder="DD.MM.YYYY" value="09.08.2025">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Customer Info Section -->
+            <section class="invoice-section">
+                <h3 class="section-title">Informations du client</h3>
+                <div class="customer-info-table">
+                    <div class="info-row">
+                        <div class="info-label">Nom / Société</div>
+                        <div class="info-value">
+                            <input type="text" id="customer-name" placeholder="Nom du client ou société">
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Adresse</div>
+                        <div class="info-value">
+                            <input type="text" id="customer-address" placeholder="Adresse complète">
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Téléphone</div>
+                        <div class="info-value">
+                            <input type="tel" id="customer-phone" placeholder="Numéro de téléphone">
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Email</div>
+                        <div class="info-value">
+                            <input type="email" id="customer-email" placeholder="Adresse e-mail">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Services Details Section -->
+            <section class="invoice-section">
+                <h3 class="section-title">Détails du service</h3>
+                <div class="services-table-wrapper">
+                    <table class="services-table" id="services-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50%;">Description</th>
+                                <th style="width: 15%; text-align: right;">Quantité</th>
+                                <th style="width: 17%; text-align: right;">Prix (CHF)</th>
+                                <th style="width: 18%; text-align: right;">Total (CHF)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="services-tbody">
+                            <!-- Dynamic rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-actions no-print">
+                    <button type="button" id="add-row-btn" class="btn btn-secondary btn-sm">
+                        <i class="fa-solid fa-plus"></i> Ajouter une ligne
+                    </button>
+                </div>
+            </section>
+
+            <!-- Compact Bottom Grid Section: Payments, Bank Details, QR & Signature grouped side-by-side -->
+            <div class="invoice-bottom-grid">
+                <!-- Left: Total + Bank details + QR Code -->
+                <div class="payment-block-group">
+                    <!-- Grand Total -->
+                    <div class="total-container">
+                        <div class="total-label">TOTAL CHF</div>
+                        <div class="total-value" id="grand-total-display">CHF 0.00</div>
+                    </div>
+                    
+                    <!-- Bank details & QR Code side-by-side -->
+                    <div class="bank-qr-wrapper">
+                        <div class="bank-details-box">
+                            <h4>Coordonnées bancaires</h4>
+                            <p><strong>Nom:</strong> LIMA DE JESUS WEBERSON</p>
+                            <p><strong>IBAN:</strong> CH0800767000Z54883120</p>
+                            <p><strong>BIC/SWIFT:</strong> BCVLCH2LXXX</p>
+                            <p><strong>Banque:</strong> Banque Cantonale Vaudoise</p>
+                        </div>
+                        <div class="qr-details-box">
+                            <canvas id="qr-code-canvas" style="display: block; width: 100px; height: 100px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Compact Customer Signature -->
+                <div class="signature-block-group">
+                    <h3 class="section-title" style="margin-bottom: 8px;">Signature du client</h3>
+                    <div class="signature-table">
+                        <div class="sig-row">
+                            <div class="sig-label" style="width: 25%;">Nom:</div>
+                            <div class="sig-value" style="width: 75%;">
+                                <input type="text" id="sig-name-input" placeholder="Nom complet du signataire">
+                            </div>
+                        </div>
+                        <div class="sig-row">
+                            <div class="sig-label" style="width: 25%;">Date:</div>
+                            <div class="sig-value" style="width: 75%;">
+                                <input type="text" id="sig-date-input" placeholder="DD.MM.YYYY">
+                            </div>
+                        </div>
+                        <div class="sig-row signature-row">
+                            <div class="sig-label" style="width: 25%;">Signature:</div>
+                            <div class="sig-value canvas-container" style="width: 75%; height: 65px;">
+                                <canvas id="signature-canvas"></canvas>
+                                <button type="button" id="clear-sig-btn" class="no-print" title="Effacer" style="top: 5px; right: 5px; padding: 2px 4px; font-size: 9px;">
+                                    <i class="fa-solid fa-eraser"></i> Effacer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Fixed Controls Area (Excluded from Print/PDF) -->
+        <aside class="controls-panel no-print">
+            <div class="controls-header">
+                <h3>Actions de Facture</h3>
+            </div>
+            <div class="controls-body">
+                <button type="button" id="save-btn" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk"></i> Enregistrer la Facture
+                </button>
+                <button type="button" id="clear-all-btn" class="btn btn-danger">
+                    <i class="fa-solid fa-trash-can"></i> Effacer tout
+                </button>
+                
+                <div style="margin: 10px 0; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="paye-toggle" style="width: auto; cursor: pointer; height: 16px; width: 16px;">
+                    <label for="paye-toggle" style="font-size: 13px; font-weight: 500; cursor: pointer; user-select: none;">Marquer comme Payé (Payé ce jour)</label>
+                </div>
+
+                <button type="button" id="pdf-btn" class="btn btn-success">
+                    <i class="fa-solid fa-file-pdf"></i> Générer PDF
+                </button>
+                
+                <a href="../" class="btn btn-secondary" style="text-decoration: none;">
+                    <i class="fa-solid fa-arrow-left"></i> Retour à l'accueil
+                </a>
+            </div>
+
+            <!-- Registration List (History) -->
+            <div class="history-section">
+                <h4>Factures enregistrées</h4>
+                <div class="history-list" id="history-list">
+                    <p class="empty-msg">Aucune facture enregistrée localement.</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

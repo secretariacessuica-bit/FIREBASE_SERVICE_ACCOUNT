@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nos Services | Déménagement, Transport & Nettoyage | LIMA Solutions</title>
+    <meta name="description" content="Découvrez nos prestations de déménagement pour particuliers et entreprises, services de transport routier et nettoyage professionnel de fin de bail en Suisse.">
+    <link rel="stylesheet" href="/style.css?v=2.1">
+    <!-- FontAwesome for clean icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+        <!-- Header/Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="logo">
+                <i class="fa-solid fa-cube"></i> LIMA Solutions
+            </a>
+            
+            <!-- Mobile Menu Toggle Button -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                Menu
+            </button>
+
+            <nav class="nav-links" id="nav-links">
+                <a href="/index.html">Accueil</a>
+                <a href="/services.html">Services</a>
+                <a href="/marketplace/index.html">Marketplace</a>
+                
+                <!-- Guides Dropdown -->
+                <div class="nav-dropdown" style="position: relative; display: inline-block;">
+                    <a href="#" class="nav-dropdown-toggle" onclick="toggleDropdown(event, 'guides-dropdown')">Guides <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i></a>
+                    <div id="guides-dropdown" class="dropdown-content" style="display: none; position: absolute; left: 0; background-color: var(--white); min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-gray); border-radius: var(--border-radius); z-index: 1010; margin-top: 5px;">
+                        <a href="/guides/checklist-demenagement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Checklist Déménagement</a>
+                        <a href="/guides/rendre-appartement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Rendre son appartement</a>
+                        <a href="/guides/nettoyage-obligatoire.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Nettoyage de remise</a>
+                        <a href="/guides/reboucher-trous-vis.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Reboucher les trous</a>
+                        <a href="/guides/caution-proprietaire.html" style="padding: 10px 15px; display: block; color: var(--text-dark); text-decoration: none;">Récupérer sa caution</a>
+                    </div>
+                </div>
+
+                <a href="/about.html">À Propos</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="/contact.html">Contact</a>
+                <a href="/portal/login.php" class="btn-portal-nav"><i class="fa-solid fa-user"></i> Espace Client</a>
+                <a href="/contact.html" class="btn-cta-nav">Demander un Devis</a>
+                
+                
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header Banner -->
+    <section class="page-header">
+        <h1>Nos Services Professionnels</h1>
+        <p>Une large gamme de solutions logistiques et de nettoyage pour simplifier vos projets en Suisse.</p>
+    </section>
+
+    <!-- Detailed Services Section -->
+    <main class="page-content">
+        <div class="service-detail-section">
+            
+            <!-- Service 1: Residential Move -->
+            <div class="service-detail-row">
+                <div class="service-detail-text">
+                    <h2>Déménagement Résidentiel (Privé)</h2>
+                    <p>Que vous déménagiez d'un studio ou d'une villa familiale, nous planifions chaque étape de votre déménagement privé avec soin. Notre équipe protège vos biens les plus précieux pour garantir un transfert sans incident.</p>
+                    <ul class="service-features-list">
+                        <li><i class="fa-solid fa-circle-check"></i> Emballage complet de vos objets et vaisselles fragiles.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Démontage et remontage professionnel de vos meubles volumineux.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Protection de votre mobilier sous couvertures et housses adaptées.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Camions capitonnés modernes équipés de monte-meubles si nécessaire.</li>
+                    </ul>
+                    <a href="/contact.html" class="btn btn-primary">Estimer mon Déménagement</a>
+                </div>
+                <div class="service-detail-img">
+                    <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=500" alt="Déménagement Résidentiel LIMA Solutions">
+                </div>
+            </div>
+
+            <!-- Service 2: Commercial Move -->
+            <div class="service-detail-row">
+                <div class="service-detail-text">
+                    <h2>Déménagement Commercial (Entreprises)</h2>
+                    <p>Le transfert d'une entreprise exige une rigueur et un respect absolu des délais afin de limiter les temps d'arrêt opérationnels. Nous prenons en charge la réimplantation complète de vos bureaux ou locaux commerciaux.</p>
+                    <ul class="service-features-list">
+                        <li><i class="fa-solid fa-circle-check"></i> Emballage sécurisé du parc informatique sensible.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Archivage structuré et destruction de documents confidentiels.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Logistique hors heures de bureau (nuits et week-ends).</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Chargé de projet dédié pour coordonner le transfert physique.</li>
+                    </ul>
+                    <a href="/contact.html" class="btn btn-primary">Demander un Devis Entreprise</a>
+                </div>
+                <div class="service-detail-img">
+                    <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=500" alt="Déménagement d'Entreprise LIMA Solutions">
+                </div>
+            </div>
+
+            <!-- Service 3: Logistics & Transport -->
+            <div class="service-detail-row">
+                <div class="service-detail-text">
+                    <h2>Transport & Logistique Routière</h2>
+                    <p>Besoin de déplacer du matériel lourd ou des marchandises à travers les différents cantons de Suisse ? Nous proposons des formules de fret flexibles adaptées aux dimensions et aux spécificités de vos chargements.</p>
+                    <ul class="service-features-list">
+                        <li><i class="fa-solid fa-circle-check"></i> Livraisons régulières et expéditions rapides porte-à-porte.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Transport sécurisé de pianos, coffres-forts et œuvres d'art.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Traçabilité et suivi régulier de vos expéditions.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Service de groupage économique pour transports intercantonaux.</li>
+                    </ul>
+                    <a href="/contact.html" class="btn btn-primary">Obtenir un Tarif Transport</a>
+                </div>
+                <div class="service-detail-img">
+                    <img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=500" alt="Transport et Logistique LIMA Solutions">
+                </div>
+            </div>
+
+            <!-- Service 4: Cleaning & Waste Removal -->
+            <div class="service-detail-row">
+                <div class="service-detail-text">
+                    <h2>Nettoyage de Fin de Bail & Débarras</h2>
+                    <p>Rendez vos anciens locaux dans un état irréprochable. Nous garantissons la propreté exigée par votre gérance immobilière pour l'état des lieux de sortie. Nous nous chargeons également du débarras de vos encombrants.</p>
+                    <ul class="service-features-list">
+                        <li><i class="fa-solid fa-circle-check"></i> Nettoyage en profondeur des sols, vitres, cuisine et sanitaires.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Garantie de remise des clés (nous vous accompagnons lors de l'état des lieux).</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Évacuation écologique et tri sélectif de vos déchets encombrants.</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Dépôt officiel en centre de déchèterie agréé.</li>
+                    </ul>
+                    <a href="/contact.html" class="btn btn-primary">Estimer Nettoyage / Débarras</a>
+                </div>
+                <div class="service-detail-img">
+                    <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=500" alt="Nettoyage et débarras LIMA Solutions">
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-container">
+            <p>&copy; 2026 LIMA Solutions. Tous droits réservés.</p>
+            <p>Renens – Lausanne, Suisse | <a href="/portal/login.php">Espace Client</a> | <a href="/admin/login.php">Espace ERP</a> | <a href="/facture/index.html">Espace Facturation</a></p>
+        </div>
+    </footer>
+    <script src="/app.js"></script>
+</body>
+</html>

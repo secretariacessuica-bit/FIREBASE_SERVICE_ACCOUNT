@@ -6,3 +6,5 @@ Thumbs.db
  
 # Ignore temporary diagnostics
 5_APP_ES_DIACONIA/scratch/
+.tools/
+horizon/

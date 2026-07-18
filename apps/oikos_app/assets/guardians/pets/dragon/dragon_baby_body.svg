@@ -1,0 +1,7 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dragon body placeholder -->
+  <ellipse cx="50" cy="58" rx="32" ry="30" fill="#E74C3C"/>
+  <polygon points="50,10 40,35 60,35" fill="#C0392B"/>
+  <!-- asa direita -->
+  <path d="M80 40 Q110 20 95 60 Q85 50 80 40z" fill="#C0392B" opacity="0.85"/>
+</svg>

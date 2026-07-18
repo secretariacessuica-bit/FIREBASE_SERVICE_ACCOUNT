@@ -35,7 +35,13 @@ const App = {
     },
 
     isOperationalSector(sectorId) {
-        // Mantido para retrocompatibilidade, agora consome 'categoria'
+        console.log("DEBUG isOperationalSector:", sectorId, "sectorsData:", this.sectorsData);
+        if (!sectorId) return false;
+        // Fallback hardcoded para as coleções de produção que ainda não possuem o campo "categoria"
+        if (sectorId === 'limpeza' || sectorId === 'manutencao' || sectorId === 'limpeza_manutencao' || sectorId === 'limpeza_conservacao' || sectorId === 'manutencao_predial' || sectorId === 'prestadores_servico' || sectorId === 'prestadores_de_servico' || sectorId === 'prestadores' || sectorId === 'prestador_servico' || sectorId === 'prestadores_servicos') {
+            return true;
+        }
+        // Validação principal via campo "categoria" (futuro/novos setores operacionais)
         return this.sectorsData[sectorId]?.categoria === 'operacional';
     },
 
@@ -382,7 +388,7 @@ const App = {
             // Controle da visibilidade da barra de navegação global
             const mainNav = document.getElementById('main-bottom-nav');
             if (mainNav) {
-                if (viewId === 'view-login') {
+                if (viewId === 'view-login' || viewId === 'view-member') {
                     mainNav.style.setProperty('display', 'none', 'important');
                 } else {
                     mainNav.style.setProperty('display', 'flex', 'important');
@@ -498,13 +504,15 @@ const App = {
             adminBtn.style.setProperty('display', isAdmin ? 'flex' : 'none', 'important');
         }
 
+        const userSectors = this.currentUser ? (Array.isArray(this.currentUser.setores) ? this.currentUser.setores : (this.currentUser.setor ? [this.currentUser.setor] : [])) : [];
+        const hasOnlyOpSectors = userSectors.length > 0 && userSectors.every(s => this.isOperationalSector(s));
+
         // If user is Admin, they can access anything
         if (isAdmin) {
             document.getElementById('admin-shortcut-container').style.display = 'block';
             document.getElementById('admin-profile-name-footer').innerText = this.currentUser.nome;
             this.navigateTo('view-setor-select');
         } else {
-            // Member goes to sector select (only active sector card will show)
             document.getElementById('admin-shortcut-container').style.display = 'none';
             this.navigateTo('view-setor-select');
         }
@@ -522,15 +530,25 @@ const App = {
         const isAdmin = this.currentUser && this.currentUser.perfil === 'admin';
         const isRepositor = this.currentUser && this.currentUser.eRepositor === true;
         
+        const userSectors = this.currentUser ? (Array.isArray(this.currentUser.setores) ? this.currentUser.setores : (this.currentUser.setor ? [this.currentUser.setor] : [])) : [];
+        const hasOnlyOpSectors = userSectors.length > 0 && userSectors.every(s => this.isOperationalSector(s));
+        
         const btnPainel = document.getElementById('nav-btn-painel');
         const btnServicos = document.getElementById('nav-btn-servicos');
+        const btnEscalas = document.getElementById('nav-btn-escalas');
         
         if (btnPainel) btnPainel.style.display = 'none';
         if (btnServicos) btnServicos.style.display = 'none';
+        if (btnEscalas) btnEscalas.style.display = 'flex'; // Padrão visível
 
         if (isAdmin) {
             if (btnPainel) btnPainel.style.display = 'flex';
-        } 
+            if (btnEscalas) btnEscalas.style.display = 'none';
+        }
+        
+        if (hasOnlyOpSectors && !isAdmin) {
+            if (btnEscalas) btnEscalas.style.display = 'none';
+        }
         
         if (isRepositor || isAdmin) {
             if (btnServicos) btnServicos.style.display = 'flex';
@@ -649,7 +667,7 @@ const App = {
 
         // Register Service Worker
         try {
-            this._swRegistration = await navigator.serviceWorker.register('/sw-notifications.js?v=3.11.0-PWA', { scope: '/' });
+            this._swRegistration = await navigator.serviceWorker.register('/sw-notifications.js?v=3.11.2-PWA', { scope: '/' });
             console.log('[Notificações] Service Worker registrado:', this._swRegistration.scope);
         } catch (err) {
             console.warn('[Notificações] Falha ao registrar Service Worker:', err);
@@ -948,10 +966,13 @@ const App = {
 
             let userScales = [];
             if (this.currentUser) {
+                userScales = escalas.filter(e => e.membroId === this.currentUser.id);
+                
+                const missaoContainer = document.getElementById('missao-primaria-container');
                 if (this.currentUser.perfil === 'admin') {
-                    userScales = escalas;
+                    if (missaoContainer) missaoContainer.style.display = 'none';
                 } else {
-                    userScales = escalas.filter(e => e.membroId === this.currentUser.id);
+                    if (missaoContainer) missaoContainer.style.display = 'block';
                 }
             }
 
@@ -1019,6 +1040,40 @@ const App = {
                     const eventTitle = isOp ? (next.funcao || 'Plantão') : (next.cultoNome || 'Culto');
                     const funcLabel = isOp ? 'Atividade' : 'Função';
 
+                    let instructionsHtml = '';
+                    if (!isOp) {
+                        let nodeId = null;
+                        const funcLower = (next.funcao || '').toLowerCase();
+                        const obsLower = (next.observacoes || '').toLowerCase();
+                        if (next.setorId === 'escala_livre' || funcLower.includes('escala livre')) nodeId = 'escala_livre';
+                        else if (next.setorId === 'acolhimento' || funcLower.includes('acolhimento')) nodeId = 'acolhimento';
+                        else if (next.setorId === 'entrada' || next.setorId === 'check_in' || funcLower.includes('entrada') || funcLower.includes('portaria')) {
+                            if (funcLower.includes('check')) nodeId = 'checkin';
+                            else nodeId = 'portaria';
+                        } else if (next.setorId === 'apoio_templo_ronda_dir' || next.setorId === 'apoio_templo_ronda_esq' || funcLower.includes('apoio')) {
+                            const isDir = funcLower.includes('direito') || obsLower.includes('direito') || funcLower.includes('dir');
+                            if (funcLower.includes('ronda')) {
+                                nodeId = isDir ? 'ronda-direito' : 'ronda-esquerdo';
+                            } else {
+                                nodeId = isDir ? 'apoio-direito' : 'apoio-esquerdo';
+                            }
+                        }
+                        
+                        const staticData = this.areaStaticData[nodeId];
+                        if (staticData && staticData.instrucoes) {
+                            instructionsHtml = `
+                                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                    <div style="font-size: 0.75rem; font-weight: 700; color: #6EE7B7; text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                        <i class="fa-solid fa-circle-info"></i> O que fazer:
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: #E2E8F0; line-height: 1.4;">
+                                        ${staticData.instrucoes}
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+
                     premiumNextContainer.innerHTML = `
                         <div class="premium-next-scale-card" onclick="App.navigateToNextService('${next.id}', '${next.data}', '${next.cultoId || 'sem-culto'}', '${next.horarioInicio || '00:00'}', '${next.setorId}', '${(next.funcao || '').replace(/'/g, '\\\'')}');" style="display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(18,115,105,0.25); border: 1px solid rgba(255,255,255,0.15);">
                             <!-- Linha Superior -->
@@ -1047,6 +1102,8 @@ const App = {
                                     </p>
                                 </div>
                             </div>
+                            
+                            ${instructionsHtml}
                             
                             ${btnConfirmHtml ? `<div style="margin-top: 10px;">${btnConfirmHtml}</div>` : ''}
                         </div>
@@ -1564,12 +1621,34 @@ const App = {
         
         document.getElementById('member-sector-title').innerText = sector.nome;
         
-        // Hide/Show Replenish Tab in bottom nav: only for buyers (eRepositor === true) or admins
+        // --- Configurar Bottom Nav Dinâmica e Cabeçalho ---
+        // Desativado temporariamente para que Limpeza use a Escala padrão e tenha botão de Voltar
+        const isOp = false;
+        
+        // Ensure back button is always visible
+        const backBtn = document.querySelector('.member-header-info .btn-icon');
+        if (backBtn) {
+            backBtn.style.display = 'flex';
+        }
+
+        const subtitleEl = document.querySelector('.member-header-subtitle');
+        if (subtitleEl) {
+            subtitleEl.innerText = 'Minha Escala';
+        }
+        
+        document.querySelectorAll('.bottom-nav-item.tab-op').forEach(el => {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('.bottom-nav-item.tab-non-op').forEach(el => {
+            el.style.display = 'flex';
+        });
+
         const reposicaoTab = document.getElementById('bottom-nav-reposicao');
         if (reposicaoTab) {
             const isComprador = this.currentUser && (this.currentUser.eRepositor === true || this.currentUser.perfil === 'admin');
             reposicaoTab.style.display = isComprador ? 'flex' : 'none';
         }
+        // ---------------------------------------------
 
         // Init initials for profile
         const names = this.currentUser.nome.split(' ');
@@ -1580,7 +1659,7 @@ const App = {
         document.getElementById('member-profile-role').innerText = `Membro da equipe - ${sector.nome}`;
 
         // Switch to the default Tab
-        this.switchMemberTab('escala');
+        this.switchMemberTab(isOp ? 'hoje' : 'escala');
     },
 
     switchMemberTab(tabName, el = null) {
@@ -1594,8 +1673,9 @@ const App = {
             // Find manually
             document.querySelectorAll('.bottom-nav-item').forEach(item => {
                 item.classList.remove('active');
-                if (tabName === 'escala' && item.innerHTML.includes('Minha Escala')) item.classList.add('active');
-                if (tabName === 'reposicao' && (item.innerHTML.includes('Reposição') || item.innerHTML.includes('Serviços'))) item.classList.add('active');
+                if ((tabName === 'escala' || tabName === 'hoje') && (item.innerHTML.includes('Minha Escala') || item.innerHTML.includes('Escala') || item.innerHTML.includes('Hoje'))) item.classList.add('active');
+                if (tabName === 'tarefas' && item.innerHTML.includes('Tarefas')) item.classList.add('active');
+                if ((tabName === 'reposicao' || tabName === 'estoque') && (item.innerHTML.includes('Reposição') || item.innerHTML.includes('Serviços') || item.innerHTML.includes('Estoque'))) item.classList.add('active');
                 if (tabName === 'avisos' && item.innerHTML.includes('Avisos')) item.classList.add('active');
                 if (tabName === 'perfil' && item.innerHTML.includes('Perfil')) item.classList.add('active');
             });
@@ -1603,18 +1683,25 @@ const App = {
 
         // Hide all subviews, show selected
         document.querySelectorAll('.member-subview').forEach(view => view.style.display = 'none');
-        const subEl = document.getElementById(`member-sub-${tabName}`);
+        
+        let targetSubId = tabName;
+        if (tabName === 'hoje') targetSubId = 'escala';
+        if (tabName === 'estoque') targetSubId = 'reposicao';
+        
+        const subEl = document.getElementById(`member-sub-${targetSubId}`);
         if (subEl) subEl.style.display = 'block';
         else if (tabName === 'avisos') { this.toggleMuralMobile(true); return; }
 
         // Load tab data
-        if (tabName === 'escala') {
+        if (tabName === 'escala' || tabName === 'hoje') {
             if (this.isOperationalSector(this.activeSectorId)) {
                 this.renderOperacionalDashboard();
             } else {
                 this.loadAndRenderMemberScales();
             }
-        } else if (tabName === 'reposicao') {
+        } else if (tabName === 'tarefas') {
+            this.loadAndRenderMemberTarefas();
+        } else if (tabName === 'reposicao' || tabName === 'estoque') {
             this.loadAndRenderMemberReplenish();
         } else if (tabName === 'avisos') {
             this.loadAndRenderMemberAvisos();
@@ -1630,10 +1717,48 @@ const App = {
         this.loadAndRenderMemberScales();
     },
 
-    adjustMemberWeek(offset) {
-        const days = this.memberPeriod === 'week' ? 7 : 30;
-        this.memberCurrentDate.setDate(this.memberCurrentDate.getDate() + (offset * days));
-        this.loadAndRenderMemberScales();
+    async loadAndRenderMemberTarefas() {
+        const container = document.getElementById('member-tarefas-list');
+        if (!container) return;
+        
+        container.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--theme-color);"></i></div>`;
+        
+        try {
+            const tarefas = await DbService.getTarefas(this.activeSectorId);
+            
+            let html = '';
+            if (tarefas.length === 0) {
+                html = `<div style="text-align: center; padding: 30px; color: #8AA6A3;"><i class="fa-solid fa-check-double" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i><br>Nenhuma tarefa pendente.</div>`;
+            } else {
+                html = tarefas.map(t => {
+                    let badgeColor = t.prioridade === 'Alta' ? '#EF4444' : (t.prioridade === 'Média' ? '#F59E0B' : '#10B981');
+                    let statusColor = t.status === 'Pendente' ? '#6B7280' : (t.status === 'Em andamento' ? '#3B82F6' : (t.status === 'Concluída' ? '#10B981' : '#EF4444'));
+                    let statusIcon = t.status === 'Concluída' ? 'fa-check' : 'fa-circle';
+                    
+                    return `
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                <div style="font-weight: 700; color: #fff; font-size: 0.95rem;">${t.titulo}</div>
+                                <span style="font-size: 0.7rem; background: ${badgeColor}; color: white; padding: 3px 6px; border-radius: 4px; font-weight: 600;">${t.prioridade}</span>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #BFBFBF; margin-bottom: 15px; display: flex; flex-direction: column; gap: 4px;">
+                                <span><i class="fa-solid fa-location-dot" style="width: 16px;"></i> ${t.local}</span>
+                                <span><i class="fa-regular fa-calendar" style="width: 16px;"></i> Prazo: ${t.prazo}</span>
+                                <span><i class="fa-solid fa-user-tag" style="width: 16px;"></i> Resp: ${t.responsavel || 'Todos'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75rem; color: ${statusColor}; font-weight: 600;"><i class="fa-solid ${statusIcon}" style="font-size: 0.5rem; vertical-align: middle;"></i> ${t.status}</span>
+                                ${t.status !== 'Concluída' ? `<button class="btn-primary" style="background: var(--teal-primary); border: none; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px;" onclick="App.openAtualizarTarefaModal('${t.id}', '${t.status}')">Atualizar</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            container.innerHTML = html;
+        } catch (e) {
+            console.error("Error rendering tarefas:", e);
+            container.innerHTML = `<div style="color: #ef4444; padding: 20px; text-align: center;">Erro ao carregar as tarefas.</div>`;
+        }
     },
 
     async loadAndRenderMemberScales() {
@@ -1973,7 +2098,36 @@ const App = {
                         <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 15px;">
                             Iniciado às ${myActiveService.horarioInicioReal || myActiveService.horarioInicio}
                         </div>
-                        <button class="btn-primary" style="width: 100%; background: #EF4444; border: none; font-weight: 700; font-size: 0.9rem; padding: 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);" onclick="App.confirmFinishService('${myActiveService.id}', '${myActiveService.escalaId}')">
+                        
+                        <!-- Checklist Dinâmico -->
+                        <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
+                            <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 8px;"><i class="fa-solid fa-list-check"></i> Checklist Diário</div>
+                            <div style="display: flex; flex-direction: column; gap: 6px;" id="operacional-checklist-container">
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" class="op-check-item" value="Banheiros"> Banheiros
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" class="op-check-item" value="Salão principal"> Salão principal
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" class="op-check-item" value="Cozinha"> Cozinha
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" class="op-check-item" value="Corredores"> Corredores
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" class="op-check-item" value="Retirar lixo"> Retirar lixo
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" class="op-check-item" value="Repor papel"> Repor papel
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                    <input type="checkbox" class="op-check-item" value="Repor sabonete"> Repor sabonete
+                                </label>
+                            </div>
+                        </div>
+
+                        <button class="btn-primary" style="width: 100%; background: #EF4444; border: none; font-weight: 700; font-size: 0.9rem; padding: 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);" onclick="App.confirmFinishServiceWithChecklist('${myActiveService.id}', '${myActiveService.escalaId}')">
                             <i class="fa-solid fa-stop"></i> Finalizar Expediente
                         </button>
                     </div>
@@ -1982,8 +2136,9 @@ const App = {
                 const e = hojeEscalas[0];
                 html += `
                     <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);">
-                        <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">Plantão Agendado: ${e.funcao}</h3>
-                        <p style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 15px;"><i class="fa-regular fa-clock"></i> Início previsto: ${e.horarioInicio}</p>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">Trabalho de hoje<br><span style="font-size: 0.95rem; font-weight: 500; opacity: 0.9;">${e.funcao}</span></h3>
+                        <p style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 5px;"><i class="fa-regular fa-clock"></i> ${e.horarioInicio} - ${e.horarioFim}</p>
+                        <p style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 15px;">Status: <b>${e.statusPresenca}</b></p>
                         
                         ${e.statusPresenca === 'Pendente' ? `
                             <button class="btn-primary" style="width: 100%; background: #10B981; border: none; font-weight: 700; font-size: 0.9rem; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);" onclick="App.handleConfirmPresenca('${e.id}', 'Confirmada')">
@@ -2303,10 +2458,9 @@ const App = {
             areaCardsHtml = this.renderAreaCard(escalaLivreScales, 'Escala Livre', 'fa-solid fa-users', 'escala_livre', 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80', '#6B7280', membrosMap, true);
         } else {
             const recepcaoCardHtml = this.renderAreaCard([...portariaScales, ...checkinScales], 'Recepção', 'fa-solid fa-id-card', 'recepcao', 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=400&q=80', '#3B82F6', membrosMap);
-            const temploCardHtml = this.renderAreaCard([...apoioDireitoScales, ...apoioEsquerdoScales], 'Templo', 'fa-solid fa-place-of-worship', 'templo', 'https://images.unsplash.com/photo-1545232979-8bf34eb9757b?auto=format&fit=crop&w=400&q=80', '#14B8A6', membrosMap);
-            const rondaCardHtml = this.renderAreaCard([...rondaDireitoScales, ...rondaEsquerdoScales], 'Ronda', 'fa-solid fa-shield-halved', 'ronda', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=400&q=80', '#F59E0B', membrosMap);
+            const temploCardHtml = this.renderAreaCard([...apoioDireitoScales, ...apoioEsquerdoScales, ...rondaDireitoScales, ...rondaEsquerdoScales], 'Templo', 'fa-solid fa-place-of-worship', 'templo', 'https://images.unsplash.com/photo-1545232979-8bf34eb9757b?auto=format&fit=crop&w=400&q=80', '#14B8A6', membrosMap);
             const acolhimentoCardHtml = this.renderAreaCard(acolhimentoScales, 'Acolhimento', 'fa-solid fa-hands-holding-child', 'acolhimento', 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=800&q=80', '#EC4899', membrosMap);
-            areaCardsHtml = `${recepcaoCardHtml}${temploCardHtml}${rondaCardHtml}${acolhimentoCardHtml}`;
+            areaCardsHtml = `${recepcaoCardHtml}${temploCardHtml}${acolhimentoCardHtml}`;
         }
 
         // Next service calculation for bottom summary card
@@ -2335,9 +2489,7 @@ const App = {
         let nextServiceOnClick = "";
         let nextServiceCursor = "";
         if (userScales.length > 0) {
-            const next = userScales[0];
-            const nextFuncaoEsc = (next.funcao || '').replace(/'/g, "\\'");
-            nextServiceOnClick = `onclick="App.navigateToNextService('${next.id}', '${next.data}', '${next.cultoId || 'sem-culto'}', '${next.horarioInicio || '00:00'}', '${next.setorId}', '${nextFuncaoEsc}')"`;
+            nextServiceOnClick = `onclick="App.openMinhasEscalasModal()"`;
             nextServiceCursor = "cursor: pointer;";
         }
 
@@ -2348,9 +2500,9 @@ const App = {
                         <i class="fa-regular fa-calendar-check"></i>
                     </div>
                     <div class="summary-text-wrap" style="text-align: left;">
-                        <span class="summary-label" style="display: block; font-size: 0.68rem; color: #8AA6A3; font-weight: 600; text-transform: uppercase;">Próximo serviço</span>
+                        <span class="summary-label" style="display: block; font-size: 0.68rem; color: #8AA6A3; font-weight: 600; text-transform: uppercase;">Meus Serviços</span>
                         <span class="summary-val-main" style="display: block; font-size: 0.8rem; font-weight: 700; color: #fff; margin-top: 1px;">${nextServiceLabel}</span>
-                        <span class="summary-val-sub" style="display: block; font-size: 0.68rem; color: #BFBFBF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${nextServiceDetail}</span>
+                        <span class="summary-val-sub" style="display: block; font-size: 0.68rem; color: #BFBFBF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">Clique para gerenciar</span>
                     </div>
                 </div>
                 
@@ -2368,7 +2520,49 @@ const App = {
             </div>
         `;
 
+        // --- NOVO: Renderizar Escalas Pendentes (Confirmação) ---
+        const userPendingScales = escalas.filter(e => e.membroId === this.currentUser.id && e.statusPresenca === 'Pendente' && e.data >= hojeStr && !this.isOperationalSector(e.setorId));
+        let pendingAlertHtml = '';
+        if (userPendingScales.length > 0) {
+            let cardsHtml = userPendingScales.map(e => {
+                const dateParts = e.data.split('-');
+                const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                const diaFormatado = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                return `
+                    <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-weight: 700; color: #fff;">${e.cultoNome || 'Escala'}</span>
+                            <span style="font-size: 0.75rem; background: #D9A752; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Pendente</span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #BFBFBF; margin-bottom: 12px;">
+                            <i class="fa-regular fa-calendar" style="margin-right: 4px;"></i> ${diaFormatado.toUpperCase()} • ${e.horarioInicio} - ${e.horarioFim}<br>
+                            <i class="fa-solid fa-user-tag" style="margin-right: 4px; margin-top: 6px;"></i> ${e.funcao}
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-scale-action btn-recusar-presenca" onclick="App.handleConfirmPresenca('${e.id}', 'Recusada')" style="flex: 1; padding: 8px; border-radius: 6px;">
+                                <i class="fa-solid fa-xmark"></i> Recusar
+                            </button>
+                            <button class="btn-scale-action btn-confirm-presenca" onclick="App.handleConfirmPresenca('${e.id}', 'Confirmada')" style="flex: 1; padding: 8px; border-radius: 6px; background: #10B981; color: white;">
+                                <i class="fa-solid fa-check"></i> Aceitar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            pendingAlertHtml = `
+                <div style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, rgba(217, 167, 82, 0.15), rgba(217, 167, 82, 0.05)); border: 1px solid rgba(217, 167, 82, 0.3); border-radius: 12px;">
+                    <h3 style="color: #D9A752; font-size: 0.95rem; font-weight: 700; margin-bottom: 12px; text-transform: uppercase;">
+                        <i class="fa-solid fa-bell" style="margin-right: 6px;"></i> Suas Escalas Pendentes
+                    </h3>
+                    ${cardsHtml}
+                </div>
+            `;
+        }
+        // ---------------------------------------------------------
+
         container.innerHTML = `
+            ${pendingAlertHtml}
             ${staticHeaderHtml}
             
             <div class="org-daily-container" id="org-daily-swipe-area">
@@ -2682,19 +2876,8 @@ const App = {
                         areaScales.push(escala);
                     } else if (nodeId === 'recepcao' && (sectorId === 'entrada' || sectorId === 'check_in' || func.includes('entrada') || func.includes('check') || func.includes('portaria') || func.includes('recep'))) {
                         areaScales.push(escala);
-                    } else if (nodeId === 'templo' && (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq' || func.includes('apoio'))) {
-                        if (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq') {
-                            if (!func.includes('ronda')) areaScales.push(escala);
-                        } else {
-                            areaScales.push(escala);
-                        }
-                    } else if (nodeId === 'ronda' && (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq' || func.includes('ronda'))) {
-                        if (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq') {
-                            if (func.includes('ronda')) areaScales.push(escala);
-                        } else {
-                            areaScales.push(escala);
-                        }
-                    } else {
+                    } else if (nodeId === 'templo' && (sectorId === 'apoio_templo_ronda_dir' || sectorId === 'apoio_templo_ronda_esq' || func.includes('apoio') || func.includes('ronda'))) {
+                        areaScales.push(escala);
                         if (nodeId === 'portaria' && (func.includes('portaria') || func.includes('entrada'))) {
                             areaScales.push(escala);
                         } else if (nodeId === 'checkin' && func.includes('check')) {
@@ -2868,12 +3051,15 @@ const App = {
                     const membroInfo = membrosMap[escala.membroId];
                     const fotoUrl = membroInfo ? membroInfo.fotoUrl : null;
                     const avatarHtml = this.getCardAvatarHtml(escala.membroNome, fotoUrl, 1);
+                    
+                    const isRonda = (escala.funcao || '').toLowerCase().includes('ronda');
+                    const rondaBadge = isRonda ? `<span style="background: rgba(245, 158, 11, 0.2); border: 1px solid #F59E0B; color: #F59E0B; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase;"><i class="fa-solid fa-shield-halved"></i> Ronda</span>` : '';
 
                     teamListHtml += `
                         <div style="display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.02); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
                             ${avatarHtml}
                             <div style="flex: 1; text-align: left;">
-                                <div style="font-size: 0.85rem; font-weight: 700; color: #fff;">${escala.membroNome} ${isOwn ? '<span style="color:#8AA6A3; font-weight:500;">(Você)</span>' : ''}</div>
+                                <div style="font-size: 0.85rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px;">${escala.membroNome} ${isOwn ? '<span style="color:#8AA6A3; font-weight:500;">(Você)</span>' : ''} ${rondaBadge}</div>
                                 <div style="font-size: 0.7rem; color: #8AA6A3; margin-top: 1px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
                                     <span style="font-weight: 700; color: var(--theme-color);"><i class="fa-solid fa-user-tag" style="font-size: 0.65rem; margin-right: 2px;"></i>${escala.funcao || 'Membro'}</span>
                                     ${escala.observacoes ? `<span style="color: #8AA6A3;">•</span> <span style="color: #D9A752; font-weight: 600;"><i class="fa-solid fa-map-pin" style="font-size: 0.65rem; margin-right: 2px;"></i>${escala.observacoes}</span>` : ''}
@@ -3235,22 +3421,23 @@ const App = {
         if (!m || m.status !== 'ativo' || m.perfil === 'admin') return false;
         
         // 1. Verificar afastamento temporário / férias
-        if (m.statusOperacional && m.statusOperacional !== 'Disponível') {
-            const checkDate = data || new Date().toISOString().split('T')[0];
-            if (m.afastamentoInicio && m.afastamentoFim) {
-                if (checkDate >= m.afastamentoInicio && checkDate <= m.afastamentoFim) {
-                    return false; // Afastado no período (afetando escala manual, automática e preditiva)
-                }
-                if (checkDate > m.afastamentoFim) {
-                    const autoRetorno = m.afastamentoRetornoAutomativo === 'Sim' || m.afastamentoRetornoAutomativo === true;
-                    if (!autoRetorno) {
-                        return false; // Período expirou mas aguarda confirmação da supervisão
-                    }
-                }
-            } else {
-                // Sem datas definidas ou inativo temporário
-                return false;
+        const checkDate = data || new Date().toISOString().split('T')[0];
+        
+        if (m.afastamentoInicio && m.afastamentoFim) {
+            // Membro tem período de afastamento definido
+            if (checkDate >= m.afastamentoInicio && checkDate <= m.afastamentoFim) {
+                return false; // Afastado no período (afetando escala manual, automática e preditiva)
             }
+            if (checkDate > m.afastamentoFim) {
+                const autoRetorno = m.afastamentoRetornoAutomativo === 'Sim' || m.afastamentoRetornoAutomativo === true;
+                // Se não tem retorno automático E o status ainda consta como inativo/afastado
+                if (!autoRetorno && m.statusOperacional && m.statusOperacional !== 'Disponível') {
+                    return false; // Período expirou mas aguarda confirmação da supervisão
+                }
+            }
+        } else if (m.statusOperacional && m.statusOperacional !== 'Disponível') {
+            // Sem datas definidas mas marcado como inativo/afastado
+            return false;
         }
         
         // 2. Verificar indisponibilidade declarada para o dia específico (Portal do Obreiro)
@@ -3753,6 +3940,30 @@ const App = {
         document.getElementById('modal-servico-fechamento').classList.add('active');
     },
 
+    confirmFinishServiceWithChecklist(servicoId, escalaId) {
+        if (!servicoId) return;
+        
+        const checkboxes = document.querySelectorAll('.op-check-item');
+        const checkedItems = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                checkedItems.push(cb.value);
+            }
+        });
+        
+        let obsAdicional = '';
+        if (checkedItems.length > 0) {
+            obsAdicional = "Checklist realizado:\\n- " + checkedItems.join("\\n- ");
+        } else {
+            obsAdicional = "Nenhum item do checklist diário foi marcado.";
+        }
+        
+        document.getElementById('fechamento-servico-id').value = servicoId;
+        document.getElementById('fechamento-escala-id').value = (escalaId && escalaId !== 'undefined') ? escalaId : 'extra';
+        document.getElementById('fechamento-observacoes').value = obsAdicional;
+        document.getElementById('modal-servico-fechamento').classList.add('active');
+    },
+
     handleFinishServiceModal(escalaId) {
         const servicoId = localStorage.getItem(`active_service_${escalaId}`);
         if (!servicoId) {
@@ -3784,14 +3995,8 @@ const App = {
             this.toggleBottomNav(true); // Modo Imersivo: Plantão Encerrado
             
             // [Automação do Mural] Evento de fim de limpeza
-            if (this.activeSectorId === 'limpeza') {
-                const todayFormatted = new Date().toLocaleDateString('pt-BR');
-                await DbService.addAviso({
-                    titulo: "🧹 Limpeza Finalizada",
-                    conteudo: `O templo foi limpo e organizado hoje (${todayFormatted}). Por favor, nos ajude a manter a Casa do Senhor limpa, não deixando lixo nos assentos e zelando pelas áreas comuns!`,
-                    tipo: "info",
-                    dataCriacao: new Date().toISOString()
-                });
+            if (this.isOperationalSector(this.activeSectorId)) {
+                await this.triggerMuralLimpeza(escalaId);
             }
             
             this.closeServicoFechamentoModal();
@@ -3913,77 +4118,50 @@ const App = {
         }
     },
 
-    // --- REPOSIÇÃO (MEMBRO LIMPEZA) ---
+    // --- REPOSIÇÃO (MEMBRO LIMPEZA / ESTOQUE) ---
     async loadAndRenderMemberReplenish() {
-        const sectorSelect = document.getElementById('replenish-sector-select');
-        const select = document.getElementById('replenish-product-select');
+        const container = document.getElementById('member-estoque-lista-produtos');
+        if (!container) return;
         
-        if (sectorSelect) {
-            sectorSelect.innerHTML = '<option value="" disabled selected>Carregando...</option>';
-        }
-        if (select) {
-            select.innerHTML = '<option value="" disabled selected>Escolha primeiro o setor...</option>';
-        }
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #8AA6A3;"><i class="fa-solid fa-circle-notch fa-spin fa-lg"></i></div>';
         
         try {
-            // Populate Sectors
-            if (sectorSelect) {
-                sectorSelect.innerHTML = '<option value="" disabled selected>Selecione um setor</option>';
-                for (const [id, sec] of Object.entries(this.sectorsData)) {
-                    if (sec.tipo === 'operacional') {
-                        sectorSelect.innerHTML += `<option value="${id}">${sec.nome}</option>`;
-                    }
-                }
-            }
-            
-            // Cache products for quick filtering later
             this.allProductsCache = await DbService.getProdutos();
-
-            // Check if member is a designated Repositor/Buyer
-            const repositorSection = document.getElementById('member-repositor-section');
-            const purchasesList = document.getElementById('member-designated-purchases-list');
+            const ativos = this.allProductsCache.filter(p => p.status === 'ativo');
             
-            if (this.currentUser && this.currentUser.eRepositor && repositorSection && purchasesList) {
-                const reqs = await DbService.getReposicoes();
-                const myPurchases = reqs.filter(r => r.repositorId === this.currentUser.id && r.status === 'Aguardando Compra');
-                
-                if (myPurchases.length > 0) {
-                    repositorSection.style.display = 'block';
-                    purchasesList.innerHTML = '';
-                    myPurchases.forEach(p => {
-                        const item = document.createElement('div');
-                        item.style.cssText = "background: white; border-radius: 8px; padding: 12px; border: 1px solid #E2E8F0; box-shadow: 0 1px 2px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px;";
-                        item.innerHTML = `
-                            <div style="display:flex; justify-content:space-between; align-items:baseline;">
-                                <span style="font-weight:700; font-size:0.95rem; color:var(--navy-dark);">${p.produtoNome}</span>
-                                <span class="badge" style="background:#FAF5FF; color:#5F388C; font-weight:700; border: 1px solid #E9D5FF;">Qtd: ${p.quantidade}</span>
+            let html = '';
+            if (ativos.length === 0) {
+                html = `<div style="text-align: center; padding: 30px; color: #8AA6A3;">Nenhum produto cadastrado no estoque.</div>`;
+            } else {
+                html = ativos.map(p => {
+                    let alertHtml = '';
+                    if (p.quantidadeAtual <= p.quantidadeMinima) {
+                        alertHtml = `<span style="font-size: 0.7rem; background: #FEF2F2; color: #EF4444; border: 1px solid #FCA5A5; padding: 2px 6px; border-radius: 4px; margin-left: 8px;"><i class="fa-solid fa-triangle-exclamation"></i> Baixo</span>`;
+                    }
+                    
+                    return `
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <div style="font-weight: 700; color: #fff; font-size: 1rem;">${p.nome} ${alertHtml}</div>
+                                <div style="font-size: 1.2rem; font-weight: 800; color: var(--teal-primary);">${p.quantidadeAtual} <span style="font-size: 0.75rem; color: #8AA6A3; font-weight: 500;">un</span></div>
                             </div>
-                            <div style="font-size:0.8rem; color:var(--slate-gray);">
-                                <b>Solicitado por:</b> ${p.solicitadoPorNome} (Setor: ${p.setorNome || 'Limpeza'})<br>
-                                ${p.observacao ? `<b>Obs:</b> ${p.observacao}` : ''}
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-primary" style="flex: 1; padding: 6px; font-size: 0.8rem; background: #10B981; border: none; border-radius: 6px;" onclick="App.openStockMovementModal('${p.id}', 'entrada')"><i class="fa-solid fa-arrow-down"></i> Entrada</button>
+                                <button class="btn-primary" style="flex: 1; padding: 6px; font-size: 0.8rem; background: #EF4444; border: none; border-radius: 6px;" onclick="App.openStockMovementModal('${p.id}', 'saida')"><i class="fa-solid fa-arrow-up"></i> Saída</button>
+                                <button class="btn-secondary" style="flex: 1; padding: 6px; font-size: 0.8rem; border-color: rgba(255,255,255,0.2); color: #fff; border-radius: 6px;" onclick="App.showAlert('Histórico em desenvolvimento')"><i class="fa-solid fa-clock-rotate-left"></i> Hist.</button>
                             </div>
-                            <div style="display:flex; gap:8px; margin-top:5px;">
-                                <button type="button" class="btn-primary" style="padding:6px 12px; font-size:0.75rem; background-color:#10B981; border-color:#10B981; flex: 1.5; color:white; border-radius:6px; cursor:pointer;" onclick="App.openRepositorCompraModal('${p.id}')">
-                                    <i class="fa-solid fa-cart-arrow-down"></i> Comprar / Dar Entrada
-                                </button>
-                                <button type="button" class="btn-secondary" style="padding:6px 12px; font-size:0.75rem; color:#EF4444; border-color:#FCA5A5; background:#FEF2F2; flex: 1; border-radius:6px; cursor:pointer;" onclick="App.declinePurchase('${p.id}')">
-                                    Recusar
-                                </button>
-                            </div>
-                        `;
-                        purchasesList.appendChild(item);
-                    });
-                } else {
-                    repositorSection.style.display = 'none';
-                }
-            } else if (repositorSection) {
-                repositorSection.style.display = 'none';
+                        </div>
+                    `;
+                }).join('');
             }
+            container.innerHTML = html;
+            
             // Load Request History
             this.renderMemberReplenishHistory();
 
         } catch (e) {
             console.error("Error loading products for replenish:", e);
+            container.innerHTML = '<div style="color: #ef4444; padding: 20px; text-align: center;">Erro ao carregar o estoque.</div>';
         }
     },
 
@@ -4006,7 +4184,7 @@ const App = {
 
         try {
             const reqs = await DbService.getReposicoes();
-            const ownReqs = reqs.filter(r => r.solicitadoPorId === this.currentUser.id);
+            const ownReqs = reqs.filter(r => r.solicitadoPorId === this.currentUser.id || r.repositorId === this.currentUser.id);
 
             if (ownReqs.length === 0) {
                 container.innerHTML = '<p style="text-align: center; color: var(--slate-gray); font-size: 0.9rem;">Nenhuma solicitação realizada.</p>';
@@ -4223,20 +4401,79 @@ const App = {
         }
     },
 
-    async handleReplenishSubmit(event) {
-        event.preventDefault();
+    switchEstoqueTab(tabName, el) {
+        // Atualizar aba visual
+        document.querySelectorAll('.segment-item').forEach(i => i.classList.remove('active'));
+        el.classList.add('active');
+
+        // Alternar visualização
+        if (tabName === 'saida') {
+            document.getElementById('estoque-saida-view').style.display = 'block';
+            document.getElementById('estoque-compra-view').style.display = 'none';
+        } else {
+            document.getElementById('estoque-saida-view').style.display = 'none';
+            document.getElementById('estoque-compra-view').style.display = 'block';
+        }
+    },
+
+    handleProductSelectChange(selectElement) {
+        const option = selectElement.options[selectElement.selectedIndex];
+        const productId = option.getAttribute('data-id');
+        const balanceInfo = document.getElementById('saida-product-balance-info');
+        const balanceVal = document.getElementById('saida-product-balance-val');
         
-        // Enforce only compradores/admins can request products
-        if (this.currentUser && this.currentUser.eRepositor !== true && this.currentUser.perfil !== 'admin') {
-            this.showAlert('Apenas compradores podem solicitar reposição de produtos.', 'Acesso Negado');
+        if (productId && this.allProductsCache) {
+            const product = this.allProductsCache.find(p => p.id === productId);
+            if (product) {
+                if (balanceVal) balanceVal.innerText = product.quantidade || 0;
+                if (balanceInfo) balanceInfo.style.display = 'block';
+            } else {
+                if (balanceInfo) balanceInfo.style.display = 'none';
+            }
+        } else {
+            if (balanceInfo) balanceInfo.style.display = 'none';
+        }
+    },
+
+    async handleSaidaEstoqueSubmit(event) {
+        event.preventDefault();
+        const pSelect = document.getElementById('saida-product-select');
+        const produtoNome = pSelect.value;
+        const selectedOption = pSelect.options[pSelect.selectedIndex];
+        const produtoId = selectedOption ? selectedOption.getAttribute('data-id') : null;
+        const quantidade = parseInt(document.getElementById('saida-qty').value);
+
+        if (!produtoNome) {
+            this.showAlert('Por favor, selecione um produto.');
             return;
         }
+
+        try {
+            await DbService.registrarSaidaEstoque({
+                produtoId,
+                produtoNome,
+                quantidade,
+                retiradoPorId: this.currentUser.id,
+                retiradoPorNome: this.currentUser.nome,
+                setorId: this.activeSectorId
+            });
+
+            document.getElementById('saida-estoque-form').reset();
+            this.showToast('Saída registrada com sucesso!', 'success');
+            // Idealmente atualizaria o saldo na view
+        } catch (e) {
+            this.showAlert('Erro ao registrar saída de estoque.', 'Erro');
+        }
+    },
+
+    async handleReplenishSubmit(event) {
+        event.preventDefault();
         
         const pSelect = document.getElementById('replenish-product-select');
         const produtoNome = pSelect.value;
         const selectedOption = pSelect.options[pSelect.selectedIndex];
         const produtoId = selectedOption ? selectedOption.getAttribute('data-id') : null;
-        const quantidade = parseInt(document.getElementById('replenish-qty').value);
+        const quantidade = parseInt(document.getElementById('replenish-qty').value) || 1;
         const observacao = document.getElementById('replenish-notes').value.trim();
 
         if (!produtoNome) {
@@ -4244,8 +4481,7 @@ const App = {
             return;
         }
 
-        const sectorSelect = document.getElementById('replenish-sector-select');
-        const selectedSectorId = sectorSelect ? sectorSelect.value : this.activeSectorId;
+        const selectedSectorId = this.activeSectorId;
         const sector = this.sectorsData[selectedSectorId];
         const sectorNome = sector ? sector.nome : selectedSectorId;
 
@@ -4261,9 +4497,11 @@ const App = {
                 setorNome: sectorNome
             });
 
-            document.getElementById('replenish-request-form').reset();
-            this.showToast('Solicitação de reposição enviada!', 'success');
-            this.renderMemberReplenishHistory();
+            document.getElementById('solicitar-compra-form').reset();
+            document.getElementById('modal-solicitar-compra').style.display = 'none';
+            this.showToast('Solicitação de compra enviada!', 'success');
+            // Historico não está mais no HTML mas podemos tentar chamar se quisermos no futuro.
+            // this.renderMemberReplenishHistory();
         } catch (e) {
             this.showAlert('Erro ao enviar solicitação.', 'Erro');
         }
@@ -4328,8 +4566,15 @@ const App = {
             this.loadAdminAvisos();
         } else if (this.adminActiveTab === 'afastamentos') {
             this.loadAndRenderAdminAfastamentos();
+        } else if (this.adminActiveTab === 'zeladoria') {
+            this.renderEscalasOperacionais();
         } else if (this.adminActiveTab === 'operacional') {
             this.loadAdminOperacional();
+        }
+
+        // Para o listener de pendências se não está no dashboard
+        if (this.adminActiveTab !== 'dashboard') {
+            this.stopPendenciasListener();
         }
     },
 
@@ -4584,8 +4829,46 @@ const App = {
             // 5. Operational Pendencies panel rendering (Decoupled)
             this.renderOperationalPendingPanel(cultos, escalas);
 
+            // 6. Real-time listener para atualizar pendências quando obreiros confirmam
+            this.startPendenciasListener();
+
         } catch (e) {
             console.error("Dashboard load error:", e);
+        }
+    },
+
+    _pendenciasUnsubscribe: null,
+
+    startPendenciasListener() {
+        // Cancela listener anterior se existir
+        if (this._pendenciasUnsubscribe) {
+            this._pendenciasUnsubscribe();
+            this._pendenciasUnsubscribe = null;
+        }
+
+        // Ouve mudanças em tempo real na coleção de escalas
+        this._pendenciasUnsubscribe = db.collection('escalas')
+            .onSnapshot(async () => {
+                // Limpa o cache para garantir dados frescos
+                DbService.limparCache('escalas');
+                try {
+                    const [cultos, escalas] = await Promise.all([
+                        DbService.getCultos(),
+                        DbService.getEscalas()
+                    ]);
+                    this.renderOperationalPendingPanel(cultos, escalas);
+                } catch(e) {
+                    console.warn('[Listener] Erro ao atualizar pendências:', e);
+                }
+            }, err => {
+                console.warn('[Listener] Erro no snapshot de escalas:', err);
+            });
+    },
+
+    stopPendenciasListener() {
+        if (this._pendenciasUnsubscribe) {
+            this._pendenciasUnsubscribe();
+            this._pendenciasUnsubscribe = null;
         }
     },
 
@@ -5923,15 +6206,18 @@ const App = {
         try {
             this.adminSelectedCultoId = cultoId;
             
-            // Esconde o calendário e exibe a tela de escalas do culto selecionado
             const calContainer = document.getElementById('admin-calendar-view-container');
             const detailContainer = document.getElementById('admin-selected-culto-section');
+            const opContainer = document.getElementById('admin-escalas-operacionais-container');
             if (calContainer && detailContainer) {
                 console.log("DEBUG: [selectAdminCulto] Trocando visibilidade dos containers. calContainer = none, detailContainer = block");
                 calContainer.style.display = 'none';
                 detailContainer.style.display = 'block';
             } else {
                 console.warn("DEBUG: [selectAdminCulto] calContainer ou detailContainer não encontrado no DOM!");
+            }
+            if (opContainer) {
+                opContainer.style.display = 'none';
             }
             
             // Highlight selected event pill in calendar
@@ -6051,8 +6337,9 @@ const App = {
         container.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--teal-primary);"></i><p style="margin-top:10px; font-size:0.9rem;">Buscando escalas...</p></div>';
         
         if (!this.adminSelectedCultoId) {
-            console.log("DEBUG: [loadAndRenderAdminEscalas] Sem culto selecionado — exibindo escalas operacionais.");
-            return this.renderEscalasOperacionais();
+            console.log("DEBUG: [loadAndRenderAdminEscalas] Sem culto selecionado.");
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--slate-gray);"><i class="fa-solid fa-hand-pointer fa-2x" style="opacity:0.5; margin-bottom:15px; display:block;"></i><p>Selecione um evento ou culto no menu superior para visualizar as escalas.</p></div>';
+            return;
         }
         
         try {
@@ -6507,7 +6794,69 @@ const App = {
         for (const id of ids) {
             await DbService.saveEscala(id, { statusServico: 'Finalizado' });
         }
+        
+        if (ids.length > 0) {
+            // Dispara automação de mural caso seja limpeza (a validação de setor ocorre dentro da função)
+            await this.triggerMuralLimpeza(ids[0]);
+        }
+        
         this.renderEscalasOperacionais();
+    },
+
+    async triggerMuralLimpeza(escalaId) {
+        try {
+            // Verifica se já postou hoje para evitar spam se múltiplas pessoas encerrarem o turno
+            const avisos = await DbService.getAvisos();
+            const todayStr = new Date().toISOString().split('T')[0];
+            const alreadyPosted = avisos.some(a => 
+                a.titulo === "🧹 Limpeza Finalizada" && 
+                a.dataCriacao && 
+                a.dataCriacao.startsWith(todayStr)
+            );
+            if (alreadyPosted) return;
+
+            const todasEscalas = await DbService.getEscalas();
+            const currentEscala = todasEscalas.find(e => e.id === escalaId);
+            if (!currentEscala || !this.isOperationalSector(currentEscala.setorId)) return;
+
+            // Busca cultos dos próximos 7 dias
+            const cultos = await DbService.getCultos();
+            const todayDate = new Date();
+            todayDate.setHours(0,0,0,0);
+            const nextWeekDate = new Date(todayDate);
+            nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+            
+            const cultosIds = cultos.filter(c => {
+                if (!c.data) return false;
+                const [y, m, d] = c.data.split('-');
+                const cDate = new Date(y, m - 1, d);
+                return cDate >= todayDate && cDate <= nextWeekDate;
+            }).map(c => c.id);
+
+            const obreiros = todasEscalas.filter(e => e.cultoId && cultosIds.includes(e.cultoId));
+            
+            // Remove nomes duplicados
+            const nomesUnicos = [...new Set(obreiros.map(e => e.membroNome).filter(Boolean))];
+            
+            let nomesStr = "";
+            if (nomesUnicos.length > 0) {
+                nomesStr = `\n\nObreiros escalados na semana:\n• ${nomesUnicos.join('\n• ')}`;
+            }
+
+            const expDate = new Date();
+            expDate.setDate(expDate.getDate() + 3);
+            const dataExpiracao = expDate.toISOString().split('T')[0];
+
+            await DbService.saveAviso({
+                titulo: "🧹 Limpeza Finalizada",
+                conteudo: `Igreja limpa, pedimos aos obreiros que ajudem a manter limpo e organizado. Informem à direção se algo faltar.${nomesStr}`,
+                tipo: "info",
+                dataCriacao: new Date().toISOString(),
+                dataExpiracao: dataExpiracao
+            });
+        } catch(e) {
+            console.error('Erro ao postar automação de limpeza no mural', e);
+        }
     },
 
     async openEscalaFormModalOperacional() {
@@ -6526,17 +6875,31 @@ const App = {
         horaFimInput.value = '17:00';
         horaFimInput.disabled = false;
 
+        this.populateEscalaSetorSelect('operacional');
         const setorSel = document.getElementById('escala-setor');
-        setorSel.innerHTML = '<option value="" disabled selected>Escolha o setor</option>';
-        Object.entries(this.sectorsData).forEach(([id, cfg]) => {
-            if (this.isOperationalSector(id)) {
-                setorSel.innerHTML += `<option value="${id}">${cfg.nome}</option>`;
-            }
-        });
         setorSel.value = 'limpeza';
         await this.handleEscalaSetorChange('limpeza');
 
         document.getElementById('modal-escala-form').classList.add('active');
+    },
+
+    populateEscalaSetorSelect(filterType = 'all') {
+        const setorSel = document.getElementById('escala-setor');
+        if (!setorSel) return;
+        setorSel.innerHTML = '<option value="" disabled selected>Escolha o setor</option>';
+        Object.entries(this.sectorsData).forEach(([id, cfg]) => {
+            let include = false;
+            if (filterType === 'all') {
+                include = true;
+            } else if (filterType === 'operacional') {
+                include = this.isOperationalSector(id);
+            } else if (filterType === 'culto') {
+                include = cfg.participaCulto === true;
+            }
+            if (include) {
+                setorSel.innerHTML += `<option value="${id}">${cfg.nome}</option>`;
+            }
+        });
     },
 
     openEscalaFormModalParaFuncao(sectorId, funcao) {
@@ -6558,6 +6921,7 @@ const App = {
         const horaFimInput = document.getElementById('escala-horafim');
         horaFimInput.value = c.horarioFim;
         
+        this.populateEscalaSetorSelect('culto');
         document.getElementById('escala-setor').value = sectorId;
         this.handleEscalaSetorChange(sectorId).then(() => {
             document.getElementById('escala-funcao').value = funcao;
@@ -6591,6 +6955,7 @@ const App = {
             horaFimInput.value = '12:00';
         }
         
+        this.populateEscalaSetorSelect('culto');
         document.getElementById('escala-setor').value = 'entrada';
         await this.handleEscalaSetorChange('entrada');
         
@@ -6678,6 +7043,7 @@ const App = {
             document.getElementById('escala-form-id').value = e.id;
             document.getElementById('escala-cultoid').value = e.cultoId || '';
             
+            this.populateEscalaSetorSelect('all');
             document.getElementById('escala-setor').value = e.setorId;
             await this.handleEscalaSetorChange(e.setorId, e.membroId);
             
@@ -7670,7 +8036,12 @@ const App = {
 
             this.closeMovimentacaoEstoqueModal();
             this.showToast('Estoque atualizado com sucesso!', 'success');
-            this.loadAdminProdutos();
+            
+            if (this.currentView === 'member') {
+                this.loadAndRenderMemberReplenish();
+            } else {
+                this.loadAdminProdutos();
+            }
         } catch (e) {
             console.error(e);
             this.showAlert(e.message || 'Erro ao registrar movimentação.');
@@ -8800,8 +9171,17 @@ const App = {
             });
             const topAvisos = filteredAvisos.slice(0, 3);
             topAvisos.forEach(a => {
-                const dateObj = a.data && typeof a.data.toDate === 'function' ? a.data.toDate() : new Date(a.data);
-                const dateStr = a.data ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                let dateObj = null;
+                if (a.data) {
+                    dateObj = typeof a.data.toDate === 'function' ? a.data.toDate() : new Date(a.data);
+                    const today = new Date();
+                    const diffTime = Math.abs(today - dateObj);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    if (diffDays > 3) {
+                        return; // Pula avisos mais velhos que 3 dias
+                    }
+                }
+                const dateStr = dateObj ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
                 carouselItems.push({
                     type: 'warning',
                     category: '📢 COMUNICADO',
@@ -8849,20 +9229,15 @@ const App = {
         try {
             const members = await DbService.getMembros();
             const today = new Date();
-            const next7Days = [];
-            for (let i = 0; i < 7; i++) {
-                const d = new Date();
-                d.setDate(today.getDate() + i);
-                next7Days.push({ day: d.getDate(), month: d.getMonth() });
-            }
+            const currentMonth = today.getMonth(); // 0 to 11
+            
             const birthdayMembers = members.filter(m => {
                 if (m.status !== 'ativo') return false;
                 if (!m.dataNascimento || m.dataNascimento === 'N/A') return false;
                 const parts = m.dataNascimento.split('-');
                 if (parts.length < 3) return false;
-                const mDay = parseInt(parts[2], 10);
                 const mMonth = parseInt(parts[1], 10) - 1;
-                return next7Days.some(d => d.day === mDay && d.month === mMonth);
+                return mMonth === currentMonth;
             });
             birthdayMembers.sort((a, b) => this.getMemberBirthDayLocal(a) - this.getMemberBirthDayLocal(b));
             birthdaysCount = birthdayMembers.length;
@@ -8876,7 +9251,7 @@ const App = {
                         type: 'birthday',
                         category: '🎂 ANIVERSARIANTE',
                         title: m.nome,
-                        subtitle: 'Aniversariante da Semana',
+                        subtitle: 'Aniversariante do Mês',
                         description: 'Que tal enviar uma mensagem de parabéns e celebrar a vida deste obreiro?',
                         date: `${day}/${month}`,
                         action: 'App.showMuralBirthdaysDetail()'
@@ -8931,6 +9306,10 @@ const App = {
             awayBadge.innerText = awayCount;
         }
 
+        // Add dynamic system items
+        const dynamicItems = this.getDynamicMuralItems(escalas);
+        carouselItems.unshift(...dynamicItems);
+
         // Fallback slide
         if (carouselItems.length === 0) {
             carouselItems.push({
@@ -8945,6 +9324,182 @@ const App = {
         }
 
         this.initPremiumCarousel(carouselItems);
+    },
+
+    getDynamicMuralItems(escalas) {
+        const dynamicItems = [];
+        const now = new Date();
+        const hojeStr = this.formatLocalISOString(now).split('T')[0];
+        const dayOfWeek = now.getDay();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTotalMinutes = currentHour * 60 + currentMinute;
+        
+        const myScalesToday = escalas.filter(e => e.membroId === this.currentUser.id && e.data === hojeStr && e.statusServico !== 'Finalizado' && e.statusPresenca !== 'Recusada');
+        const isScheduledToday = myScalesToday.length > 0;
+        
+        let hasCultoToday = false;
+        let activeUserCultos = [];
+        
+        if (isScheduledToday) {
+            myScalesToday.forEach(s => {
+                if (s.cultoId) {
+                    const c = this.cultosData.find(culto => culto.id === s.cultoId);
+                    if (c && c.status !== 'Finalizado') {
+                        activeUserCultos.push(c);
+                        hasCultoToday = true;
+                    }
+                }
+            });
+        }
+
+        // 1. User Area Checklist (Only if Scheduled)
+        if (isScheduledToday) {
+            const mySectors = [...new Set(myScalesToday.map(e => e.setorId))];
+            const myFuncs = myScalesToday.map(e => (e.funcao || '').toLowerCase());
+            
+            const hasPortaria = mySectors.includes('entrada') || myFuncs.some(f => f.includes('portaria') || f.includes('entrada'));
+            const hasCheckin = mySectors.includes('check_in') || myFuncs.some(f => f.includes('check'));
+            
+            const hasTemplo = mySectors.includes('apoio_templo_ronda_dir') || mySectors.includes('apoio_templo_ronda_esq') || myFuncs.some(f => f.includes('apoio') || f.includes('templo'));
+            const hasRonda = mySectors.includes('apoio_templo_ronda_dir') || mySectors.includes('apoio_templo_ronda_esq') || myFuncs.some(f => f.includes('ronda'));
+
+            if (hasPortaria) {
+                dynamicItems.push({
+                    type: 'system',
+                    category: '📋 SUA ÁREA',
+                    title: 'Checklist: Portaria',
+                    subtitle: 'Suas responsabilidades de hoje',
+                    description: 'Toque para ver a lista completa de atribuições e o que nunca fazer na Portaria.',
+                    date: 'Sua Escala',
+                    action: "App.showChecklistDetail('portaria')"
+                });
+            }
+
+            if (hasCheckin) {
+                dynamicItems.push({
+                    type: 'system',
+                    category: '📋 SUA ÁREA',
+                    title: 'Checklist: Check-in',
+                    subtitle: 'Suas responsabilidades de hoje',
+                    description: 'Toque para ver a lista completa de responsabilidades do Check-in.',
+                    date: 'Sua Escala',
+                    action: "App.showChecklistDetail('checkin')"
+                });
+            }
+
+            if (hasTemplo && hasRonda) {
+                dynamicItems.push({
+                    type: 'system',
+                    category: '📋 SUA ÁREA',
+                    title: 'Checklist: Templo & Ronda',
+                    subtitle: 'Suas responsabilidades de hoje',
+                    description: 'Toque para ver a lista completa de atribuições de Templo e Ronda.',
+                    date: 'Sua Escala',
+                    action: "App.showChecklistDetail('templo_ronda')"
+                });
+            } else {
+                if (hasTemplo) {
+                    dynamicItems.push({
+                        type: 'system',
+                        category: '📋 SUA ÁREA',
+                        title: 'Checklist: Templo',
+                        subtitle: 'Suas responsabilidades de hoje',
+                        description: 'Toque para ver a lista completa de atribuições do Templo.',
+                        date: 'Sua Escala',
+                        action: "App.showChecklistDetail('templo')"
+                    });
+                }
+                if (hasRonda) {
+                    dynamicItems.push({
+                        type: 'system',
+                        category: '📋 SUA ÁREA',
+                        title: 'Checklist: Ronda',
+                        subtitle: 'Suas responsabilidades de hoje',
+                        description: 'Toque para ver a lista completa de atribuições da Ronda.',
+                        date: 'Sua Escala',
+                        action: "App.showChecklistDetail('ronda')"
+                    });
+                }
+            }
+        }
+
+        // 2. Welcome Message (45 mins before Culto) & 3. Encerramento (10 mins before end)
+        if (hasCultoToday) {
+            activeUserCultos.forEach(c => {
+                const [sH, sM] = (c.horarioInicio || '00:00').split(':').map(Number);
+                const cultoStartMinutes = sH * 60 + sM;
+                const [eH, eM] = (c.horarioFim || '23:59').split(':').map(Number);
+                const cultoEndMinutes = eH * 60 + eM;
+                
+                const timeUntilStart = cultoStartMinutes - currentTotalMinutes;
+                if (timeUntilStart > 0 && timeUntilStart <= 45) {
+                    dynamicItems.push({
+                        type: 'system',
+                        category: '👋 BEM VINDO',
+                        title: 'Bem vindo ao Serviço Diaconal',
+                        subtitle: 'Preparação para o Culto das ' + c.horarioInicio,
+                        description: 'Não esqueça de orar com seus companheiros de trabalho, e organizar seu setor de trabalho antes do culto começar.',
+                        date: 'Agora',
+                        action: ''
+                    });
+                }
+                
+                const timeUntilEnd = cultoEndMinutes - currentTotalMinutes;
+                if (timeUntilEnd > 0 && timeUntilEnd <= 10) {
+                    dynamicItems.push({
+                        type: 'system',
+                        category: '🔚 ENCERRAMENTO',
+                        title: 'Encerramento do Culto das ' + c.horarioInicio,
+                        subtitle: 'Procedimentos Finais',
+                        description: 'Antes de ir embora: Verificar templo, banheiros, salas, estacionamento, recolher objetos perdidos, ajudar na saída dos membros e fazer oração final com a equipe.',
+                        date: 'Agora',
+                        action: ''
+                    });
+                }
+            });
+        }
+
+        // 4. Atendimento em Emergências (Culto Days)
+        if (hasCultoToday) {
+            dynamicItems.push({
+                type: 'system',
+                category: '🚨 EMERGÊNCIAS',
+                title: 'Atendimento em Emergências',
+                subtitle: 'Diretrizes de Segurança',
+                description: 'Caso alguém passe mal: Manter calma, Chamar líder, Acionar equipe médica, Liberar espaço, Não gerar tumulto. Incêndio: Comunicar liderança, Auxiliar evacuação, Não correr.',
+                date: 'Dia de Culto',
+                action: ''
+            });
+        }
+
+        // 5. Atendimento ao Público (Saturday and Sunday)
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            dynamicItems.push({
+                type: 'system',
+                category: '🤝 ATENDIMENTO',
+                title: 'Atendimento ao Público',
+                subtitle: 'Excelência e Simpatia',
+                description: 'Sempre sorria, seja educado, ouça antes de responder. Evite frases como "Não sei", prefira "Vou verificar para o senhor". Resolva ou encaminhe.',
+                date: 'Fim de Semana',
+                action: ''
+            });
+        }
+
+        // 6. Quarta-feira Pledge
+        if (dayOfWeek === 3) {
+            dynamicItems.push({
+                type: 'system',
+                category: '📖 COMPROMISSO',
+                title: 'Nosso Chamado',
+                subtitle: 'Compromisso Diaconal',
+                description: '"Comprometo-me a servir ao Senhor e à Sua Igreja com amor, fidelidade, integridade e excelência, honrando meu chamado e servindo ao próximo com dedicação."',
+                date: 'Hoje',
+                action: ''
+            });
+        }
+
+        return dynamicItems;
     },
 
     // --- PREMIUM CAROUSEL LOGIC ---
@@ -9069,7 +9624,7 @@ const App = {
         
         let html = '<div class="mural-reader-container">';
         avisos.forEach(a => {
-            const dateStr = a.data ? a.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' • ' + a.data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+            const dateStr = a.data && typeof a.data.toDate === 'function' ? a.data.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' • ' + a.data.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : (a.data ? new Date(a.data).toLocaleDateString('pt-BR') : '');
             html += `
                 <div class="mural-reader-card">
                     <div class="mural-accent-bar"></div>
@@ -9092,6 +9647,99 @@ const App = {
         html += '</div>';
         
         this.showAlert(html, 'Mural de Avisos');
+    },
+
+    showChecklistDetail(type) {
+        let title = '';
+        let html = '';
+        
+        const cardStyle = `<div class="mural-reader-container"><div class="mural-reader-card"><div class="mural-card-content"><div class="mural-card-body">`;
+        const endCardStyle = `</div></div></div></div>`;
+
+        if (type === 'portaria') {
+            title = 'Checklist: Portaria';
+            html = cardStyle + `
+                <p><strong>Função:</strong> Recepcionar todos os visitantes e membros.</p>
+                <p><strong>Responsabilidades:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li>Dar boas-vindas.</li>
+                    <li>Abrir portas.</li>
+                    <li>Auxiliar idosos.</li>
+                    <li>Auxiliar pessoas com deficiência.</li>
+                    <li>Orientar visitantes.</li>
+                    <li>Manter entrada organizada.</li>
+                    <li>Observar qualquer situação suspeita.</li>
+                </ul>
+                <p style="color: #E11D48;"><strong>Nunca:</strong></p>
+                <ul style="margin-left: 20px; color: #E11D48;">
+                    <li>Deixar a porta sem responsável.</li>
+                    <li>Criar barreiras para visitantes.</li>
+                </ul>
+            ` + endCardStyle;
+        } else if (type === 'checkin') {
+            title = 'Checklist: Check-in';
+            html = cardStyle + `
+                <p><strong>Responsabilidades da equipe:</strong></p>
+                <ul style="margin-left: 20px;">
+                    <li>Registrar a entrada das crianças no aplicativo da igreja.</li>
+                    <li>Confirmar os dados dos responsáveis durante o check-in infantil.</li>
+                    <li>Realizar cadastro de novos membros e visitantes.</li>
+                    <li>Atualizar cadastros existentes.</li>
+                    <li>Efetuar inscrições para eventos, cursos e conferências.</li>
+                    <li>Orientar sobre horários e ministérios.</li>
+                    <li>Manter o sigilo dos dados informados.</li>
+                </ul>
+            ` + endCardStyle;
+        } else if (type === 'templo') {
+            title = 'Checklist: Templo';
+            html = cardStyle + `
+                <p><strong>Responsabilidades da equipe:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li>Organizar o ambiente interno do templo antes do culto.</li>
+                    <li>Acomodar pessoas nos assentos (reservar lugares para autoridades se necessário).</li>
+                    <li>Prestar auxílio direto a Idosos, Gestantes, PCDs e Visitantes.</li>
+                    <li>Evitar circulação desnecessária durante o culto.</li>
+                    <li>Auxiliar em emergências ou mal-estar de membros.</li>
+                </ul>
+            ` + endCardStyle;
+        } else if (type === 'ronda') {
+            title = 'Checklist: Ronda';
+            html = cardStyle + `
+                <p><strong>Responsabilidades da equipe:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li>Garantir ordem e segurança nas dependências internas e externas.</li>
+                    <li>Observar ativamente banheiros, corredores, salas anexas e estacionamento.</li>
+                    <li>Verificar se portas estão devidamente fechadas.</li>
+                    <li>Ficar atento a crianças desacompanhadas.</li>
+                    <li>Monitorar movimentação de pessoas desconhecidas.</li>
+                </ul>
+                <p style="color: #E11D48;"><strong>Nunca:</strong></p>
+                <ul style="margin-left: 20px; color: #E11D48;">
+                    <li>Agir sozinho em caso de risco iminente ou situação perigosa (sempre chame a liderança).</li>
+                </ul>
+            ` + endCardStyle;
+        } else if (type === 'templo_ronda') {
+            title = 'Checklist: Templo & Ronda';
+            html = cardStyle + `
+                <p><strong>TEMPLO - Responsabilidades:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li>Organizar ambiente, acomodar pessoas.</li>
+                    <li>Auxiliar Idosos, Gestantes e PCDs.</li>
+                    <li>Evitar circulação durante a ministração.</li>
+                </ul>
+                <p><strong>RONDA - Responsabilidades:</strong></p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li>Garantir segurança (corredores, salas e área externa).</li>
+                    <li>Monitorar movimentação estranha e relatar atitudes incomuns.</li>
+                </ul>
+                <p style="color: #E11D48;"><strong>Nunca:</strong></p>
+                <ul style="margin-left: 20px; color: #E11D48;">
+                    <li>Agir sozinho em caso de risco.</li>
+                </ul>
+            ` + endCardStyle;
+        }
+
+        this.showAlert(html, title);
     },
 
     showMuralBirthdaysDetail() {
@@ -9353,9 +10001,19 @@ const App = {
                             <div style="display: flex; align-items: center; gap: 15px; color: var(--slate-gray); font-size: 0.85rem; font-weight: 500; margin-bottom: 10px;">
                                 <span><i class="fa-regular fa-clock" style="color: var(--teal-primary); margin-right: 4px;"></i> ${e.horarioInicio || '--'} às ${e.horarioFim || '--'}</span>
                             </div>
-                            <div style="background: #F8FAFC; padding: 8px 12px; border-radius: 8px; border: 1px solid #F1F5F9; font-size: 0.85rem; color: var(--navy-primary); font-weight: 600; display: inline-block; align-self: flex-start;">
+                            <div style="background: #F8FAFC; padding: 8px 12px; border-radius: 8px; border: 1px solid #F1F5F9; font-size: 0.85rem; color: var(--navy-primary); font-weight: 600; display: inline-block; align-self: flex-start; margin-bottom: 10px;">
                                 <i class="fa-solid fa-user-tag" style="color: #64748B; margin-right: 6px;"></i> ${e.funcao || 'Voluntário'}
                             </div>
+                            ${e.statusPresenca === 'Pendente' ? `
+                            <div style="display: flex; gap: 8px; margin-top: auto;">
+                                <button class="btn-scale-action btn-confirm-presenca" onclick="App.handleConfirmPresenca('${e.id}', 'Confirmada')" style="flex: 1; padding: 8px; font-size: 0.8rem;">
+                                    <i class="fa-solid fa-check"></i> Aceitar
+                                </button>
+                                <button class="btn-scale-action btn-recusar-presenca" onclick="App.handleConfirmPresenca('${e.id}', 'Recusada')" style="flex: 1; padding: 8px; font-size: 0.8rem;">
+                                    <i class="fa-solid fa-xmark"></i> Recusar
+                                </button>
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -11428,6 +12086,55 @@ const App = {
             console.error("Erro ao carregar dashboard de equilíbrio:", e);
             maisEscaladosBody.innerHTML = '<tr><td colspan="3" style="color:red; text-align:center;">Erro ao carregar dados.</td></tr>';
             menosEscaladosBody.innerHTML = '<tr><td colspan="3" style="color:red; text-align:center;">Erro ao carregar dados.</td></tr>';
+        }
+    },
+
+    // --- TAREFAS E ESTOQUE (MODALS JS) ---
+    openSolicitarCompraModal() {
+        const select = document.getElementById('replenish-product-select');
+        if (select) {
+            select.innerHTML = '<option value="" disabled selected>Carregando...</option>';
+            if (this.allProductsCache) {
+                const ativos = this.allProductsCache.filter(p => p.status === 'ativo');
+                select.innerHTML = '<option value="" disabled selected>Selecione um produto</option>';
+                ativos.forEach(p => {
+                    select.innerHTML += `<option value="${p.nome}" data-id="${p.id}">${p.nome}</option>`;
+                });
+            } else {
+                DbService.getProdutos().then(prods => {
+                    this.allProductsCache = prods;
+                    const ativos = prods.filter(p => p.status === 'ativo');
+                    select.innerHTML = '<option value="" disabled selected>Selecione um produto</option>';
+                    ativos.forEach(p => {
+                        select.innerHTML += `<option value="${p.nome}" data-id="${p.id}">${p.nome}</option>`;
+                    });
+                });
+            }
+        }
+        document.getElementById('modal-solicitar-compra').style.display = 'flex';
+    },
+
+    openAtualizarTarefaModal(id, currentStatus) {
+        document.getElementById('atualizar-tarefa-id').value = id;
+        document.getElementById('atualizar-tarefa-status').value = currentStatus;
+        document.getElementById('modal-atualizar-tarefa').style.display = 'flex';
+    },
+
+    async handleAtualizarTarefa(event) {
+        event.preventDefault();
+        const id = document.getElementById('atualizar-tarefa-id').value;
+        const newStatus = document.getElementById('atualizar-tarefa-status').value;
+        
+        try {
+            await DbService.updateTarefaStatus(id, newStatus);
+            document.getElementById('modal-atualizar-tarefa').style.display = 'none';
+            this.showToast('Tarefa atualizada com sucesso!', 'success');
+            if (this.currentView === 'member') {
+                this.loadAndRenderMemberTarefas();
+            }
+        } catch (e) {
+            this.showAlert('Erro ao atualizar tarefa.');
+            console.error(e);
         }
     }
 };

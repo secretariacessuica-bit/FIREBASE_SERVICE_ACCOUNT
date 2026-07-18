@@ -1,0 +1,31 @@
+/* LIMA Solutions ERP - Payments Module custom styling definitions */
+
+.btn-crm-primary {
+    background-color: var(--primary-teal) !important;
+    border-color: var(--primary-teal) !important;
+    color: var(--white) !important;
+}
+
+.btn-crm-primary:hover {
+    background-color: var(--primary-teal-dark) !important;
+    border-color: var(--primary-teal-dark) !important;
+}
+
+.btn-crm-danger {
+    background-color: #fef2f2 !important;
+    color: #ef4444 !important;
+    border-color: #fee2e2 !important;
+}
+
+.btn-crm-danger:hover {
+    background-color: #ef4444 !important;
+    color: var(--white) !important;
+    border-color: #ef4444 !important;
+}
+
+.badge-status-cash { background-color: #e0f2fe; color: #0369a1; }
+.badge-status-bank { background-color: #e6f4ea; color: #137333; }
+.badge-status-twint { background-color: #f3e8ff; color: #6b21a8; }
+.badge-status-card { background-color: #fef3c7; color: #d97706; }
+.badge-status-qr { background-color: #ecfdf5; color: #047857; }
+.badge-status-other { background-color: #f1f5f9; color: #475569; }

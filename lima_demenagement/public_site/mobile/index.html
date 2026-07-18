@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Lima Déménagement — Espace Operateur</title>
+  <link rel="stylesheet" href="style.css?v=1.0.8">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#14b8a6">
+  <!-- FontAwesome for mockup icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header>
+    <div class="logo" style="display: flex; align-items: center; gap: 0.5rem;">
+      <i class="fa-solid fa-cube" style="font-size: 1.2rem; color: var(--teal-primary);"></i>
+      <h1 data-i18n="app_title">LIMA Operations</h1>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <span id="gps-indicator" class="gps-dot inactive" title="GPS"></span>
+      <span id="sync-badge" class="status-badge online" data-i18n="online">Online</span>
+      <div style="width: 28px; height: 28px; border-radius: 50%; background-color: var(--teal-primary); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: white;">OP</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- VIEW: LOGIN -->
+    <div id="view-login" class="view active">
+      <div class="login-card">
+        <h2 style="text-align: center; color: var(--teal-primary);" data-i18n="login_title">Login Mobile</h2>
+        <div class="form-group">
+          <label for="login-email" data-i18n="email_label">Endereço de e-mail</label>
+          <input type="email" id="login-email" data-i18n-placeholder="email_placeholder" placeholder="motorista@limasolutions.ch">
+        </div>
+        <div class="form-group">
+          <label for="login-password" data-i18n="password_label">Senha</label>
+          <input type="password" id="login-password" data-i18n-placeholder="password_placeholder" placeholder="••••••••">
+        </div>
+        <button id="btn-login" data-i18n="login_btn">Entrar</button>
+      </div>
+    </div>
+
+    <!-- VIEW: DASHBOARD (Início) -->
+    <div id="view-dashboard" class="view">
+      <!-- Operator Status Box (Mockup style) -->
+      <div id="operator-status-box" class="status-box-available" style="cursor: pointer;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div id="status-icon-wrapper" style="width: 44px; height: 44px; border-radius: 50%; background-color: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #10B981; font-size: 1.25rem;">
+            <i id="status-icon" class="fa-solid fa-check"></i>
+          </div>
+          <div>
+            <h3 id="status-title" style="color: #FFFFFF; font-size: 1.15rem; font-weight: 700; margin: 0;" data-i18n="status_available">Disponível</h3>
+            <p id="status-subtitle" style="color: #D1FAE5; font-size: 0.85rem; margin: 0;" data-i18n="status_available_sub">Pronto para novas missões</p>
+          </div>
+        </div>
+        <i class="fa-solid fa-truck" style="font-size: 3.2rem; color: rgba(255,255,255,0.2); margin-right: 0.25rem;"></i>
+      </div>
+
+      <!-- Hidden standard status buttons for state toggling behind the scenes -->
+      <div id="operator-status-selector" style="display: none;">
+        <button class="status-btn active" data-status="Available">Available</button>
+        <button class="status-btn" data-status="OnMission">OnMission</button>
+        <button class="status-btn" data-status="Pause">Pause</button>
+        <button class="status-btn" data-status="Offline">Offline</button>
+      </div>
+
+      <!-- Missão Atual (Mockup style slate card) -->
+      <div id="active-mission-box" class="card-current-mission" style="display: none;">
+        <div style="font-size: 0.75rem; color: #94A3B8; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;" data-i18n="current_mission">Missão Atual</div>
+        <h2 id="active-mission-client" style="color: #FFFFFF; font-size: 1.35rem; font-weight: 800; margin: 0;">Limpeza Pós-Obra</h2>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; margin: 0.25rem 0;">
+          <p style="margin: 0; color: #94A3B8;"><i class="fa-solid fa-location-dot" style="margin-right: 8px;"></i> <span id="active-mission-address">Av. de la Gare 7, Lausanne</span></p>
+          <p style="margin: 0; color: #94A3B8;"><i class="fa-solid fa-clock" style="margin-right: 8px;"></i> <span id="active-mission-time">Hoje, 09:30 - 12:30</span></p>
+          <p style="margin: 0; color: #94A3B8;"><i class="fa-solid fa-user" style="margin-right: 8px;"></i> <span id="active-mission-code">Cliente: Jean Dupont</span></p>
+        </div>
+        <button id="btn-dashboard-start-mission" style="width: 100%; padding: 0.85rem; font-weight: 700; background-color: var(--teal-primary);" data-i18n="start_mission_btn"><i class="fa-solid fa-play" style="margin-right: 6px;"></i> Iniciar missão</button>
+      </div>
+      
+      <!-- Action buttons under the Current Mission -->
+      <div id="active-mission-actions" style="display: none; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: -0.5rem;">
+        <button id="btn-active-gps" class="secondary" style="padding: 0.8rem 0.5rem; font-size: 0.88rem; font-weight: 700; border-radius: 12px;"><i class="fa-solid fa-location-arrow"></i> <span class="i18n-text" data-i18n="route_gps_btn">Abrir no mapa</span></button>
+        <button id="btn-active-call" class="secondary" style="padding: 0.8rem 0.5rem; font-size: 0.88rem; font-weight: 700; border-radius: 12px;"><i class="fa-solid fa-phone"></i> <span class="i18n-text" data-i18n="quick_call">Ligar cliente</span></button>
+      </div>
+
+      <!-- Progresso do Dia (Mockup style) -->
+      <div class="card" style="padding: 1.25rem; gap: 1rem;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 1px;" data-i18n="day_progress">Progresso do Dia</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; text-align: center; position: relative;">
+          <div>
+            <div id="progress-worked-time" style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary);">0h 00m</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);" data-i18n="worked_time">Tempo trabalhado</div>
+          </div>
+          <div style="border-left: 1px solid var(--border-color);">
+            <div id="progress-missions-ratio" style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary);">0/1</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);" data-i18n="missions_concluded">Missões concluídas</div>
+          </div>
+        </div>
+        <div class="progress-bar-container" style="width: 100%; height: 6px; background-color: #E2E8F0; border-radius: 3px; overflow: hidden; margin-top: 0.25rem;">
+          <div id="dashboard-progress-bar" style="width: 0%; height: 100%; background-color: var(--teal-primary); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Quick Actions (Mockup style circular icons) -->
+      <div id="quick-actions-box" class="card" style="display: none; padding: 1.25rem;">
+        <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0.25rem; letter-spacing: 1px;" data-i18n="quick_actions">Ações Rápidas</h3>
+        <div class="quick-actions-grid">
+          <div id="btn-quick-checklist" class="quick-action-item">
+            <div class="quick-action-icon-wrapper qa-checklist">
+              <i class="fa-solid fa-list-check"></i>
+            </div>
+            <span class="quick-action-label" data-i18n="quick_checklist">Checklist</span>
+          </div>
+          <div id="btn-quick-photos" class="quick-action-item">
+            <div class="quick-action-icon-wrapper qa-photos">
+              <i class="fa-solid fa-camera"></i>
+            </div>
+            <span class="quick-action-label" data-i18n="quick_photos">Fotos</span>
+          </div>
+          <div id="btn-quick-incidents" class="quick-action-item">
+            <div class="quick-action-icon-wrapper qa-incidents">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <span class="quick-action-label" data-i18n="quick_incidents">Ocorrências</span>
+          </div>
+          <div id="btn-quick-signature" class="quick-action-item">
+            <div class="quick-action-icon-wrapper qa-signature">
+              <i class="fa-solid fa-file-signature"></i>
+            </div>
+            <span class="quick-action-label" data-i18n="quick_signature">Assinatura</span>
+          </div>
+          <div id="btn-quick-more" class="quick-action-item" onclick="navigateToTab('profile')">
+            <div class="quick-action-icon-wrapper qa-more">
+              <i class="fa-solid fa-ellipsis"></i>
+            </div>
+            <span class="quick-action-label" data-i18n="quick_more">Mais</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Próxima Missão (Mockup style green accent card) -->
+      <div id="next-service-box" class="card card-primary" style="padding: 1rem 1.25rem; flex-direction: row; align-items: center; justify-content: space-between; cursor: pointer;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 38px; height: 38px; border-radius: 10px; background-color: #10B981; display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-size: 1rem;">
+            <i class="fa-solid fa-calendar-day"></i>
+          </div>
+          <div id="next-service-content" style="display: flex; flex-direction: column; gap: 0.1rem;">
+            <div id="next-time" style="font-size: 0.75rem; font-weight: 700; color: #166534;">Amanhã, 09:00</div>
+            <div id="next-client" style="font-size: 0.95rem; font-weight: 800; color: #14532D; margin: 1px 0;">Limpeza Pós-Obra</div>
+            <div id="next-address" style="font-size: 0.8rem; color: #166534;">Av. de la Gare 7, Lausanne</div>
+          </div>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="color: #15803D; font-size: 0.95rem;"></i>
+      </div>
+
+      <!-- Outras Missões Section -->
+      <div class="card" style="padding: 1.25rem; gap: 1rem;">
+        <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 1px;" data-i18n="other_missions">Outras missões</h3>
+        <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+          <p style="font-size: 0.85rem; font-weight: 700; color: var(--teal-primary);" data-i18n="other_mission_time">Amanhã, 09:00</p>
+          <p style="font-size: 1rem; font-weight: 600; color: var(--text-primary); margin: 0.25rem 0;" data-i18n="other_mission_type">Limpeza Pós-Obra</p>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-location-dot" style="margin-right: 4px; color: var(--teal-primary);"></i> Av. de la Gare 7, Lausanne</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: MISSIONS LIST (Missões) -->
+    <div id="view-missions" class="view">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h2 style="font-size: 1.25rem; color: var(--text-primary); font-weight: 800;" data-i18n="my_services">Meus Serviços Atribuídos</h2>
+      </div>
+      
+      <!-- Segmented Tab Control for Missions (Mockup style) -->
+      <div style="display: flex; border-bottom: 1.5px solid var(--border-color); margin-bottom: 1rem; gap: 1.5rem;" id="missions-tab-control">
+        <span class="mission-tab active" data-filter="active" style="padding-bottom: 0.5rem;" data-i18n="tab_assigned">Atribuídas</span>
+        <span class="mission-tab" data-filter="history" style="padding-bottom: 0.5rem;" data-i18n="tab_history">Histórico</span>
+      </div>
+
+      <div id="projects-list-container" style="display: flex; flex-direction: column; gap: 1rem;">
+        <!-- Dynamic loading of projects -->
+      </div>
+    </div>
+
+    <!-- VIEW: PROJECT DETAIL -->
+    <div id="view-project-detail" class="view">
+      <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;">
+        <button id="btn-back-projects" class="secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+          <i class="fa-solid fa-arrow-left"></i> <span class="i18n-text" data-i18n="back_btn">Voltar</span>
+        </button>
+        <span class="status-badge" style="background-color: rgba(16,185,129,0.2); color: var(--green-ok); border: 1px solid var(--green-ok); padding: 4px 10px; border-radius: 4px; font-size: 0.75rem;" id="detail-status-badge" data-i18n="status_confirmed">Confirmada</span>
+        <!-- GPS Toggle Button -->
+        <button id="btn-gps-toggle" class="secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem;">
+          <span>GPS</span>
+          <span id="gps-toggle-label" style="font-weight: 700;">OFF</span>
+        </button>
+      </div>
+
+      <div class="card" style="gap: 1rem;">
+        <div>
+          <h2 id="client-name" style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">Nom du Client</h2>
+          <p id="project-code" style="font-family: monospace; font-size: 0.85rem; color: var(--text-secondary);">Code: PRJ-XXXX</p>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 1rem; font-size: 0.95rem;">
+          <p id="origin-address" style="color: var(--text-primary); display: flex; gap: 0.5rem; align-items: flex-start;"><i class="fa-solid fa-map-marker-alt" style="color: var(--teal-primary); width: 16px; margin-top: 3px;"></i> <span><strong>Origine:</strong> Chargement...</span></p>
+          <p id="destination-address" style="color: var(--text-primary); display: flex; gap: 0.5rem; align-items: flex-start;"><i class="fa-solid fa-flag-checkered" style="color: var(--teal-primary); width: 16px; margin-top: 3px;"></i> <span><strong>Destination:</strong> Déchargement...</span></p>
+          <p id="service-date" style="color: var(--text-primary); display: flex; gap: 0.5rem; align-items: flex-start;"><i class="fa-solid fa-calendar-alt" style="color: var(--teal-primary); width: 16px; margin-top: 3px;"></i> <span><strong>Date:</strong> 14:30 - 18:30 (4h)</span></p>
+          <p id="client-phone" style="color: var(--text-primary); display: flex; gap: 0.5rem; align-items: flex-start;"><i class="fa-solid fa-phone" style="color: var(--teal-primary); width: 16px; margin-top: 3px;"></i> <span><strong>Téléphone:</strong> -</span></p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+          <button id="btn-start-mission" style="width: 100%;" data-i18n="start_mission_btn">Iniciar missão</button>
+          <button id="btn-route-gps" class="secondary" style="width: 100%;"><i class="fa-solid fa-location-arrow"></i> <span class="i18n-text" data-i18n="route_gps_btn">Como chegar</span></button>
+        </div>
+      </div>
+
+      <!-- Geofencing Check-in Alert Banner -->
+      <div id="geofence-alert-banner" class="card" style="display: none; background-color: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); padding: 1.25rem; border-radius: 1rem; gap: 1rem; flex-direction: column;">
+        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+          <i class="fa-solid fa-location-crosshairs" style="font-size: 1.5rem; color: var(--red-alert); margin-top: 3px;"></i>
+          <div style="flex: 1;">
+            <p id="geofence-alert-message" style="margin: 0; font-size: 1rem; font-weight: 700; color: var(--red-alert);"></p>
+            <p id="geofence-alert-sub" style="margin: 4px 0 0 0; font-size: 0.85rem; color: #fda4af; font-style: italic;"></p>
+          </div>
+          <button id="btn-close-geofence-alert" style="background: none; border: none; font-size: 1.5rem; color: var(--red-alert); cursor: pointer; padding: 0; line-height: 1; box-shadow: none;">&times;</button>
+        </div>
+        <button id="btn-geofence-checkin" style="background-color: var(--red-alert); color: white; width: 100%; font-weight: 700; font-size: 0.95rem; padding: 0.85rem; border-radius: 0.5rem;" data-i18n="geofence_checkin_btn">Fazer Check-in agora</button>
+      </div>
+
+      <div style="display: none;">
+        <h2 id="detail-title">Détail</h2>
+        <button id="btn-ts-start">Start</button>
+        <button id="btn-ts-end">End</button>
+      </div>
+    </div>
+
+    <!-- VIEW: CHECKLIST -->
+    <div id="view-checklist" class="view">
+      <div class="card" style="gap: 0.75rem;">
+        <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);" data-i18n="checklist_title">Checklist</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">
+          <span id="checklist-progress-text">2 / 6 concluídos</span>
+          <span id="checklist-progress-percent" style="color: var(--teal-primary); font-weight: 700;">33%</span>
+        </div>
+        <div class="progress-bar-container" style="width: 100%; height: 8px; background-color: var(--border-color); border-radius: 4px; overflow: hidden;">
+          <div id="checklist-progress-bar" style="width: 33%; height: 100%; background: linear-gradient(90deg, var(--teal-primary), #2dd4bf); border-radius: 4px;"></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <div id="checklist-items-container">
+          <!-- Dynamic loaded checklist -->
+        </div>
+        <div style="padding: 1.25rem;">
+          <button id="btn-checklist-save" style="width: 100%;" data-i18n="save_progress_btn">Salvar progresso</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: INCIDENTS (Nova ocorrência) -->
+    <div id="view-incidents" class="view">
+      <div class="card" style="background-color: #FEF2F2; border: 1px solid #FCA5A5; padding: 1.5rem; align-items: center; text-align: center; gap: 0.75rem;">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size: 2.5rem; color: var(--red-alert); margin-bottom: 0.25rem;"></i>
+        <h2 style="font-size: 1.25rem; color: var(--text-primary); font-weight: 800;" data-i18n="new_incident">Nova ocorrência</h2>
+        <p style="font-size: 0.95rem; color: var(--text-secondary);" data-i18n="incident_desc">Reporte problemas com foto e comentário</p>
+      </div>
+
+      <div class="card" style="gap: 1.25rem;">
+        <div class="form-group">
+          <label for="photo-desc" data-i18n="describe_problem">Descreva o problema</label>
+          <textarea id="photo-desc" rows="4" data-i18n-placeholder="describe_problem" placeholder="Parede com risco de dano no corredor..." style="resize: none;"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="photo_required">Fotos (obrigatório)</label>
+          <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display: none;">
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <div id="btn-capture-photo" style="width: 90px; height: 90px; border: 2px dashed #D1D5DB; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: var(--teal-primary); gap: 6px; background: #F3F4F6; transition: all 0.2s;">
+              <i class="fa-solid fa-camera" style="font-size: 1.5rem;"></i>
+              <span style="font-size: 0.75rem; font-weight: 600;" class="i18n-text" data-i18n="add_photo">Adicionar</span>
+            </div>
+            <div id="uploaded-photos-container" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 4px;">
+              <!-- Captured photo previews -->
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="photo-type-select" data-i18n="category_label">Categoria</label>
+          <select id="photo-type-select">
+            <option value="incident" data-i18n="cat_damage">Dano potencial</option>
+            <option value="pre_move" data-i18n="cat_pre">Avant le déménagement (Pre-move)</option>
+            <option value="post_move" data-i18n="cat_post">Après le déménagement (Post-move)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="priority_label">Prioridade</label>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;" id="priority-selector">
+            <button class="priority-btn secondary" data-priority="Low" style="padding: 0.75rem;"><span class="i18n-text" data-i18n="prio_low">Baixa</span></button>
+            <button class="priority-btn active" data-priority="Medium" style="background-color: #f59e0b; color: white; padding: 0.75rem; box-shadow: 0 4px 10px rgba(245,158,11,0.3); border: none;"><span class="i18n-text" data-i18n="prio_med">Média</span></button>
+            <button class="priority-btn secondary" data-priority="High" style="padding: 0.75rem;"><span class="i18n-text" data-i18n="prio_high">Alta</span></button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+          <button id="btn-submit-incident" style="width: 100%;" data-i18n="submit_incident">Enviar ocorrência</button>
+          <button id="btn-skip-incident" class="secondary" style="width: 100%;" data-i18n="skip_incident">Ignorar / Pular</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: PHOTOS (Fotos da missão) -->
+    <div id="view-photos" class="view">
+      <div class="card" style="gap: 0.75rem;">
+        <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);" data-i18n="mission_photos">Fotos da missão</h2>
+        <!-- Segmented Tab Control -->
+        <div style="display: flex; background-color: #F3F4F6; border: 1px solid var(--border-color); padding: 4px; border-radius: 8px;" id="photos-segmented-tabs">
+          <button class="segmented-tab secondary" data-tab="pre_move" style="flex: 1; padding: 8px; font-size: 0.85rem; border: none; border-radius: 6px;"><span class="i18n-text" data-i18n="tab_before">Antes</span></button>
+          <button class="segmented-tab secondary" data-tab="during" style="flex: 1; padding: 8px; font-size: 0.85rem; border: none; border-radius: 6px;"><span class="i18n-text" data-i18n="tab_during">Durante</span></button>
+          <button class="segmented-tab active" data-tab="post_move" style="flex: 1; padding: 8px; font-size: 0.85rem; border: none; border-radius: 6px; background-color: var(--teal-primary); color: white; box-shadow: var(--shadow-sm);"><span class="i18n-text" data-i18n="tab_after">Depois</span></button>
+        </div>
+      </div>
+
+      <div class="card" style="gap: 1.25rem;">
+        <div id="gallery-photos-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
+          <!-- Loaded grid photos -->
+        </div>
+        
+        <div id="btn-gallery-add-photo" style="width: 100%; border: 2px dashed #D1D5DB; border-radius: 12px; padding: 2.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: var(--teal-primary); background: #F3F4F6; gap: 0.75rem; transition: all 0.2s;">
+          <i class="fa-solid fa-camera" style="font-size: 2rem;"></i>
+          <span style="font-size: 0.95rem; font-weight: 600;" data-i18n="add_photo">Adicionar foto</span>
+        </div>
+
+        <button id="btn-photos-continue" style="width: 100%; margin-top: 0.5rem;" data-i18n="continue_btn">Continuar</button>
+      </div>
+    </div>
+
+    <!-- VIEW: SIGNATURE -->
+    <div id="view-signature" class="view">
+      <div class="card" style="gap: 0.75rem;">
+        <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);" data-i18n="client_signature">Assinatura do cliente</h2>
+        <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5;" data-i18n="signature_desc">Por favor, solicite a assinatura do cliente confirmando a conclusão de serviço.</p>
+      </div>
+
+      <div class="card" style="gap: 1.25rem;">
+        <div class="form-group">
+          <label for="signature-client-name" data-i18n="signer_name">Nome completo do signatário</label>
+          <input type="text" id="signature-client-name" placeholder="M. Jean Dupont">
+        </div>
+        <div class="canvas-container">
+          <canvas id="signature-canvas"></canvas>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button id="btn-signature-clear" class="secondary" style="flex: 1;" data-i18n="clear_btn">Limpar</button>
+          <button id="btn-signature-submit" style="flex: 2;" data-i18n="confirm_save_btn">Confirmar e Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: SUMMARY (Resumo e conclusão) -->
+    <div id="view-summary" class="view">
+      <div class="card card-summary-header" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="font-size: 0.75rem; color: var(--teal-primary); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;" data-i18n="mission_summary">Resumo da missão</div>
+        <h2 style="color: var(--text-primary); font-size: 1.5rem; margin: 0; font-weight: 800;" id="summary-mission-title">Mudança Residencial</h2>
+        <div style="display: inline-block; background-color: rgba(16, 185, 129, 0.2); color: var(--green-ok); font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.3); width: max-content; margin-top: 0.25rem;" data-i18n="summary_concluded">Concluída</div>
+      </div>
+
+      <div class="card" style="gap: 1rem; font-size: 0.95rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+          <span style="font-weight: 500;"><i class="fa-solid fa-circle-check" style="color: var(--green-ok); margin-right: 8px;"></i> <span class="i18n-text" data-i18n="checklist_title">Checklist</span></span>
+          <span id="summary-checklist-concluded" style="font-weight: 700; color: var(--text-primary);">6 / 6 concluídos</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+          <span style="font-weight: 500;"><i class="fa-solid fa-circle-check" style="color: var(--green-ok); margin-right: 8px;"></i> <span class="i18n-text" data-i18n="summary_incidents">Ocorrências</span></span>
+          <span id="summary-incidents-count" style="font-weight: 700; color: var(--text-primary);">1 registrada</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+          <span style="font-weight: 500;"><i class="fa-solid fa-circle-check" style="color: var(--green-ok); margin-right: 8px;"></i> <span class="i18n-text" data-i18n="mission_photos">Fotos</span></span>
+          <span id="summary-photos-count" style="font-weight: 700; color: var(--text-primary);">4 fotos enviadas</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+          <span style="font-weight: 500;"><i class="fa-solid fa-circle-check" style="color: var(--green-ok); margin-right: 8px;"></i> <span class="i18n-text" data-i18n="client_signature">Assinatura</span></span>
+          <span style="font-weight: 700; color: var(--green-ok);">Coletada</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 0.5rem;">
+          <span style="font-weight: 800; font-size: 1.1rem;" data-i18n="total_time">Tempo total</span>
+          <span id="summary-total-time" style="font-weight: 800; color: var(--teal-primary); font-size: 1.2rem;">4h 15m</span>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.75rem; border-top: 1px dashed var(--border-color); padding-top: 1rem;">
+          <div>Início: <span id="summary-start-time" style="font-weight: 700; color: var(--text-primary);">14:30</span></div>
+          <div>Término: <span id="summary-end-time" style="font-weight: 700; color: var(--text-primary);">18:45</span></div>
+        </div>
+
+        <button id="btn-finish-mission" style="width: 100%; margin-top: 1rem;" data-i18n="finish_mission_btn">Finalizar missão</button>
+      </div>
+    </div>
+
+    <!-- VIEW: TIMESHEET (Tempo) -->
+    <div id="view-timesheet" class="view">
+      <!-- Meu Tempo Header -->
+      <div class="card card-welcome" style="padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.25rem;">
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.8); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;" data-i18n="my_time">Meu tempo</div>
+        <h2 style="color: #FFFFFF; font-size: 1.5rem; margin: 0; font-weight: 700;">Hoje, 20.06.2026</h2>
+      </div>
+
+      <!-- Tempo Trabalhado stopwatch (Mockup style slate card) -->
+      <div class="card-current-mission" style="align-items: center; text-align: center; gap: 1.5rem;">
+        <div>
+          <div style="font-size: 0.75rem; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;" data-i18n="worked_today">Tempo trabalhado hoje</div>
+          <div style="font-size: 3.5rem; font-weight: 800; color: #FFFFFF; margin: 0.5rem 0;" id="timesheet-worked-time">0h 00m</div>
+          <div style="font-size: 0.9rem; color: #94A3B8; font-weight: 500;"><span data-i18n="time_start_label">Início</span>: <span id="timesheet-start-display" style="color: #FFFFFF; font-weight: 700;">--:--</span> | <span data-i18n="time_current_label">Atual</span>: <span id="timesheet-current-display" style="color: #FFFFFF; font-weight: 700;">--:--</span></div>
+        </div>
+
+        <button id="btn-timesheet-toggle" style="background-color: var(--teal-primary); width: 100%; padding: 1.1rem; font-size: 1.05rem; font-weight: 700; border-radius: 14px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);"><i class="fa-solid fa-play" style="margin-right: 8px;"></i> <span class="i18n-text" data-i18n="start_time_btn">Iniciar tempo</span></button>
+      </div>
+
+      <!-- Registro de hoje timeline -->
+      <div class="card" style="padding: 1.25rem; gap: 1rem;">
+        <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 1px;" data-i18n="today_records">Registros de hoje</h3>
+        <div style="display: flex; flex-direction: column; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;" id="timesheet-records-timeline">
+          <!-- Timeline records -->
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: PROFILE (Perfil) -->
+    <div id="view-profile" class="view">
+      <div class="card" style="padding: 1.5rem; display: flex; flex-direction: row; align-items: center; gap: 1.25rem;">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--teal-primary), var(--teal-hover)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; color: white; box-shadow: var(--shadow-md);">OP</div>
+        <div>
+          <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);" id="profile-operator-name">Carlos Silva</h2>
+          <p style="font-size: 0.95rem; color: var(--text-secondary); font-weight: 500;" id="profile-operator-role">Chauffeur / Opérateur</p>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 1px; margin-left: 0.5rem;" data-i18n="device_actions">Actions de l'appareil</h3>
+        <div class="profile-action-list">
+          <div class="profile-action-item" id="btn-toggle-lang" onclick="toggleLanguage()">
+            <div style="display: flex; align-items: center;">
+              <i class="fa-solid fa-language"></i>
+              <span class="i18n-text" data-i18n="lang_toggle">Mudar Idioma</span>
+            </div>
+            <i class="fa-solid fa-chevron-right"></i>
+          </div>
+          <div class="profile-action-item" id="btn-logout">
+            <div style="display: flex; align-items: center;">
+              <i class="fa-solid fa-sign-out-alt"></i>
+              <span class="i18n-text" data-i18n="logout_btn">Déconnexion</span>
+            </div>
+            <i class="fa-solid fa-chevron-right"></i>
+          </div>
+          <div class="profile-action-item action-logout" id="btn-clear-device">
+            <div style="display: flex; align-items: center;">
+              <i class="fa-solid fa-trash-can"></i>
+              <span class="i18n-text" data-i18n="clear_data_btn">Effacer toutes les données</span>
+            </div>
+            <i class="fa-solid fa-chevron-right"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sync Info Section -->
+      <div id="sync-queue-detail-card" class="card" style="padding: 1.25rem; gap: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin: 0;" data-i18n="sync_queue">File d'attente</h3>
+          <button id="btn-force-sync" style="padding: 0.45rem 0.85rem; font-size: 0.8rem; border-radius: 8px;" data-i18n="force_sync_btn">Forcer Reenvio</button>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 0.5rem;">
+          <p id="sync-queue-count" style="font-size: 0.85rem; margin: 0; cursor: pointer;">File d'attente: 0</p>
+          <p id="last-sync-time" style="font-size: 0.75rem; margin: 0;">Dernière synchro: Jamais</p>
+        </div>
+        <div id="sync-queue-items-list" style="max-height: 180px; overflow-y: auto; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; padding-right: 4px;">
+          <!-- Sync queue items list -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation Bar for Operators (Mockup layout: 4 tabs) -->
+  <nav class="bottom-nav" id="mobile-nav" style="display: none;">
+    <a class="nav-item active" data-target="dashboard">
+      <i class="fa-solid fa-house"></i>
+      <span data-i18n="nav_home">Início</span>
+    </a>
+    <a class="nav-item" data-target="missions">
+      <i class="fa-solid fa-truck-ramp-box"></i>
+      <span data-i18n="nav_missions">Missões</span>
+    </a>
+    <a class="nav-item" data-target="timesheet">
+      <i class="fa-solid fa-clock"></i>
+      <span data-i18n="nav_time">Tempo</span>
+    </a>
+    <a class="nav-item" data-target="profile">
+      <i class="fa-solid fa-circle-user"></i>
+      <span data-i18n="nav_profile">Perfil</span>
+    </a>
+  </nav>
+
+  <script src="i18n.js?v=1.0.2"></script>
+  <script src="app.js?v=1.1.2"></script>
+</body>
+</html>

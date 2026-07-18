@@ -1,0 +1,8 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lumo Olhos neutros placeholder -->
+  <circle cx="37" cy="48" r="7" fill="#1A2E44"/>
+  <circle cx="63" cy="48" r="7" fill="#1A2E44"/>
+  <!-- Brilhinho -->
+  <circle cx="40" cy="45" r="2.5" fill="white"/>
+  <circle cx="66" cy="45" r="2.5" fill="white"/>
+</svg>

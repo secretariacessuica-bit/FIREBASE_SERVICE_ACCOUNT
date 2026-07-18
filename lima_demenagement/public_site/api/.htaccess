@@ -1,0 +1,4 @@
+# Protect config file and sensitive endpoints
+<Files "config.php">
+  Deny from all
+</Files>

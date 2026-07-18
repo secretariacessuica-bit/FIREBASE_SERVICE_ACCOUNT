@@ -1,0 +1,9 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cauda média -->
+  <path d="M 16 55 C 2 40 2 70 16 55 Z" fill="#3DAFD6"/>
+  <!-- Corpo jovem (verde aqua, raio 40) -->
+  <circle cx="50" cy="55" r="40" fill="#52C9B0"/>
+  <!-- Patinhas/Pés -->
+  <ellipse cx="36" cy="94" rx="6" ry="3" fill="#3DAFD6"/>
+  <ellipse cx="64" cy="94" rx="6" ry="3" fill="#3DAFD6"/>
+</svg>

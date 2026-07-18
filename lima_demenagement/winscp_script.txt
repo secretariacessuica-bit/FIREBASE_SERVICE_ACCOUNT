@@ -1,0 +1,4 @@
+open sftp://6o9v7p_admin:Ces124578.@6o9v7p.ftp.infomaniak.com/ -hostkey=*
+cd /home/clients/c60c25a0672639c5f81740b42f06902c/sites/
+ls
+exit

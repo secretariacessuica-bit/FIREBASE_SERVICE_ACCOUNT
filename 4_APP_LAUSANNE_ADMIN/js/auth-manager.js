@@ -114,11 +114,13 @@ const AuthManager = {
         return 'guest';
     },
 
-    async login(email, password) {
-        if (!email || !password) {
+    async login(emailOrRole, password) {
+        if (!emailOrRole || !password) {
             console.warn("🔐 AuthManager: Login blocked - Missing credentials.");
             return { success: false, error: "Missing credentials" };
         }
+
+        let email = this.EMAIL_MAP[emailOrRole] || emailOrRole;
 
         try {
             const result = await firebase.auth().signInWithEmailAndPassword(email, password);

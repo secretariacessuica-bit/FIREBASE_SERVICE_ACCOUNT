@@ -1,0 +1,7 @@
+# Protect database schema and migration files from direct HTTP access.
+# Migrations must only be executed via CLI or a direct server shell session.
+
+<FilesMatch "\.(php|sql)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>

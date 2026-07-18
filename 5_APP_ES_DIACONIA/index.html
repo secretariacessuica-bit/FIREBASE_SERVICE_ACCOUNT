@@ -276,8 +276,16 @@
                             </div>
                         </div>
 
+                        <!-- Lista Dinâmica de Estoque (Produtos Ativos) -->
+                        <div class="panel-card" style="margin-bottom: 20px; border: 1px solid #E2E8F0;">
+                            <div class="panel-title" style="margin-bottom: 15px;"><i class="fa-solid fa-boxes-stacked" style="margin-right: 6px;"></i> Estoque Atual</div>
+                            <div id="member-estoque-lista-produtos" style="display: flex; flex-direction: column; gap: 12px;">
+                                <!-- Dynamic list of products populated by App.loadAndRenderMemberReplenish() -->
+                            </div>
+                        </div>
+
                         <div class="replenish-form">
-                            <div class="replenish-form-title"><i class="fa-solid fa-box-open" style="margin-right: 6px;"></i> Solicitar Insumos e Reposição</div>
+                            <div class="replenish-form-title"><i class="fa-solid fa-box-open" style="margin-right: 6px;"></i> Solicitar Insumos / Compra</div>
                             
                             <form id="replenish-request-form" onsubmit="App.handleReplenishSubmit(event)">
                                 <div class="form-group">
@@ -411,16 +419,34 @@
                 
                 <!-- Bottom Nav Bar -->
                 <nav class="bottom-nav">
-                    <a class="bottom-nav-item active" onclick="App.switchMemberTab('escala', this)">
+                    <!-- Abas Normais -->
+                    <a class="bottom-nav-item tab-non-op active" id="nav-item-escala" onclick="App.switchMemberTab('escala', this)">
                         <i class="fa-regular fa-calendar-days"></i>
                         <span>Escala</span>
                     </a>
-                    <a class="bottom-nav-item" id="bottom-nav-reposicao" style="display: none;" onclick="App.switchMemberTab('reposicao', this)">
+                    
+                    <!-- Abas Operacionais -->
+                    <a class="bottom-nav-item tab-op" id="nav-item-hoje" style="display: none;" onclick="App.switchMemberTab('hoje', this)">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Hoje</span>
+                    </a>
+                    <a class="bottom-nav-item tab-op" id="nav-item-tarefas" style="display: none;" onclick="App.switchMemberTab('tarefas', this)">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                        <span>Tarefas</span>
+                    </a>
+                    <a class="bottom-nav-item tab-op" id="nav-item-estoque" style="display: none;" onclick="App.switchMemberTab('estoque', this)">
+                        <i class="fa-solid fa-box"></i>
+                        <span>Estoque</span>
+                    </a>
+
+                    <!-- Aba Reposicao Legado (Para Nao Operacionais q sejam Repositores) -->
+                    <a class="bottom-nav-item tab-repositor-only" id="bottom-nav-reposicao" style="display: none;" onclick="App.switchMemberTab('reposicao', this)">
                         <i class="fa-solid fa-briefcase"></i>
                         <span>Serviços</span>
                     </a>
 
-                    <a class="bottom-nav-item" onclick="App.switchMemberTab('perfil', this)">
+                    <!-- Aba Compartilhada -->
+                    <a class="bottom-nav-item" id="nav-item-perfil" onclick="App.switchMemberTab('perfil', this)">
                         <i class="fa-regular fa-circle-user"></i>
                         <span>Perfil</span>
                     </a>
@@ -2406,9 +2432,9 @@
         </div>
 
         <!-- Import Main App Control logic -->
-        <script src="js/firebase-config.js?v=3.10.9"></script>
-        <script src="js/db.js?v=3.10.9"></script>
-        <script src="js/config/sectorsData.js?v=3.10.18"></script>
-        <script src="js/app.js?v=3.10.18"></script>
+        <script src="js/firebase-config.js?v=3.11.3"></script>
+        <script src="js/db.js?v=3.11.3"></script>
+        <script src="js/config/sectorsData.js?v=3.11.3"></script>
+        <script src="js/app.js?v=3.11.8"></script>
 </body>
 </html>

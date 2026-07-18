@@ -1,0 +1,5 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lumo Folha na cabeça -->
+  <ellipse cx="50" cy="12" rx="8" ry="14" fill="#4CAF50" transform="rotate(-15 50 12)"/>
+  <line x1="50" y1="20" x2="50" y2="8" stroke="#388E3C" stroke-width="1.5"/>
+</svg>

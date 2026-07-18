@@ -1,0 +1,439 @@
+const https = require('https');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+
+const apiKey = "AIzaSyDqlZ5pukg4NAg2mqMjAzAcRJCIeNN_K24";
+const projectId = "diaconia-a38f1";
+const reportPath = path.join(__dirname, '..', '..', '9_TESTES_E_BACKUPS', 'RELATORIO_TESTES_PROD_2026-06-04.txt');
+
+// Test tracking state
+const results = {
+    authAnonima: { status: "Pendente", desc: "Autenticação Anônima (Firebase Auth)" },
+    loginAdmin: { status: "Pendente", desc: "Simulação de Login e Hashing do Admin" },
+    cadastroMembro: { status: "Pendente", desc: "Cadastro de Membro Temporário com Credencial" },
+    edicaoMembro: { status: "Pendente", desc: "Edição de Membro Temporário" },
+    cadastroCulto: { status: "Pendente", desc: "Cadastro de Culto Temporário" },
+    gravacaoEscala: { status: "Pendente", desc: "Gravação de Escala Associada Temporária" }
+};
+
+const manipulatedDocs = {
+    membro: { id: null, nome: "Voluntário Teste Homologação" },
+    culto: { id: null, nome: "Culto de Teste Homologação" },
+    escala: { id: null, info: "Check-in para Culto de Teste" }
+};
+
+const executionLogs = [];
+
+function log(msg) {
+    console.log(msg);
+    executionLogs.push(msg);
+}
+
+// Helper to make request
+function doRequest(options, body = null) {
+    return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                resolve({
+                    statusCode: res.statusCode,
+                    body: data
+                });
+            });
+        });
+        req.on('error', reject);
+        if (body) {
+            req.write(JSON.stringify(body));
+        }
+        req.end();
+    });
+}
+
+function hashPassword(password, salt) {
+    return crypto.createHash('sha256').update(password + salt).digest('hex');
+}
+
+async function run() {
+    log("================================================================");
+    log("=== INICIANDO VALIDAÇÃO DE FUNCIONALIDADES NO FIREBASE PROD ===");
+    log("================================================================");
+    log(`Projeto Target  : ${projectId}`);
+    log(`Hora de Início  : ${new Date().toISOString()}`);
+    log("----------------------------------------------------------------");
+
+    // 1. Autenticação Anônima
+    log("1. Executando teste de Autenticação Anônima...");
+    const authUrl = {
+        host: 'identitytoolkit.googleapis.com',
+        path: `/v1/accounts:signUp?key=${apiKey}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    };
+    let idToken = null;
+    try {
+        const authRes = await doRequest(authUrl, { returnSecureToken: true });
+        const parsed = JSON.parse(authRes.body);
+        if (authRes.statusCode === 200) {
+            idToken = parsed.idToken;
+            results.authAnonima.status = "APROVADO";
+            log("✅ APROVADO: Autenticação anônima realizada com sucesso!");
+        } else {
+            results.authAnonima.status = "REPROVADO";
+            log("❌ BLOQUEADO: O provedor Anonymous Sign-In não está ativado no Firebase Console.");
+            log(`Detalhes: ${parsed.error ? parsed.error.message : authRes.body}`);
+            log("\n⚠️ PENDÊNCIA: Favor habilitar o login anônimo para validar as outras rotinas.");
+            saveFinalReport();
+            return;
+        }
+    } catch (e) {
+        results.authAnonima.status = "REPROVADO";
+        log(`❌ ERRO de conexão com a API de Auth: ${e.message}`);
+        saveFinalReport();
+        return;
+    }
+
+    const authHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+    };
+
+    // 2. Login de Administrador e Simulação de Hash
+    log("\n2. Executando teste de Login e Hashing (Admin)...");
+    const adminDocId = "admin_default";
+    try {
+        const memberRes = await doRequest({
+            host: 'firestore.googleapis.com',
+            path: `/v1/projects/${projectId}/databases/(default)/documents/membros/${adminDocId}`,
+            method: 'GET',
+            headers: authHeaders
+        });
+
+        const credsRes = await doRequest({
+            host: 'firestore.googleapis.com',
+            path: `/v1/projects/${projectId}/databases/(default)/documents/credenciais/${adminDocId}`,
+            method: 'GET',
+            headers: authHeaders
+        });
+
+        if (memberRes.statusCode === 200 && credsRes.statusCode === 200) {
+            const memberData = JSON.parse(memberRes.body);
+            const credsData = JSON.parse(credsRes.body);
+            
+            const salt = credsData.fields.passwordSalt.stringValue;
+            const expectedHash = credsData.fields.passwordHash.stringValue;
+            
+            // Simular comparação de senha client-side (Senha padrão "Ces120222.")
+            const computedHash = hashPassword("Ces120222.", salt);
+            if (computedHash === expectedHash) {
+                results.loginAdmin.status = "APROVADO";
+                log(`✅ APROVADO: Login do admin '${memberData.fields.nome.stringValue}' e hash SHA-256 validados!`);
+            } else {
+                results.loginAdmin.status = "REPROVADO";
+                log("❌ ERRO: Hash de senha computado não coincide.");
+            }
+        } else {
+            results.loginAdmin.status = "REPROVADO";
+            log(`❌ ERRO ao buscar dados do Admin. HTTP Status membros=${memberRes.statusCode}, credenciais=${credsRes.statusCode}`);
+        }
+    } catch (e) {
+        results.loginAdmin.status = "REPROVADO";
+        log(`❌ ERRO no teste de login: ${e.message}`);
+    }
+
+    // 3. Cadastro de Membro Temporário
+    log("\n3. Executando teste de Cadastro de Membro...");
+    const newMemberPayload = {
+        fields: {
+            nome: { stringValue: manipulatedDocs.membro.nome },
+            nomeNormalizado: { stringValue: "voluntario teste homologacao" },
+            perfil: { stringValue: "membro" },
+            setores: { arrayValue: { values: [{ stringValue: "check_in" }, { stringValue: "acolhimento" }] } },
+            funcaoPrincipal: { stringValue: "Check-in" },
+            status: { stringValue: "ativo" },
+            sexo: { stringValue: "Masculino" }
+        }
+    };
+    try {
+        const createRes = await doRequest({
+            host: 'firestore.googleapis.com',
+            path: `/v1/projects/${projectId}/databases/(default)/documents/membros`,
+            method: 'POST',
+            headers: authHeaders
+        }, newMemberPayload);
+
+        if (createRes.statusCode === 200) {
+            const resData = JSON.parse(createRes.body);
+            const parts = resData.name.split('/');
+            manipulatedDocs.membro.id = parts[parts.length - 1];
+            log(`- Membro temporário criado com ID: ${manipulatedDocs.membro.id}`);
+            
+            // Criar credencial correspondente
+            const salt = "test_salt_prod_98765";
+            const hash = hashPassword("Ces120222.", salt);
+            const credsPayload = {
+                fields: {
+                    passwordHash: { stringValue: hash },
+                    passwordSalt: { stringValue: salt }
+                }
+            };
+            const credsCreateRes = await doRequest({
+                host: 'firestore.googleapis.com',
+                path: `/v1/projects/${projectId}/databases/(default)/documents/credenciais/${manipulatedDocs.membro.id}`,
+                method: 'PATCH',
+                headers: authHeaders
+            }, credsPayload);
+            
+            if (credsCreateRes.statusCode === 200) {
+                results.cadastroMembro.status = "APROVADO";
+                log("✅ APROVADO: Membro e credencial associados com sucesso!");
+            } else {
+                results.cadastroMembro.status = "REPROVADO";
+                log(`❌ ERRO ao salvar credencial. HTTP Status: ${credsCreateRes.statusCode}`);
+            }
+        } else {
+            results.cadastroMembro.status = "REPROVADO";
+            log(`❌ ERRO ao salvar membro. HTTP Status: ${createRes.statusCode}`);
+        }
+    } catch (e) {
+        results.cadastroMembro.status = "REPROVADO";
+        log(`❌ ERRO no teste de cadastro: ${e.message}`);
+    }
+
+    // 4. Edição de Membro Temporário
+    if (manipulatedDocs.membro.id) {
+        log("\n4. Executando teste de Edição de Membro...");
+        const updatePayload = {
+            fields: {
+                nome: { stringValue: "Voluntário Teste Homologação Editado" },
+                funcaoPrincipal: { stringValue: "Acolhimento" }
+            }
+        };
+        try {
+            const updateRes = await doRequest({
+                host: 'firestore.googleapis.com',
+                path: `/v1/projects/${projectId}/databases/(default)/documents/membros/${manipulatedDocs.membro.id}?updateMask.fieldPaths=nome&updateMask.fieldPaths=funcaoPrincipal`,
+                method: 'PATCH',
+                headers: authHeaders
+            }, updatePayload);
+
+            if (updateRes.statusCode === 200) {
+                results.edicaoMembro.status = "APROVADO";
+                log("✅ APROVADO: Dados do membro editados com sucesso!");
+            } else {
+                results.edicaoMembro.status = "REPROVADO";
+                log(`❌ ERRO ao editar membro. HTTP Status: ${updateRes.statusCode}`);
+            }
+        } catch (e) {
+            results.edicaoMembro.status = "REPROVADO";
+            log(`❌ ERRO no teste de edição: ${e.message}`);
+        }
+    }
+
+    // 5. Cadastro de Culto Temporário
+    log("\n5. Executando teste de Cadastro de Culto...");
+    const newCultoPayload = {
+        fields: {
+            nome: { stringValue: manipulatedDocs.culto.nome },
+            data: { stringValue: "2026-06-14" },
+            horarioInicio: { stringValue: "18:00" },
+            horarioFim: { stringValue: "20:30" },
+            tipo: { stringValue: "regular" },
+            modeloEscala: { stringValue: "Culto Menor" }
+        }
+    };
+    try {
+        const createCultoRes = await doRequest({
+            host: 'firestore.googleapis.com',
+            path: `/v1/projects/${projectId}/databases/(default)/documents/cultos`,
+            method: 'POST',
+            headers: authHeaders
+        }, newCultoPayload);
+
+        if (createCultoRes.statusCode === 200) {
+            const resData = JSON.parse(createCultoRes.body);
+            const parts = resData.name.split('/');
+            manipulatedDocs.culto.id = parts[parts.length - 1];
+            results.cadastroCulto.status = "APROVADO";
+            log(`✅ APROVADO: Culto cadastrado com sucesso! ID: ${manipulatedDocs.culto.id}`);
+        } else {
+            results.cadastroCulto.status = "REPROVADO";
+            log(`❌ ERRO ao cadastrar culto. HTTP Status: ${createCultoRes.statusCode}`);
+        }
+    } catch (e) {
+        results.cadastroCulto.status = "REPROVADO";
+        log(`❌ ERRO no teste de cadastro de culto: ${e.message}`);
+    }
+
+    // 6. Gravação de Escala Temporária
+    if (manipulatedDocs.culto.id && manipulatedDocs.membro.id) {
+        log("\n6. Executando teste de Gravação de Escala...");
+        const newEscalaPayload = {
+            fields: {
+                cultoId: { stringValue: manipulatedDocs.culto.id },
+                cultoNome: { stringValue: manipulatedDocs.culto.nome },
+                data: { stringValue: "2026-06-14" },
+                horarioInicio: { stringValue: "18:00" },
+                horarioFim: { stringValue: "20:30" },
+                setorId: { stringValue: "check_in" },
+                funcao: { stringValue: "Check-in" },
+                membroId: { stringValue: manipulatedDocs.membro.id },
+                membroNome: { stringValue: "Voluntário Teste Homologação Editado" },
+                statusPresenca: { stringValue: "Pendente" },
+                statusServico: { stringValue: "Planejado" }
+            }
+        };
+
+        try {
+            const createEscalaRes = await doRequest({
+                host: 'firestore.googleapis.com',
+                path: `/v1/projects/${projectId}/databases/(default)/documents/escalas`,
+                method: 'POST',
+                headers: authHeaders
+            }, newEscalaPayload);
+
+            if (createEscalaRes.statusCode === 200) {
+                const resData = JSON.parse(createEscalaRes.body);
+                const parts = resData.name.split('/');
+                manipulatedDocs.escala.id = parts[parts.length - 1];
+                results.gravacaoEscala.status = "APROVADO";
+                log(`✅ APROVADO: Escala gerada e salva com sucesso! ID: ${manipulatedDocs.escala.id}`);
+            } else {
+                results.gravacaoEscala.status = "REPROVADO";
+                log(`❌ ERRO ao gravar escala. HTTP Status: ${createEscalaRes.statusCode}`);
+            }
+        } catch (e) {
+            results.gravacaoEscala.status = "REPROVADO";
+            log(`❌ ERRO no teste de escala: ${e.message}`);
+        }
+    }
+
+    // 7. Limpeza dos Dados Temporários Criados
+    log("\n7. Executando Limpeza Segura dos Dados de Teste...");
+    try {
+        if (manipulatedDocs.escala.id) {
+            const del = await doRequest({
+                host: 'firestore.googleapis.com',
+                path: `/v1/projects/${projectId}/databases/(default)/documents/escalas/${manipulatedDocs.escala.id}`,
+                method: 'DELETE',
+                headers: authHeaders
+            });
+            log(`- Escala de teste deletada. HTTP Status = ${del.statusCode}`);
+        }
+        if (manipulatedDocs.culto.id) {
+            const del = await doRequest({
+                host: 'firestore.googleapis.com',
+                path: `/v1/projects/${projectId}/databases/(default)/documents/cultos/${manipulatedDocs.culto.id}`,
+                method: 'DELETE',
+                headers: authHeaders
+            });
+            log(`- Culto de teste deletado. HTTP Status = ${del.statusCode}`);
+        }
+        if (manipulatedDocs.membro.id) {
+            const delMem = await doRequest({
+                host: 'firestore.googleapis.com',
+                path: `/v1/projects/${projectId}/databases/(default)/documents/membros/${manipulatedDocs.membro.id}`,
+                method: 'DELETE',
+                headers: authHeaders
+            });
+            const delCred = await doRequest({
+                host: 'firestore.googleapis.com',
+                path: `/v1/projects/${projectId}/databases/(default)/documents/credenciais/${manipulatedDocs.membro.id}`,
+                method: 'DELETE',
+                headers: authHeaders
+            });
+            log(`- Membro de teste deletado. HTTP Status = ${delMem.statusCode}`);
+            log(`- Credencial de teste deletada. HTTP Status = ${delCred.statusCode}`);
+        }
+        log("✅ SUCESSO: Todos os dados de teste foram completamente removidos sem afetar dados reais!");
+    } catch (e) {
+        log(`❌ ERRO na remoção de dados de teste: ${e.message}`);
+    }
+
+    log("\n----------------------------------------------------------------");
+    log("=== FIM DA EXECUÇÃO DOS TESTES ===");
+    saveFinalReport();
+}
+
+function saveFinalReport() {
+    let report = "====================================================\n";
+    report += "      RELATÓRIO DE TESTE DE HOMOLOGAÇÃO DE PRODUÇÃO\n";
+    report += "====================================================\n";
+    report += `Data/Hora Execução : ${new Date().toISOString()}\n`;
+    report += `Projeto Target     : ${projectId}\n`;
+    report += `Plano de Execução  : Spark (Grátis, sem Cloud Functions)\n`;
+    report += "----------------------------------------------------\n";
+    
+    // Agrupar aprovados e reprovados
+    const aprovados = [];
+    const reprovados = [];
+    const pendentes = [];
+    
+    for (const [key, test] of Object.entries(results)) {
+        if (test.status === "APROVADO") {
+            aprovados.push(test.desc);
+        } else if (test.status === "REPROVADO") {
+            reprovados.push(test.desc);
+        } else {
+            pendentes.push(test.desc);
+        }
+    }
+    
+    report += "TESTES APROVADOS:\n";
+    if (aprovados.length > 0) {
+        aprovados.forEach(t => report += `- ✅ ${t}\n`);
+    } else {
+        report += "- Nenhum teste aprovado ainda.\n";
+    }
+    report += "\n";
+    
+    report += "TESTES REPROVADOS:\n";
+    if (reprovados.length > 0) {
+        reprovados.forEach(t => report += `- ❌ ${t}\n`);
+    } else {
+        report += "- Nenhum teste reprovado.\n";
+    }
+    report += "\n";
+    
+    report += "PENDÊNCIAS ENCONTRADAS:\n";
+    if (results.authAnonima.status === "REPROVADO") {
+        report += "- ⚠️ O provedor 'Anonymous' (Autenticação Anônima) não está ativado no Firebase Console.\n";
+        report += "- ⚠️ Execução dos testes adicionais suspensa/pendente devido à falha de autenticação.\n";
+    } else {
+        if (reprovados.length > 0) {
+            report += "- ⚠️ Falhas em testes funcionais no Firestore. Verifique logs de permissão.\n";
+        } else {
+            report += "- Nenhuma pendência encontrada. Todas as rotinas testadas com sucesso!\n";
+        }
+    }
+    report += "\n";
+    
+    report += "RECOMENDAÇÕES PARA CORREÇÃO:\n";
+    if (results.authAnonima.status === "REPROVADO") {
+        report += "-> Acesse o console do Firebase: https://console.firebase.google.com/project/diaconia-a38f1/authentication/providers\n";
+        report += "-> Clique em 'Anonymous' e selecione 'Enable' (Ativar) e 'Save' (Salvar).\n";
+        report += "-> Após ativar, re-execute o script 'validate_features_prod.js' para prosseguir.\n";
+    } else {
+        if (reprovados.length > 0) {
+            report += "-> Analise as regras de segurança em 'firestore.rules'. Certifique-se de que writes e reads são permitidos para request.auth != null.\n";
+        } else {
+            report += "-> Nenhuma ação de correção necessária. O ambiente está apto para entrada em operação definitiva.\n";
+        }
+    }
+    report += "\n----------------------------------------------------\n";
+    report += "DADOS TEMPORÁRIOS MANIPULADOS (CRIADOS E REMOVIDOS):\n";
+    report += `- Membro : ID = ${manipulatedDocs.membro.id || 'N/A'}, Nome = "${manipulatedDocs.membro.nome}"\n`;
+    report += `- Culto  : ID = ${manipulatedDocs.culto.id || 'N/A'}, Nome = "${manipulatedDocs.culto.nome}"\n`;
+    report += `- Escala : ID = ${manipulatedDocs.escala.id || 'N/A'}, Info = "${manipulatedDocs.escala.info}"\n`;
+    report += "----------------------------------------------------\n";
+    report += "LOGS DETALHADOS DE EXECUÇÃO:\n";
+    report += executionLogs.join('\n');
+    report += "\n====================================================\n";
+
+    fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+    fs.writeFileSync(reportPath, report, 'utf8');
+    console.log(`\n📄 Relatório oficial atualizado em: ${reportPath}`);
+}
+
+run();

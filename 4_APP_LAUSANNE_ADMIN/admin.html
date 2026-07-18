@@ -40,6 +40,7 @@
     -->
     <script src="js/firebase-config.js?v=70.3.79"></script>
     <script src="js/auth-manager.js?v=70.3.79"></script>
+    <script src="js/ui.js?v=70.4.0"></script>
     <!-- Core Reception Logic v70.3.78 -->
     <script src="js/reception_kids_logic.js?v=70.3.79"></script>
     <link rel="stylesheet" href="css/style-v2.css?v=64.0.0">
@@ -1645,9 +1646,7 @@
             return d >= today;
         }
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-        }
+
 
         function switchPage(pageId, navEl) {
             const titles = { 
@@ -2545,7 +2544,7 @@
                             
                             abandoned.forEach(person => {
                                 radarHtml += `
-                                    <div onclick="switchPage('people', null); document.getElementById('search-people').value='${person.name}'; filterPeople();" style="flex-shrink:0; background:#1e293b; padding:10px 15px; border-radius:12px; border:1px solid #334155; cursor:pointer; min-width:140px; transition:0.2s;" onmouseover="this.style.borderColor='#ef4444'">
+                                    <div onclick="switchPage('people', null); document.getElementById('search-people').value='${person.name.replace(/'/g, "\\'")}'; filterPeople();" style="flex-shrink:0; background:#1e293b; padding:10px 15px; border-radius:12px; border:1px solid #334155; cursor:pointer; min-width:140px; transition:0.2s;" onmouseover="this.style.borderColor='#ef4444'">
                                         <div style="color:#fff; font-weight:700; font-size:0.8rem; margin-bottom:2px;">${person.name.split(' ')[0]} ${person.name.split(' ')[1] || ''}</div>
                                         <div style="color:#94a3b8; font-size:0.65rem; font-weight:600;"><i class="fas fa-clock"></i> Inativo: ${person.days}</div>
                                     </div>
@@ -4072,22 +4071,16 @@
         function getProfileCategory(data) {
             if (!data) return 'Outros';
             
-            // [DIAMOND v51.2] AUTOMATIC CLASSIFICATION ENGINE
             const existingType = (data.type || data.categoria || '').toLowerCase();
             
-            if (existingType.includes('membro') || existingType.includes('obreiro')) return 'Membro';
-            if (existingType.includes('congregado')) return 'Congregado';
-            if (existingType.includes('visitant')) return 'Visitante';
             if (existingType.includes('criança') || existingType.includes('kids')) return 'Criança';
 
-            // Count filled fields (field_1 to field_42)
             let fieldCount = 0;
             for (let i = 1; i <= 42; i++) {
                 const val = data[`field_${i}`];
                 if (val && String(val).trim().length > 0) fieldCount++;
             }
 
-            // Normalize core fields
             const name = (data.name || data.field_1 || '').trim();
             const phone = (data.phone || data.field_21 || '').trim();
             const hasBaptism = (data.field_27 && data.field_27.trim().length > 0) || 
@@ -4101,18 +4094,16 @@
                                   (data.field_18 || '').trim().length > 0 &&
                                   hasBaptism;
 
-            // RULE: MEMBRO (Strict 30+ fields AND has all Core Fields)
-            const isMembro = hasCoreFields && fieldCount >= 30;
+            // Se já era Membro ou atingiu os critérios
+            const isMembro = existingType.includes('membro') || existingType.includes('obreiro') || (hasCoreFields && fieldCount >= 30);
             
-            // RULE: CONGREGADO (Name, Phone + incomplete profile, i.e., fieldCount >= 5)
-            const isCongregado = name.length > 0 && phone.length > 0 && fieldCount >= 5 && !isMembro;
-
-            // RULE: VISITANTE (Basic contact only, i.e., fieldCount < 5)
-            const isVisitante = name.length > 0 && phone.length > 0 && fieldCount < 5;
+            // Se já era Congregado ou atingiu os critérios (Nome, Telefone e >= 5 campos)
+            const isCongregado = existingType.includes('congregado') || (name.length > 0 && phone.length > 0 && fieldCount >= 5);
 
             if (isMembro) return 'Membro';
             if (isCongregado) return 'Congregado';
-            if (isVisitante) return 'Visitante';
+            if (existingType.includes('visitant') || (name.length > 0 && phone.length > 0)) return 'Visitante';
+            
             return 'Outros';
         }
 
@@ -4664,7 +4655,7 @@
                                 <div style="display:flex; gap:8px; justify-content:flex-end;">
                                     ${cat === 'Visitante' ? `<button onclick="iniciarJornada('${d.id}')" style="background:#d4af37; color:black; border:none; border-radius:8px; width:30px; height:30px; cursor:pointer;" title="Iniciar Jornada"><i class="fas fa-route" style="font-size:0.8rem;"></i></button>` : ''}
                                     <button onclick="viewProfile('${d.id}', '${d.original_collection || (cat === 'Criança' ? 'kids' : 'people')}')" style="background:#111827; color:white; border:none; border-radius:8px; width:30px; height:30px; cursor:pointer;" title="Ver Perfil"><i class="fas fa-user-pen" style="font-size:0.8rem;"></i></button>
-                                    <button onclick="deletePerson('${d.id}','${name}', '${d.original_collection || (cat === 'Criança' ? 'kids' : 'people')}')" style="background:#fee2e2; color:#ef4444; border:none; border-radius:8px; width:30px; height:30px; cursor:pointer;" title="Remover"><i class="fas fa-trash" style="font-size:0.8rem;"></i></button>
+                                    <button onclick="deletePerson('${d.id}','${name.replace(/'/g, "\\'")}', '${d.original_collection || (cat === 'Criança' ? 'kids' : 'people')}')" style="background:#fee2e2; color:#ef4444; border:none; border-radius:8px; width:30px; height:30px; cursor:pointer;" title="Remover"><i class="fas fa-trash" style="font-size:0.8rem;"></i></button>
                                 </div>
                             </td>
                         `;
@@ -4748,7 +4739,7 @@
                         '<div style="display:flex; gap:6px; align-items:center;">' +
                             '<span style="font-size:0.65rem; font-weight:800; padding:3px 8px; border-radius:8px; background:' + (isActive ? '#dcfce7' : '#f1f5f9') + '; color:' + (isActive ? '#15803d' : '#94a3b8') + ';">' + (isActive ? 'ATIVO' : 'INATIVO') + '</span>' +
                             '<button onclick="toggleMonitorStatus(\'' + doc.id + '\', ' + isActive + ')" style="background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:4px 10px; cursor:pointer; font-size:0.72rem; font-weight:700; color:#64748b; font-family:\'Outfit\';">' + (isActive ? 'Desativar' : 'Ativar') + '</button>' +
-                            '<button onclick="deleteMonitor(\'' + doc.id + '\', \'' + d.name + '\')" style="background:#fee2e2; border:none; border-radius:8px; padding:4px 10px; cursor:pointer; font-size:0.72rem; font-weight:700; color:#ef4444; font-family:\'Outfit\';">Remover</button>' +
+                            '<button onclick="deleteMonitor(\'' + doc.id + '\', \'' + d.name.replace(/'/g, "\\'") + '\')" style="background:#fee2e2; border:none; border-radius:8px; padding:4px 10px; cursor:pointer; font-size:0.72rem; font-weight:700; color:#ef4444; font-family:\'Outfit\';">Remover</button>' +
                         '</div>' +
                     '</div>';
                 });
@@ -4873,7 +4864,7 @@
                                 </div>
                                 <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
                                     ${btnHtml}
-                                    <button onclick="deletePerson('${doc.id}','${name}', '${doc.original_collection || (d.type && d.type.toLowerCase().includes('kids') ? 'kids' : 'people')}')" style="background:none; border:none; color:#fca5a5; cursor:pointer; font-size:0.7rem; text-decoration:underline; padding:0; line-height:1;" title="Remover Cadastro">Remover</button>
+                                    <button onclick="deletePerson('${doc.id}','${name.replace(/'/g, "\\'")}', '${doc.original_collection || (d.type && d.type.toLowerCase().includes('kids') ? 'kids' : 'people')}')" style="background:none; border:none; color:#fca5a5; cursor:pointer; font-size:0.7rem; text-decoration:underline; padding:0; line-height:1;" title="Remover Cadastro">Remover</button>
                                 </div>
                             </div>
                         `;
@@ -5337,6 +5328,21 @@
             saveNotifLeaders();
         }
 
+        window.forcePromoteCongregado = async function(id, collection) {
+            _confirm("Deseja promover este Visitante para Congregado manualmente?", async () => {
+                try {
+                    await db.collection(collection).doc(id).update({
+                        type: 'Congregado'
+                    });
+                    _alert("Classificação atualizada para Congregado!");
+                    document.getElementById('profile-editor-modal').remove();
+                    loadPeople(true);
+                } catch(e) {
+                    _alert("Erro ao atualizar: " + e.message);
+                }
+            });
+        };
+
         async function viewProfile(personId, collectionName = 'people') {
             try {
                 // Ensure no ghost modals exist
@@ -5362,7 +5368,13 @@
                 const finalType = d.type || getProfileCategory(d) || 'Outros';
                 const c = CAT_COLORS[finalType] || CAT_COLORS['Outros'];
                 let detailsHtml = '<div style="margin-bottom:15px; background:#f8fafc; padding:10px 15px; border-radius:10px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">';
-                detailsHtml += `<div><span style="font-size:0.7rem; color:#64748b; font-weight:800; text-transform:uppercase; margin-right:8px;">Classificação: </span><span style="font-weight:800; background:${c.bg}; color:${c.color}; padding:4px 10px; border-radius:6px; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${finalType}</span></div>`;
+                
+                let actionsHtml = '';
+                if (finalType === 'Visitante' || finalType === 'Outros') {
+                    actionsHtml = `<button onclick="forcePromoteCongregado('${personId}', '${collectionName}')" style="margin-left:10px; font-size:0.65rem; padding:4px 8px; background:#475569; color:white; border:none; border-radius:6px; cursor:pointer;" title="Forçar classificação como Congregado">Mudar p/ Congregado</button>`;
+                }
+                
+                detailsHtml += `<div style="display:flex; align-items:center;"><span style="font-size:0.7rem; color:#64748b; font-weight:800; text-transform:uppercase; margin-right:8px;">Classificação: </span><span style="font-weight:800; background:${c.bg}; color:${c.color}; padding:4px 10px; border-radius:6px; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${finalType}</span>${actionsHtml}</div>`;
                 if (finalType === 'Membro') {
                     detailsHtml += '<div style="color:#059669; font-size:0.7rem; font-weight:800;"><i class="fas fa-check-circle"></i> ELEGIBILIDADE MÁXIMA</div>';
                 }

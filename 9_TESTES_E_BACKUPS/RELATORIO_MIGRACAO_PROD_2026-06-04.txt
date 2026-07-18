@@ -1,0 +1,19 @@
+====================================================
+          RELATÓRIO AUDITORIA DE MIGRAÇÃO DIACÔNIA   
+====================================================
+Data de Execução       : 2026-06-04T09:09:21.085Z
+Projeto Origem         : catedral-connect-267b2
+Projeto Destino        : diaconia-a38f1
+Tempo Total Execução   : 72.95 segundos
+----------------------------------------------------
+ESTATÍSTICAS DA MIGRAÇÃO:
+- Total membros migrados          : 31
+- Total credenciais convertidas   : 31
+- Total escalas migradas          : 55
+- Total cultos migrados           : 116
+- Total documentos ignorados      : 0
+- Total erros encontrados         : 0
+----------------------------------------------------
+DETALHES DE ERROS:
+Nenhum erro registrado.
+====================================================

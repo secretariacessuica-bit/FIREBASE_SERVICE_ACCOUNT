@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Asas de trás -->
+  <ellipse cx="12" cy="50" rx="14" ry="7" fill="#8CE1F5" transform="rotate(-15 12 50)"/>
+  <ellipse cx="88" cy="50" rx="14" ry="7" fill="#8CE1F5" transform="rotate(15 88 50)"/>
+  <!-- Cauda grande -->
+  <path d="M 18 55 C -2 35 -2 75 18 55 Z" fill="#3DAFD6"/>
+  <!-- Corpo adulto (verde aqua, raio 42) -->
+  <circle cx="50" cy="55" r="42" fill="#52C9B0"/>
+  <!-- Patinhas/Pés -->
+  <ellipse cx="34" cy="96" rx="7" ry="3.5" fill="#3DAFD6"/>
+  <ellipse cx="66" cy="96" rx="7" ry="3.5" fill="#3DAFD6"/>
+</svg>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>À Propos | Notre Histoire et Engagements | LIMA Solutions</title>
+    <meta name="description" content="Découvrez l'histoire de LIMA Solutions, nos valeurs de confiance et de rigueur, et notre engagement en tant que prestataire multiservice basé en Suisse.">
+    <link rel="stylesheet" href="/style.css?v=2.1">
+    <!-- FontAwesome for clean icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+        <!-- Header/Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="logo">
+                <i class="fa-solid fa-cube"></i> LIMA Solutions
+            </a>
+            
+            <!-- Mobile Menu Toggle Button -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                Menu
+            </button>
+
+            <nav class="nav-links" id="nav-links">
+                <a href="/index.html">Accueil</a>
+                <a href="/services.html">Services</a>
+                <a href="/marketplace/index.html">Marketplace</a>
+                
+                <!-- Guides Dropdown -->
+                <div class="nav-dropdown" style="position: relative; display: inline-block;">
+                    <a href="#" class="nav-dropdown-toggle" onclick="toggleDropdown(event, 'guides-dropdown')">Guides <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i></a>
+                    <div id="guides-dropdown" class="dropdown-content" style="display: none; position: absolute; left: 0; background-color: var(--white); min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-gray); border-radius: var(--border-radius); z-index: 1010; margin-top: 5px;">
+                        <a href="/guides/checklist-demenagement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Checklist Déménagement</a>
+                        <a href="/guides/rendre-appartement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Rendre son appartement</a>
+                        <a href="/guides/nettoyage-obligatoire.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Nettoyage de remise</a>
+                        <a href="/guides/reboucher-trous-vis.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Reboucher les trous</a>
+                        <a href="/guides/caution-proprietaire.html" style="padding: 10px 15px; display: block; color: var(--text-dark); text-decoration: none;">Récupérer sa caution</a>
+                    </div>
+                </div>
+
+                <a href="/about.html">À Propos</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="/contact.html">Contact</a>
+                <a href="/portal/login.php" class="btn-portal-nav"><i class="fa-solid fa-user"></i> Espace Client</a>
+                <a href="/contact.html" class="btn-cta-nav">Demander un Devis</a>
+                
+                
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header Banner -->
+    <section class="page-header">
+        <h1>À Propos de LIMA Solutions</h1>
+        <p>Découvrez notre histoire, notre équipe et nos engagements pour simplifier tous vos projets logistiques et résidentiels.</p>
+    </section>
+
+    <!-- Page Content -->
+    <main class="page-content">
+        <div class="about-grid">
+            <div class="about-text">
+                <h2>Votre Partenaire de Confiance en Suisse</h2>
+                <p>Depuis notre création à Renens, à proximité immédiate de Lausanne, **LIMA Solutions** s'est imposé comme un partenaire incontournable pour les particuliers et les entreprises à la recherche de services de déménagement, de nettoyage et de transport logistique de haute qualité.</p>
+                <p>Nous comprenons que changer de local, nettoyer un logement pour l'état des lieux ou transporter des marchandises représente une étape majeure. C'est pourquoi nous mettons tout en œuvre pour vous offrir une prestation sereine, rapide et en toute sécurité, partout en Suisse.</p>
+                <p>Notre flotte de camions modernes, nos monte-meubles performants et nos équipements de pointe nous permettent de relever tous les défis logistiques et de nettoyage.</p>
+            </div>
+            <div class="service-detail-img">
+                <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=500" alt="Équipe LIMA Solutions">
+            </div>
+        </div>
+
+        <h2 style="color: var(--primary-teal-dark); margin-top: 60px; margin-bottom: 20px; text-align: center;">Nos Valeurs Fondamentales</h2>
+        
+        <div class="values-grid">
+            <div class="value-card">
+                <h4><i class="fa-solid fa-circle-check" style="margin-right: 8px; color: var(--primary-teal);"></i> Fiabilité absolue</h4>
+                <p>Nous respectons scrupuleusement les horaires et les délais convenus. Notre rigueur administrative et opérationnelle fait notre force.</p>
+            </div>
+            <div class="value-card">
+                <h4><i class="fa-solid fa-circle-check" style="margin-right: 8px; color: var(--primary-teal);"></i> Soin et Sécurité</h4>
+                <p>Chaque meuble, chaque carton et chaque objet fragile est emballé, arrimé ou nettoyé de façon à éliminer tout risque de dommage.</p>
+            </div>
+            <div class="value-card">
+                <h4><i class="fa-solid fa-circle-check" style="margin-right: 8px; color: var(--primary-teal);"></i> Transparence Tarifária</h4>
+                <p>Aucun coût caché ni frais imprévus. Nos devis sont clairs, détaillés et respectés à la lettre lors de la facturation finale.</p>
+            </div>
+            <div class="value-card">
+                <h4><i class="fa-solid fa-circle-check" style="margin-right: 8px; color: var(--primary-teal);"></i> Responsabilité Écologique</h4>
+                <p>Pour le débarras et la gestion des encombrants, nous collaborons avec les centres de tri locaux afin d'assurer un recyclage écoresponsable.</p>
+            </div>
+        </div>
+
+        <section style="text-align: center; margin-top: 60px; background-color: var(--bg-light); padding: 40px; border-radius: var(--border-radius);">
+            <h3 style="color: var(--primary-teal); margin-bottom: 15px;">Besoin d'un accompagnement personnalisé ?</h3>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">Contactez nos conseillers basés à Lausanne pour obtenir des conseils ou planifier une visite sur place.</p>
+            <a href="/contact.html" class="btn btn-primary">Parler avec un expert</a>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-container">
+            <p>&copy; 2026 LIMA Solutions. Tous droits réservés.</p>
+            <p>Renens – Lausanne, Suisse | <a href="/portal/login.php">Espace Client</a> | <a href="/admin/login.php">Espace ERP</a> | <a href="/facture/index.html">Espace Facturation</a></p>
+        </div>
+    </footer>
+    <script src="/app.js"></script>
+</body>
+</html>

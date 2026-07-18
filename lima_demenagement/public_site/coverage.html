@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zone de Couverture | Déménagements Vaud, Genève & Suisse | LIMA Solutions</title>
+    <meta name="description" content="Consultez notre zone de couverture. Nous réalisons vos déménagements, transports et nettoyages dans les cantons de Vaud, Genève, Fribourg, Valais et toute la Suisse.">
+    <link rel="stylesheet" href="/style.css?v=2.1">
+    <!-- FontAwesome for clean icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+        <!-- Header/Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="logo">
+                <i class="fa-solid fa-cube"></i> LIMA Solutions
+            </a>
+            
+            <!-- Mobile Menu Toggle Button -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                Menu
+            </button>
+
+            <nav class="nav-links" id="nav-links">
+                <a href="/index.html">Accueil</a>
+                <a href="/services.html">Services</a>
+                <a href="/marketplace/index.html">Marketplace</a>
+                
+                <!-- Guides Dropdown -->
+                <div class="nav-dropdown" style="position: relative; display: inline-block;">
+                    <a href="#" class="nav-dropdown-toggle" onclick="toggleDropdown(event, 'guides-dropdown')">Guides <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i></a>
+                    <div id="guides-dropdown" class="dropdown-content" style="display: none; position: absolute; left: 0; background-color: var(--white); min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-gray); border-radius: var(--border-radius); z-index: 1010; margin-top: 5px;">
+                        <a href="/guides/checklist-demenagement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Checklist Déménagement</a>
+                        <a href="/guides/rendre-appartement.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Rendre son appartement</a>
+                        <a href="/guides/nettoyage-obligatoire.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Nettoyage de remise</a>
+                        <a href="/guides/reboucher-trous-vis.html" style="padding: 10px 15px; display: block; border-bottom: 1px solid var(--border-gray); color: var(--text-dark); text-decoration: none;">Reboucher les trous</a>
+                        <a href="/guides/caution-proprietaire.html" style="padding: 10px 15px; display: block; color: var(--text-dark); text-decoration: none;">Récupérer sa caution</a>
+                    </div>
+                </div>
+
+                <a href="/about.html">À Propos</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="/contact.html">Contact</a>
+                <a href="/portal/login.php" class="btn-portal-nav"><i class="fa-solid fa-user"></i> Espace Client</a>
+                <a href="/contact.html" class="btn-cta-nav">Demander un Devis</a>
+                
+                
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header Banner -->
+    <section class="page-header">
+        <h1>Notre Zone de Couverture</h1>
+        <p>Nous intervenons dans toute la Suisse Romande et assurons vos déménagements longue distance dans toute la Suisse.</p>
+    </section>
+
+    <!-- Page Content -->
+    <main class="page-content">
+        <div class="section-header">
+            <h2>Présence Locale & Itinéraires Nationaux</h2>
+            <p>Basés dans la région de Lausanne (Renens), nous assurons une réactivité optimale dans les cantons voisins.</p>
+        </div>
+
+        <div class="coverage-grid">
+            
+            <!-- Canton Vaud -->
+            <div class="coverage-card">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <h3>Canton de Vaud</h3>
+                <p>Lausanne, Renens, Morges, Vevey, Montreux, Nyon, Gland, Yverdon-les-Bains, Payerne.</p>
+            </div>
+
+            <!-- Canton Genève -->
+            <div class="coverage-card">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <h3>Canton de Genève</h3>
+                <p>Genève Ville, Carouge, Vernier, Meyrin, Lancy, Thônex, Versoix, Plan-les-Ouates.</p>
+            </div>
+
+            <!-- Canton Fribourg -->
+            <div class="coverage-card">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <h3>Canton de Fribourg</h3>
+                <p>Fribourg, Bulle, Romont, Estavayer-le-Lac, Morat, Châtel-Saint-Denis.</p>
+            </div>
+
+            <!-- Canton Valais -->
+            <div class="coverage-card">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <h3>Canton du Valais</h3>
+                <p>Sion, Martigny, Monthey, Sierre, Viège, Brigue-Glis, Saint-Maurice.</p>
+            </div>
+
+            <!-- Canton Neuchâtel -->
+            <div class="coverage-card">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <h3>Canton de Neuchâtel</h3>
+                <p>Neuchâtel Ville, La Chaux-de-Fonds, Le Locle, Val-de-Travers, Boudry.</p>
+            </div>
+
+            <!-- Suisse Nationale -->
+            <div class="coverage-card">
+                <i class="fa-solid fa-truck-moving"></i>
+                <h3>Déménagements Nationaux</h3>
+                <p>Bern, Zürich, Basel, Lucerne, Lugano, et toutes les autres communes suisses.</p>
+            </div>
+
+        </div>
+
+        <!-- Additional Info -->
+        <section class="about-grid" style="margin-top: 80px;">
+            <div class="service-detail-img">
+                <img src="https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?q=80&w=500" alt="Suisse Routes LIMA Solutions">
+            </div>
+            <div class="about-text">
+                <h2>Itinéraires Réguliers & Transports Intercantonaux</h2>
+                <p>Nous réalisons fréquemment des trajets longue distance reliant la Suisse Romande (Genève, Lausanne) aux cantons alémaniques (Zurich, Berne, Bâle) et italophones (Tessin).</p>
+                <p>En regroupant nos transports sur ces axes, nous pouvons proposer des tarifs compétitifs pour vos déménagements nationaux, sans compromettre la sécurité ni les délais.</p>
+                <p>Que vous ayez besoin d'un transport de proximité ou d'un transfert complet de Vaud à Zurich, nos équipes garantissent le respect scrupuleux du planning.</p>
+                <a href="/contact.html" class="btn btn-primary" style="margin-top: 15px;">Calculer mes frais de transport</a>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-container">
+            <p>&copy; 2026 LIMA Solutions. Tous droits réservés.</p>
+            <p>Renens – Lausanne, Suisse | <a href="/portal/login.php">Espace Client</a> | <a href="/admin/login.php">Espace ERP</a> | <a href="/facture/index.html">Espace Facturation</a></p>
+        </div>
+    </footer>
+    <script src="/app.js"></script>
+</body>
+</html>

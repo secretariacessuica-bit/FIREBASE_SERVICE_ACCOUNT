@@ -1,0 +1,6 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lumo Body placeholder - corpo redondo verde aqua -->
+  <circle cx="50" cy="55" r="38" fill="#52C9B0"/>
+  <!-- Cauda pequena -->
+  <ellipse cx="50" cy="90" rx="10" ry="5" fill="#3DAFD6"/>
+</svg>
