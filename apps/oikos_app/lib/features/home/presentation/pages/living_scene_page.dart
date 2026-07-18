@@ -789,7 +789,7 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
   ) {
     // Flag de controle para ativar a integração Unity WebGL
     // Configure como true após carregar a build WebGL do Unity na pasta: web/unity_build/
-    const bool useUnityWebGL = false;
+    const bool useUnityWebGL = true;
 
     if (useUnityWebGL) {
       return const SizedBox(

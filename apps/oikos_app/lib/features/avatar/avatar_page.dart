@@ -6,6 +6,8 @@ import '../../app/theme/app_typography.dart';
 import '../pin/pin_page.dart';
 import '../presentation/providers/family_members_provider.dart';
 import '../../features/domain/entities/family_member.dart';
+import 'domain/avatar.dart';
+import 'presentation/avatar_renderer.dart';
 
 class AvatarPage extends ConsumerWidget {
   const AvatarPage({super.key});
@@ -106,11 +108,24 @@ class _FamilyAvatarItemState extends State<_FamilyAvatarItem> {
 
   @override
   Widget build(BuildContext context) {
-    final String? assetPath = (widget.member.avatarAsset != null && widget.member.avatarAsset!.isNotEmpty) 
+    final bool isCustomAvatar = widget.member.avatarAsset != null && 
+        (widget.member.avatarAsset!.startsWith('{') || widget.member.avatarAsset!.startsWith('%7B'));
+
+    OikosAvatar? customAvatar;
+    if (isCustomAvatar) {
+      try {
+        final decodedAsset = widget.member.avatarAsset!.startsWith('%7B') 
+            ? Uri.decodeComponent(widget.member.avatarAsset!) 
+            : widget.member.avatarAsset!;
+        customAvatar = OikosAvatar.fromJsonString(decodedAsset);
+      } catch (_) {}
+    }
+
+    final String? assetPath = (widget.member.avatarAsset != null && widget.member.avatarAsset!.isNotEmpty && !isCustomAvatar) 
         ? widget.member.avatarAsset 
         : _getAssetFromEmoji(widget.member.emoji);
     
-    final hasImage = assetPath != null;
+    final hasImage = assetPath != null || isCustomAvatar;
     
     // Determine size based on role to create a nice stagger
     double baseHeight = 350;
@@ -131,9 +146,11 @@ class _FamilyAvatarItemState extends State<_FamilyAvatarItem> {
             transform: Matrix4.translationValues(0, _isHovered ? -10 : 0, 0),
             margin: const EdgeInsets.symmetric(horizontal: 16),
             height: baseHeight,
-            child: hasImage 
-              ? ClipRRect(borderRadius: BorderRadius.circular(24), child: Image.asset(assetPath!, fit: BoxFit.contain))
-              : _FallbackEmoji(member: widget.member, size: baseHeight * 0.5),
+            child: isCustomAvatar && customAvatar != null
+              ? OikosAvatarRenderer(avatar: customAvatar, size: baseHeight)
+              : (assetPath != null 
+                  ? ClipRRect(borderRadius: BorderRadius.circular(24), child: Image.asset(assetPath, fit: BoxFit.contain))
+                  : _FallbackEmoji(member: widget.member, size: baseHeight * 0.5)),
           ),
         ),
       ),

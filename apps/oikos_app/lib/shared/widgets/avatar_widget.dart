@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../features/domain/entities/family_member.dart';
+import '../../features/avatar/domain/avatar.dart';
+import '../../features/avatar/presentation/avatar_renderer.dart';
 
 class AvatarWidget extends StatelessWidget {
   final FamilyMember member;
@@ -13,7 +15,47 @@ class AvatarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (member.avatarAsset != null && member.avatarAsset!.isNotEmpty) {
+    final bool isCustomAvatar = member.avatarAsset != null && 
+        (member.avatarAsset!.startsWith('{') || member.avatarAsset!.startsWith('%7B'));
+
+    if (isCustomAvatar) {
+      OikosAvatar? avatar;
+      try {
+        final decodedAsset = member.avatarAsset!.startsWith('%7B') 
+            ? Uri.decodeComponent(member.avatarAsset!) 
+            : member.avatarAsset!;
+        avatar = OikosAvatar.fromJsonString(decodedAsset);
+      } catch (_) {}
+
+      if (avatar != null) {
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: Center(
+              child: SizedBox(
+                width: size * 1.5,
+                height: size * 1.5,
+                child: OikosAvatarRenderer(avatar: avatar, size: size * 1.5),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    if (member.avatarAsset != null && member.avatarAsset!.isNotEmpty && !isCustomAvatar) {
       return Container(
         width: size,
         height: size,

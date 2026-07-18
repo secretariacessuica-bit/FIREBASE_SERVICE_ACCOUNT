@@ -8,6 +8,8 @@ import '../../features/domain/entities/family_member.dart';
 import '../../features/domain/entities/age_experience_mode.dart';
 import '../home/home_page.dart';
 import '../presentation/providers/di_providers.dart';
+import '../avatar/domain/avatar.dart';
+import '../avatar/presentation/avatar_renderer.dart';
 
 class PinPage extends ConsumerStatefulWidget {
   final FamilyMember member;
@@ -185,8 +187,31 @@ class _PinPageState extends ConsumerState<PinPage> with SingleTickerProviderStat
                         SizedBox(
                           height: 300,
                           child: () {
+                            final bool isCustomAvatar = widget.member.avatarAsset != null && 
+                                (widget.member.avatarAsset!.startsWith('{') || widget.member.avatarAsset!.startsWith('%7B'));
+
+                            if (isCustomAvatar) {
+                              OikosAvatar? avatar;
+                              try {
+                                final decodedAsset = widget.member.avatarAsset!.startsWith('%7B') 
+                                    ? Uri.decodeComponent(widget.member.avatarAsset!) 
+                                    : widget.member.avatarAsset!;
+                                avatar = OikosAvatar.fromJsonString(decodedAsset);
+                              } catch (_) {}
+
+                              if (avatar != null) {
+                                return Center(
+                                  child: SizedBox(
+                                    width: 200,
+                                    height: 300,
+                                    child: OikosAvatarRenderer(avatar: avatar),
+                                  ),
+                                );
+                              }
+                            }
+
                             // Resolve asset path: prefer stored, fallback to emoji map
-                            String? assetPath = (widget.member.avatarAsset != null && widget.member.avatarAsset!.isNotEmpty) 
+                            String? assetPath = (widget.member.avatarAsset != null && widget.member.avatarAsset!.isNotEmpty && !isCustomAvatar) 
                                 ? widget.member.avatarAsset 
                                 : _assetFromEmoji(widget.member.emoji);
                             return assetPath != null
