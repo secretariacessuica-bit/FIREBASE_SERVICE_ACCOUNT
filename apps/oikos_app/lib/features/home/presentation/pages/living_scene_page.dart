@@ -504,12 +504,8 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
   }
 
   void _openAvatarEditor(FamilyMember member) {
-    OikosAvatar? initialAvatar;
-    if (member.avatarAsset != null && member.avatarAsset!.startsWith('{')) {
-      try {
-        initialAvatar = OikosAvatar.fromJsonString(member.avatarAsset!);
-      } catch (_) {}
-    }
+    // Usa helper centralizado (suporta JSON puro e URL-encoded)
+    final OikosAvatar? initialAvatar = OikosAvatar.tryFromAvatarAsset(member.avatarAsset);
     
     showModalBottomSheet(
       context: context,
@@ -600,12 +596,9 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
   // Avatar
   // ──────────────────────────────────────────────────────────────────────────
   Widget _buildUserAvatar(String? assetPath, String emojiFallback, {AvatarExpressionType expression = AvatarExpressionType.neutral}) {
-    OikosAvatar avatar;
-    if (assetPath != null && assetPath.startsWith('{')) {
-      avatar = OikosAvatar.fromJsonString(assetPath).copyWithExpression(expression);
-    } else {
-      avatar = OikosAvatar.defaultAvatar('user', scale: 1.0).copyWithExpression(expression);
-    }
+    // Usa helper centralizado (suporta JSON puro e URL-encoded %7B)
+    final parsed = OikosAvatar.tryFromAvatarAsset(assetPath);
+    final OikosAvatar avatar = (parsed ?? OikosAvatar.defaultAvatar('user', scale: 1.0)).copyWithExpression(expression);
 
     return Container(
       width: 150,
