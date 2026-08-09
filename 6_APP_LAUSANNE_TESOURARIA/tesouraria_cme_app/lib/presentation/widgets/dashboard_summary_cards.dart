@@ -33,9 +33,9 @@ class DashboardSummaryCards extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildCard('ENTRADAS', entradas, context),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _buildCard('SAÍDAS', saidas, context, isExpense: true),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _buildCard('SALDO DO MÊS', saldo, context, isTotal: true),
             ],
           );
@@ -46,44 +46,48 @@ class DashboardSummaryCards extends StatelessWidget {
 
   Widget _buildCard(String title, double amount, BuildContext context, {bool isExpense = false, bool isTotal = false}) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
-              letterSpacing: 1.1,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              if (isExpense || isTotal)
+                const Text(
+                  'Em breve',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFF9CA3AF),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           Text(
             'CHF ${amount.toStringAsFixed(2)}',
             style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
             ),
           ),
-          const SizedBox(height: 16),
-          if (isExpense || isTotal)
-            Text(
-              'Em breve',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade400,
-              ),
-            )
-          else
-            const SizedBox(height: 14), // placeholder to match height
         ],
       ),
     );

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../domain/service_closing_history_models.dart';
-import '../../core/theme.dart';
 import '../pages/closing_detail_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/history_bloc.dart';
@@ -13,95 +12,247 @@ class DashboardClosingList extends StatelessWidget {
     required this.history,
   });
 
+  void _onItemTap(BuildContext context, int itemId) async {
+    final shouldReload = await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ClosingDetailPage(closingId: itemId),
+    ));
+    if (shouldReload == true && context.mounted) {
+      context.read<HistoryBloc>().add(LoadHistoryEvent());
+    }
+  }
+
+  Widget _buildStatusBadge({bool small = false}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: small ? 6 : 8, vertical: small ? 2 : 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE6F4EA), // Soft light green
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        'Fechado',
+        style: TextStyle(
+          color: const Color(0xFF137333), // Soft dark green
+          fontSize: small ? 10 : 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(20),
-            child: Text(
-              'Últimos fechamentos',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 500;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
-          const Divider(height: 1),
-          if (history.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(40),
-              child: Center(
-                child: Text('Nenhum fechamento registrado.'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Text(
+                  'Últimos fechamentos',
+                  style: TextStyle(
+                    fontSize: isWide ? 15 : 14,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
               ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: history.length > 5 ? 5 : history.length, // Max 5 items
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final item = history[index];
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  title: Text(item.serviceDate.isNotEmpty && item.serviceDate != '-' ? 'Culto: ${item.serviceDate}' : 'Culto sem data'),
-                  subtitle: Text('Tesoureiro: ${item.mainTreasurer}'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              if (isWide && history.isNotEmpty) ...[
+                Container(
+                  color: const Color(0xFFF9FAFB),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: const Row(
                     children: [
-                      Text(
-                        'CHF ${item.physicalTotal.toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      const SizedBox(width: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.mathGreen.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          'DATA',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF6B7280)),
                         ),
-                        child: const Text(
-                          'Fechado',
-                          style: TextStyle(color: AppTheme.mathGreen, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      Expanded(
+                        flex: 4,
+                        child: Text(
+                          'TESOUREIRO',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF6B7280)),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            'TOTAL',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF6B7280)),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        flex: 2,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            'STATUS',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF6B7280)),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  onTap: () async {
-                    final shouldReload = await Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => ClosingDetailPage(closingId: item.id),
-                    ));
-                    if (shouldReload == true && context.mounted) {
-                      context.read<HistoryBloc>().add(LoadHistoryEvent());
+                ),
+                const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              ],
+              if (history.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(
+                    child: Text(
+                      'Nenhum fechamento registrado.',
+                      style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: history.length > 5 ? 5 : history.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                  itemBuilder: (context, index) {
+                    final item = history[index];
+                    final dateStr = item.serviceDate.isNotEmpty && item.serviceDate != '-' ? item.serviceDate : 'Culto sem data';
+
+                    if (isWide) {
+                      return InkWell(
+                        onTap: () => _onItemTap(context, item.id),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  dateStr,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF374151),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 4,
+                                child: Text(
+                                  item.mainTreasurer,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF4B5563),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 3,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    'CHF ${item.physicalTotal.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF111827),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 2,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: _buildStatusBadge(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    } else {
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              dateStr,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                            Text(
+                              'CHF ${item.physicalTotal.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                item.mainTreasurer,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                              _buildStatusBadge(small: true),
+                            ],
+                          ),
+                        ),
+                        onTap: () => _onItemTap(context, item.id),
+                      );
                     }
                   },
-                );
-              },
-            ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextButton(
-              onPressed: () {
-                // Future: Navigate to full history page
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Em breve: Listagem completa de fechamentos')),
-                );
-              },
-              child: const Text('Ver todos os fechamentos →'),
-            ),
+                ),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Center(
+                  child: TextButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Em breve: Listagem completa de fechamentos')),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF137333),
+                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    child: const Text('Ver todos os fechamentos →'),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
