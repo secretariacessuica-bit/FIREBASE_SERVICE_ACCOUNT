@@ -161,8 +161,12 @@ class FechamentoApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         return ServiceClosingState.fromJson(data);
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        throw Exception('UNAUTHORIZED');
       }
       return null;
+    } on Exception {
+      rethrow;
     } catch (_) {
       return null;
     }

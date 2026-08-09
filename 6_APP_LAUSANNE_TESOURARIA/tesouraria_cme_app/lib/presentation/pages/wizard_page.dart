@@ -10,8 +10,10 @@ import '../../core/monetary_utils.dart';
 import '../../core/theme.dart';
 import '../../services/draft_service.dart';
 import '../../services/fechamento_api_service.dart';
+import '../../services/auth_api_service.dart';
 import '../widgets/app_sidebar_drawer.dart';
 import 'dashboard_page.dart';
+import 'login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum ClosingPhase { setup, counting, review }
@@ -156,20 +158,34 @@ class _WizardPageState extends State<WizardPage> {
   void _startSyncTimer() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      final serverDraft = await FechamentoApiService().getDraftFromServer();
-      if (serverDraft != null && mounted && _phase == ClosingPhase.counting) {
-        // Only restore if the list or physical total changed on the server to prevent UI stutter
-        if (serverDraft.identifiedEntries.length != _bloc.state.identifiedEntries.length ||
-            serverDraft.anonymousEntries.length != _bloc.state.anonymousEntries.length ||
-            serverDraft.physicalTotal != _bloc.state.physicalTotal ||
-            serverDraft.coTreasurer != _bloc.state.coTreasurer ||
-            serverDraft.mainTreasurer != _bloc.state.mainTreasurer) {
-          _bloc.add(RestoreDraftEvent(serverDraft));
-          setState(() {
-            _selectedDate = serverDraft.date ?? DateTime.now();
-            _coTreasurerController.text = serverDraft.coTreasurer ?? "";
-          });
+      try {
+        final serverDraft = await FechamentoApiService().getDraftFromServer();
+        if (serverDraft != null && mounted && _phase == ClosingPhase.counting) {
+          // Only restore if the list or physical total changed on the server to prevent UI stutter
+          if (serverDraft.identifiedEntries.length != _bloc.state.identifiedEntries.length ||
+              serverDraft.anonymousEntries.length != _bloc.state.anonymousEntries.length ||
+              serverDraft.physicalTotal != _bloc.state.physicalTotal ||
+              serverDraft.coTreasurer != _bloc.state.coTreasurer ||
+              serverDraft.mainTreasurer != _bloc.state.mainTreasurer) {
+            _bloc.add(RestoreDraftEvent(serverDraft));
+            setState(() {
+              _selectedDate = serverDraft.date ?? DateTime.now();
+              _coTreasurerController.text = serverDraft.coTreasurer ?? "";
+            });
+          }
         }
+      } catch (e) {
+        if (e.toString().contains('UNAUTHORIZED') && mounted) {
+          timer.cancel();
+          await AuthApiService().logout();
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+              (_) => false,
+            );
+          }
+        }
+        // Other network errors are silently ignored
       }
     });
   }
@@ -245,7 +261,25 @@ class _WizardPageState extends State<WizardPage> {
 
     return BlocProvider.value(
       value: _bloc,
-      child: Scaffold(
+      child: BlocListener<ServiceClosingBloc, ServiceClosingState>(
+        listenWhen: (prev, curr) =>
+            (curr.isSuccess && !prev.isSuccess) ||
+            (curr.error != null && curr.error != prev.error),
+        listener: (context, state) {
+          if (state.isSuccess) {
+            _syncTimer?.cancel();
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const DashboardScreen()),
+            );
+          } else if (state.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('Erro ao enviar: ${state.error}'),
+              backgroundColor: AppTheme.excludeRed,
+              behavior: SnackBarBehavior.floating,
+            ));
+          }
+        },
+        child: Scaffold(
         backgroundColor: const Color(0xFFFAFAFA),
         appBar: (isDesktop && (_phase == ClosingPhase.setup || _phase == ClosingPhase.counting))
             ? null // Hide AppBar on desktop setup/counting phase to match dashboard and mock
@@ -282,6 +316,7 @@ class _WizardPageState extends State<WizardPage> {
         bottomNavigationBar: _phase == ClosingPhase.counting
             ? _buildCustomBottomBar()
             : null,
+      ),
       ),
     );
   }
@@ -1050,7 +1085,7 @@ class _WizardPageState extends State<WizardPage> {
         content: const Text("Lançamento identificado salvo!"),
         duration: const Duration(milliseconds: 1200),
         behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(label: "DESFAZER", textColor: Colors.yellow, onPressed: () => context.read<ServiceClosingBloc>().add(UndoAddedEntryEvent(entryId))),
+        action: SnackBarAction(label: "DESFAZER", textColor: Colors.yellow, onPressed: () => _bloc.add(UndoAddedEntryEvent(entryId))),
       ));
     } else {
       // Anonymous
@@ -1066,7 +1101,7 @@ class _WizardPageState extends State<WizardPage> {
         content: Text("${_selectedType == EnvelopeType.dizimo ? 'Dízimo' : _selectedType == EnvelopeType.voto ? 'Voto' : 'Oferta'} anônima somada!"),
         duration: const Duration(milliseconds: 1200),
         behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(label: "DESFAZER", textColor: Colors.yellow, onPressed: () => context.read<ServiceClosingBloc>().add(UndoAnonymousOfferingEvent(entry.id))),
+        action: SnackBarAction(label: "DESFAZER", textColor: Colors.yellow, onPressed: () => _bloc.add(UndoAnonymousOfferingEvent(entry.id))),
       ));
     }
 
@@ -1077,138 +1112,295 @@ class _WizardPageState extends State<WizardPage> {
   }
 
   Widget _buildReviewPhase(BuildContext context, ServiceClosingState state) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text("Revisão e Matemática do Caixa", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text("Lançamentos Identificados", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF4B5563))),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE5E7EB)), borderRadius: BorderRadius.circular(8), color: Colors.white),
-                          child: state.identifiedEntries.isEmpty
-                            ? const Center(child: Text("Nenhum lançamento identificado.", style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)))
-                            : ListView.builder(
-                                itemCount: state.identifiedEntries.length,
-                                itemBuilder: (context, index) {
-                                  final env = state.identifiedEntries[state.identifiedEntries.length - 1 - index];
-                                  return ListTile(
-                                    leading: const Icon(Icons.mail_outline_rounded, color: Color(0xFF1E3A8A)),
-                                    title: Text(env.memberName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                    subtitle: Text(env.type.name.toUpperCase(), style: const TextStyle(fontSize: 10)),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text('CHF ${BigDecimalConverter.fromRappen(env.amount).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                        IconButton(icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.excludeRed), onPressed: () => context.read<ServiceClosingBloc>().add(RemoveEnvelopeEvent(env.id))),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+
+    String formattedDate = DateFormat("EEEE, d 'de' MMMM 'de' yyyy", 'pt_BR').format(state.date ?? DateTime.now());
+    if (formattedDate.isNotEmpty) {
+      formattedDate = formattedDate.substring(0, 1).toUpperCase() + formattedDate.substring(1);
+    }
+
+    Widget leftColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text("Lançamentos Identificados", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827))),
+            Text("${state.identifiedEntries.length}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827))),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE5E7EB)), borderRadius: BorderRadius.circular(8), color: Colors.white),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(flex: 2, child: Text("Contribuinte", style: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600))),
+                    Expanded(child: Text("Categoria", style: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600))),
+                    Expanded(child: Text("Valor", textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600))),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+              ),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              if (state.identifiedEntries.isEmpty)
+                const Padding(padding: EdgeInsets.all(24.0), child: Center(child: Text("Nenhum lançamento identificado.", style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13))))
+              else
+                ...state.identifiedEntries.reversed.take(6).map((env) {
+                  return Column(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF9FAFB), 
-                          border: Border.all(color: const Color(0xFFE5E7EB)), 
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
                           children: [
-                            _buildCategoryReview(context, state, EnvelopeType.dizimo, "DÍZIMO"),
-                            _buildCategoryReview(context, state, EnvelopeType.oferta, "OFERTA"),
-                            _buildCategoryReview(context, state, EnvelopeType.voto, "VOTO"),
-                            const Divider(thickness: 1, color: Color(0xFFE5E7EB)),
-                            _mathRow("TOTAL REGISTRADO", state.registeredTotal, isBold: true),
-                            const SizedBox(height: 12),
-                            _mathRow("Total físico contado", state.physicalTotal),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed: () => _showPhysicalTotalDialog(context, state),
-                              icon: const Icon(Icons.calculate_outlined, size: 16),
-                              label: const Text("Informar Total Físico"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF3F4F6),
-                                foregroundColor: const Color(0xFF1E3A8A),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            Expanded(flex: 2, child: Text(env.memberName, style: const TextStyle(fontSize: 13, color: Color(0xFF111827)))),
+                            Expanded(child: Text(env.type.name.toUpperCase(), style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563)))),
+                            Expanded(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text('CHF ${BigDecimalConverter.fromRappen(env.amount).toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, color: Color(0xFF111827))),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () => context.read<ServiceClosingBloc>().add(RemoveEnvelopeEvent(env.id)),
+                                    child: const Icon(Icons.delete_outline, size: 18, color: AppTheme.excludeRed),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            _mathRow("DIFERENÇA", state.difference, isBold: true, color: state.difference == 0 ? Colors.green.shade700 : AppTheme.excludeRed),
-                            if (state.difference == 0 && state.physicalTotal > 0)
-                              const Align(alignment: Alignment.centerRight, child: Icon(Icons.check_circle, color: Colors.green, size: 24)),
-                            if (state.error != null) Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(state.error!, style: const TextStyle(color: AppTheme.excludeRed, fontWeight: FontWeight.bold, fontSize: 12))),
-                            if (state.difference != 0) const Padding(padding: EdgeInsets.only(top: 6.0), child: Text("A diferença deve ser zero para fechar.", style: TextStyle(color: AppTheme.excludeRed, fontWeight: FontWeight.bold, fontSize: 11))),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      // Co-Treasurer Input at Final Review
-                      TextField(
-                        controller: _coTreasurerController,
-                        decoration: const InputDecoration(
-                          labelText: "Co-Tesoureiro",
-                          border: OutlineInputBorder(),
-                          fillColor: Colors.white,
-                          filled: true,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                        ),
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      const Spacer(),
-                      ElevatedButton(
-                        onPressed: (state.error == null && state.difference == 0 && state.physicalTotal > 0) ? () {
-                          context.read<ServiceClosingBloc>().add(
-                            InitializeClosingContextEvent(state.date ?? DateTime.now(), state.mainTreasurer, _coTreasurerController.text)
-                          );
-                          context.read<ServiceClosingBloc>().add(SubmitClosingEvent());
-                          Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const DashboardScreen()));
-                        } : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E3A8A), 
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          elevation: 0,
-                        ),
-                        child: const Text("ENVIAR FECHAMENTO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      )
+                      const Divider(height: 1, color: Color(0xFFF3F4F6)),
                     ],
+                  );
+                }),
+              if (state.identifiedEntries.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: InkWell(
+                      onTap: () => _showAllIdentifiedEntriesDialog(context, state),
+                      child: const Text("Ver todos os lançamentos  >", style: TextStyle(color: Color(0xFF1E3A8A), fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
                   ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Text("Lançamentos Anônimos por Categoria", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827))),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE5E7EB)), borderRadius: BorderRadius.circular(8), color: Colors.white),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(child: Text("Categoria", style: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600))),
+                    Expanded(child: Text("Quantidade", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600))),
+                    Expanded(child: Text("Valor", textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600))),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              ...[EnvelopeType.dizimo, EnvelopeType.oferta, EnvelopeType.voto].map((type) {
+                int count = state.anonymousEntries.where((e) => e.type == type).length;
+                int amount = state.anonymousTotalBy(type);
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Expanded(child: Text(type.name.toUpperCase(), style: const TextStyle(fontSize: 13, color: Color(0xFF111827)))),
+                          Expanded(child: Text("$count", textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563)))),
+                          Expanded(child: Text('CHF ${BigDecimalConverter.fromRappen(amount).toStringAsFixed(2)}', textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, color: Color(0xFF111827)))),
+                        ],
+                      ),
+                    ),
+                    if (type != EnvelopeType.voto)
+                      const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    Widget rightColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text("Resumo da contagem", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827))),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE5E7EB)), borderRadius: BorderRadius.circular(8), color: Colors.white),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildCategoryReview(context, state, EnvelopeType.dizimo, "DÍZIMO"),
+                    _buildCategoryReview(context, state, EnvelopeType.oferta, "OFERTA"),
+                    _buildCategoryReview(context, state, EnvelopeType.voto, "VOTO", isLast: true),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.only(bottomLeft: Radius.circular(8), bottomRight: Radius.circular(8)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("TOTAL REGISTRADO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
+                    Text("CHF ${BigDecimalConverter.fromRappen(state.registeredTotal).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Text("Conferência do caixa", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827))),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE5E7EB)), borderRadius: BorderRadius.circular(8), color: Colors.white),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _mathRow("Total registrado", state.registeredTotal),
+              const SizedBox(height: 6),
+              _mathRow("Total físico", state.physicalTotal),
+              const SizedBox(height: 16),
+              _mathRow(
+                "Diferença", 
+                state.difference, 
+                isBold: true, 
+                color: state.difference == 0 ? const Color(0xFF1E3A8A) : AppTheme.excludeRed
+              ),
+              if (state.difference != 0)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0, bottom: 16.0),
+                  child: Text("A diferença deve ser zero para finalizar o fechamento.", style: TextStyle(color: AppTheme.excludeRed, fontSize: 11)),
                 )
+              else
+                const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () => _showPhysicalTotalDialog(context, state, isDesktop),
+                icon: const Icon(Icons.calculate_outlined, size: 18),
+                label: const Text("INFORMAR TOTAL FÍSICO"),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1E3A8A),
+                  side: const BorderSide(color: Color(0xFF1E3A8A)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        DropdownButtonFormField<String>(
+          initialValue: _coTreasurerController.text.isEmpty || !state.knownMembers.contains(_coTreasurerController.text) 
+                 ? null : _coTreasurerController.text,
+          decoration: InputDecoration(
+            labelText: "Co-tesoureiro",
+            hintText: "Selecione o co-tesoureiro",
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+          items: state.knownMembers.map((String member) {
+            return DropdownMenuItem<String>(value: member, child: Text(member, style: const TextStyle(fontSize: 14)));
+          }).toList(),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() => _coTreasurerController.text = val);
+            }
+          },
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton(
+          onPressed: (state.error == null && !state.isSubmitting && state.difference == 0 && state.physicalTotal > 0 && _coTreasurerController.text.isNotEmpty) ? () {
+            _syncTimer?.cancel();
+            context.read<ServiceClosingBloc>().add(
+              InitializeClosingContextEvent(state.date ?? DateTime.now(), state.mainTreasurer, _coTreasurerController.text)
+            );
+            context.read<ServiceClosingBloc>().add(SubmitClosingEvent());
+          } : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1E3A8A), 
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: const Color(0xFFE5E7EB),
+            disabledForegroundColor: const Color(0xFF9CA3AF),
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            elevation: 0,
+          ),
+          child: state.isSubmitting
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text("ENVIAR FECHAMENTO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        ),
+        if (state.error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Text(state.error!, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.excludeRed, fontSize: 12)),
+          ),
+      ],
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text("Revisão e fechamento", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+          const SizedBox(height: 4),
+          Text(formattedDate, style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563))),
+          const SizedBox(height: 4),
+          const Text("Confira os lançamentos e o total físico antes de finalizar o fechamento.", style: TextStyle(fontSize: 14, color: Color(0xFF4B5563))),
+          const SizedBox(height: 32),
+          if (isDesktop)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 3, child: leftColumn),
+                const SizedBox(width: 32),
+                Expanded(flex: 2, child: rightColumn),
+              ],
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                rightColumn,
+                const SizedBox(height: 32),
+                leftColumn,
               ],
             ),
-          ),
         ],
       ),
     );
   }
 
-  void _showPhysicalTotalDialog(BuildContext context, ServiceClosingState state) {
+  void _showPhysicalTotalDialog(BuildContext context, ServiceClosingState state, bool isDesktop) {
     String localBuffer = '0';
     showDialog(
       context: context,
@@ -1285,55 +1477,102 @@ class _WizardPageState extends State<WizardPage> {
                 }
                 return KeyEventResult.ignored;
               },
-              child: AlertDialog(
-                title: const Text("Total Físico (Dinheiro na mesa)"),
-                content: SizedBox(
-                  width: 300,
+              child: Dialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Container(
+                  width: isDesktop ? 360 : MediaQuery.of(context).size.width * 0.95,
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Total físico", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => Navigator.pop(dlgContext),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text("Dinheiro contado na mesa", style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+                      const SizedBox(height: 24),
                       Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                        decoration: BoxDecoration(color: const Color(0xFF0B1931), borderRadius: BorderRadius.circular(8)),
                         child: Center(
-                          child: Text("CHF ${amount.toStringAsFixed(2)}", style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                          child: Text("CHF ${amount.toStringAsFixed(2)}", style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 1.5, mainAxisSpacing: 8, crossAxisSpacing: 8),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3, 
+                          childAspectRatio: 1.6, 
+                          mainAxisSpacing: 12, 
+                          crossAxisSpacing: 12
+                        ),
                         itemCount: 12,
                         itemBuilder: (context, index) {
                           final keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', '⌫'];
                           String key = keys[index];
+                          bool isBackspace = key == '⌫';
                           return ElevatedButton(
                             onPressed: () => dlgKeyPress(key),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: key == '⌫' ? AppTheme.excludeRed : Colors.grey.shade200, 
-                              foregroundColor: key == '⌫' ? Colors.white : Colors.black87, 
-                              padding: EdgeInsets.zero,
+                              backgroundColor: isBackspace ? const Color(0xFFFEE2E2) : const Color(0xFFF8FAFC),
+                              foregroundColor: isBackspace ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               elevation: 0,
+                              padding: EdgeInsets.zero,
                             ),
-                            child: Text(key, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            child: isBackspace
+                                ? const Icon(Icons.backspace_outlined, size: 22)
+                                : Text(key, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                           );
                         },
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(dlgContext),
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFF1E3A8A),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: const Text("CANCELAR", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                context.read<ServiceClosingBloc>().add(SetPhysicalTotalEvent(int.tryParse(localBuffer) ?? 0));
+                                Navigator.pop(dlgContext);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E3A8A),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                elevation: 0,
+                              ),
+                              child: const Text("SALVAR TOTAL", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(dlgContext), child: const Text("CANCELAR")),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<ServiceClosingBloc>().add(SetPhysicalTotalEvent(int.tryParse(localBuffer) ?? 0));
-                      Navigator.pop(dlgContext);
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                    child: const Text("SALVAR TOTAL"),
-                  ),
-                ],
               ),
             );
           }
@@ -1342,38 +1581,126 @@ class _WizardPageState extends State<WizardPage> {
     );
   }
 
-  Widget _buildCategoryReview(BuildContext context, ServiceClosingState state, EnvelopeType type, String title) {
-    int ident = state.identifiedTotalBy(type);
-    int anon = state.anonymousTotalBy(type);
-    if (ident == 0 && anon == 0) return const SizedBox.shrink();
-
+  Widget _buildCategoryReview(BuildContext context, ServiceClosingState state, EnvelopeType type, String title, {bool isLast = false}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF111827))),
-          const SizedBox(height: 2),
-          _mathRow("Identificado", ident),
-          _mathRow("Anônimo", anon),
-          const Divider(color: Color(0xFFE5E7EB)),
-          _mathRow("Subtotal", ident + anon, isBold: true),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF111827))),
+          const SizedBox(height: 8),
+          _mathRow("Identificado", state.identifiedTotalBy(type)),
+          const SizedBox(height: 4),
+          _mathRow("Anônimo", state.anonymousTotalBy(type)),
+          const SizedBox(height: 8),
+          _mathRow("Subtotal", state.identifiedTotalBy(type) + state.anonymousTotalBy(type), isBold: true),
+          if (!isLast)
+            const Padding(
+              padding: EdgeInsets.only(top: 16.0),
+              child: Divider(height: 1, color: Color(0xFFE5E7EB)),
+            ),
         ],
       ),
     );
   }
 
-  Widget _mathRow(String label, int amountRappen, {bool isBold = false, Color color = Colors.black87}) {
+  Widget _mathRow(String label, int amountRappen, {bool isBold = false, Color color = const Color(0xFF4B5563)}) {
     double amount = BigDecimalConverter.fromRappen(amountRappen);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: 13, color: color)),
-          Text("CHF ${amount.toStringAsFixed(2)}", style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: 13, color: color)),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: 13, color: color)),
+        Text("CHF ${amount.toStringAsFixed(2)}", style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: 13, color: color)),
+      ],
+    );
+  }
+
+  void _showAllIdentifiedEntriesDialog(BuildContext context, ServiceClosingState state) {
+    showDialog(
+      context: context,
+      builder: (dlgContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            width: 600,
+            constraints: const BoxConstraints(maxHeight: 500),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Todos os Lançamentos Identificados (${state.identifiedEntries.length})",
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                      onPressed: () => Navigator.pop(dlgContext),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  color: const Color(0xFFF8FAFC),
+                  child: const Row(
+                    children: [
+                      Expanded(flex: 2, child: Text("Contribuinte", style: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600))),
+                      Expanded(child: Text("Categoria", style: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600))),
+                      Expanded(child: Text("Valor", textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600))),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: state.identifiedEntries.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                    itemBuilder: (context, index) {
+                      final env = state.identifiedEntries[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            Expanded(flex: 2, child: Text(env.memberName, style: const TextStyle(fontSize: 13, color: Color(0xFF111827)))),
+                            Expanded(child: Text(env.type.name.toUpperCase(), style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563)))),
+                            Expanded(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text('CHF ${BigDecimalConverter.fromRappen(env.amount).toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, color: Color(0xFF111827))),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () {
+                                      context.read<ServiceClosingBloc>().add(RemoveEnvelopeEvent(env.id));
+                                      Navigator.pop(dlgContext);
+                                    },
+                                    child: const Icon(Icons.delete_outline, size: 18, color: AppTheme.excludeRed),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(dlgContext),
+                    child: const Text("FECHAR"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

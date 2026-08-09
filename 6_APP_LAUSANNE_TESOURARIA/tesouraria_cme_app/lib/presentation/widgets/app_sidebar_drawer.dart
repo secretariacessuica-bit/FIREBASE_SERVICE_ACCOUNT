@@ -3,8 +3,13 @@ import '../../core/theme.dart';
 import '../../services/auth_api_service.dart';
 import '../pages/login_page.dart';
 import '../pages/dashboard_page.dart';
-import '../pages/placeholder_page.dart';
 import '../pages/wizard_page.dart';
+import '../pages/history_page.dart';
+import '../pages/members_page.dart';
+import '../pages/reports_page.dart';
+import '../pages/movements_page.dart';
+import '../pages/expenses_page.dart';
+import '../pages/settings_page.dart';
 
 class AppSidebarDrawer extends StatelessWidget {
   final String activeRoute;
@@ -99,12 +104,7 @@ class AppSidebarDrawer extends StatelessWidget {
                   onTap: () {
                     if (!permanent) Navigator.pop(context);
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (_) => const PlaceholderPage(
-                        title: 'Movimentos',
-                        route: 'movimentos',
-                        icon: Icons.receipt_long_rounded,
-                        description: 'Visualize entradas e saídas\nde cada culto.',
-                      ),
+                      builder: (_) => const MovementsPage(),
                     ));
                   },
                 ),
@@ -116,12 +116,7 @@ class AppSidebarDrawer extends StatelessWidget {
                   onTap: () {
                     if (!permanent) Navigator.pop(context);
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (_) => const PlaceholderPage(
-                        title: 'Contribuintes',
-                        route: 'contribuintes',
-                        icon: Icons.people_outline_rounded,
-                        description: 'Gerencie os membros\ncontribuintes da tesouraria.',
-                      ),
+                      builder: (_) => const MembersPage(),
                     ));
                   },
                 ),
@@ -133,12 +128,7 @@ class AppSidebarDrawer extends StatelessWidget {
                   onTap: () {
                     if (!permanent) Navigator.pop(context);
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (_) => const PlaceholderPage(
-                        title: 'Despesas',
-                        route: 'despesas',
-                        icon: Icons.account_balance_wallet_outlined,
-                        description: 'Registe e acompanhe\nas despesas da congregação.',
-                      ),
+                      builder: (_) => const ExpensesPage(),
                     ));
                   },
                 ),
@@ -150,12 +140,7 @@ class AppSidebarDrawer extends StatelessWidget {
                   onTap: () {
                     if (!permanent) Navigator.pop(context);
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (_) => const PlaceholderPage(
-                        title: 'Fechamentos',
-                        route: 'fechamentos',
-                        icon: Icons.point_of_sale_rounded,
-                        description: 'Visualizar histórico de fechamentos\ne relatórios passados.',
-                      ),
+                      builder: (_) => const HistoryPage(),
                     ));
                   },
                 ),
@@ -167,12 +152,7 @@ class AppSidebarDrawer extends StatelessWidget {
                   onTap: () {
                     if (!permanent) Navigator.pop(context);
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (_) => const PlaceholderPage(
-                        title: 'Relatórios',
-                        route: 'relatorios',
-                        icon: Icons.bar_chart_rounded,
-                        description: 'Relatórios consolidados\npor período e tipo de oferta.',
-                      ),
+                      builder: (_) => const ReportsPage(),
                     ));
                   },
                 ),
@@ -184,12 +164,7 @@ class AppSidebarDrawer extends StatelessWidget {
                   onTap: () {
                     if (!permanent) Navigator.pop(context);
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (_) => const PlaceholderPage(
-                        title: 'Configurações',
-                        route: 'configuracoes',
-                        icon: Icons.settings_outlined,
-                        description: 'Personalize o sistema\nde acordo com as necessidades.',
-                      ),
+                      builder: (_) => const SettingsPage(),
                     ));
                   },
                 ),
