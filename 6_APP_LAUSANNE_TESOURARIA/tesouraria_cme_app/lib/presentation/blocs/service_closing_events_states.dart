@@ -8,8 +8,9 @@ abstract class ServiceClosingEvent extends Equatable {
 
 class InitializeClosingContextEvent extends ServiceClosingEvent {
   final DateTime date;
+  final String mainTreasurer;
   final String coTreasurer;
-  InitializeClosingContextEvent(this.date, this.coTreasurer);
+  InitializeClosingContextEvent(this.date, this.mainTreasurer, this.coTreasurer);
 }
 
 class LoadMembersEvent extends ServiceClosingEvent {}
@@ -111,6 +112,7 @@ class ServiceClosingState extends Equatable {
 
   ServiceClosingState copyWith({
     DateTime? date,
+    String? mainTreasurer,
     String? coTreasurer,
     List<Envelope>? identifiedEntries,
     List<AnonymousEntry>? anonymousEntries,
@@ -120,7 +122,7 @@ class ServiceClosingState extends Equatable {
   }) {
     return ServiceClosingState(
       date: date ?? this.date,
-      mainTreasurer: mainTreasurer,
+      mainTreasurer: mainTreasurer ?? this.mainTreasurer,
       coTreasurer: coTreasurer ?? this.coTreasurer,
       identifiedEntries: identifiedEntries ?? this.identifiedEntries,
       anonymousEntries: anonymousEntries ?? this.anonymousEntries,

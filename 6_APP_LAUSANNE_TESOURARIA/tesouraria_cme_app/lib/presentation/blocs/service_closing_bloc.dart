@@ -8,7 +8,7 @@ class ServiceClosingBloc extends Bloc<ServiceClosingEvent, ServiceClosingState> 
 
   ServiceClosingBloc() : super(const ServiceClosingState()) {
     on<InitializeClosingContextEvent>((event, emit) {
-      emit(state.copyWith(date: event.date, coTreasurer: event.coTreasurer));
+      emit(state.copyWith(date: event.date, mainTreasurer: event.mainTreasurer, coTreasurer: event.coTreasurer));
     });
 
     on<RestoreDraftEvent>((event, emit) {
@@ -62,6 +62,7 @@ class ServiceClosingBloc extends Bloc<ServiceClosingEvent, ServiceClosingState> 
         final apiService = FechamentoApiService();
         await apiService.submitClosing(state);
         await _draftService.clearDraft();
+        await apiService.clearDraftOnServer();
       } catch (e) {
         emit(state.copyWith(error: e.toString()));
       }
@@ -74,6 +75,7 @@ class ServiceClosingBloc extends Bloc<ServiceClosingEvent, ServiceClosingState> 
     // Ignore se for um erro ocorrendo, não queremos sobrescrever o draft sem necessidade com apenas erro
     if (change.nextState.error == null) {
       _draftService.saveDraft(change.nextState);
+      FechamentoApiService().saveDraftToServer(change.nextState);
     }
   }
 }

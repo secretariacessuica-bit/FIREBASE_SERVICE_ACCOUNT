@@ -14,9 +14,30 @@ import java.util.stream.Collectors;
 public class ServiceClosingController {
 
     private final SubmitServiceClosingUseCase useCase;
+    private static Object activeDraft = null; // static to persist across controller requests
 
     public ServiceClosingController(SubmitServiceClosingUseCase useCase) {
         this.useCase = useCase;
+    }
+
+    @PostMapping("/draft")
+    public ResponseEntity<?> saveDraft(@RequestBody Object draft) {
+        activeDraft = draft;
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/draft")
+    public ResponseEntity<?> getDraft() {
+        if (activeDraft == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(activeDraft);
+    }
+
+    @DeleteMapping("/draft")
+    public ResponseEntity<?> clearDraft() {
+        activeDraft = null;
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping
@@ -42,6 +63,7 @@ public class ServiceClosingController {
             }
 
             ServiceClosing saved = useCase.execute(closing);
+            activeDraft = null; // Clear draft on successful submit
             return ResponseEntity.ok(saved);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

@@ -128,4 +128,58 @@ class FechamentoApiService {
       throw Exception('Erro ao deletar fechamento: ${response.statusCode}');
     }
   }
+
+  Future<void> saveDraftToServer(ServiceClosingState state) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+
+      await http.post(
+        Uri.parse('$_baseUrl/fechamento-culto/draft'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(state.toJson()),
+      );
+    } catch (_) {}
+  }
+
+  Future<ServiceClosingState?> getDraftFromServer() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/fechamento-culto/draft'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return ServiceClosingState.fromJson(data);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> clearDraftOnServer() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+
+      await http.delete(
+        Uri.parse('$_baseUrl/fechamento-culto/draft'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+    } catch (_) {}
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tesouraria_cme_app/presentation/blocs/history_bloc.dart';
 import 'package:tesouraria_cme_app/services/fechamento_api_service.dart';
 import 'package:tesouraria_cme_app/domain/service_closing_history_models.dart';
+import 'package:tesouraria_cme_app/presentation/blocs/service_closing_events_states.dart';
 
 class FakeFechamentoApiService implements FechamentoApiService {
   @override
@@ -41,6 +42,17 @@ class FakeFechamentoApiService implements FechamentoApiService {
   
   @override
   Future<void> submitClosing(dynamic state) async {}
+
+  @override
+  Future<void> saveDraftToServer(dynamic state) async {}
+
+  @override
+  Future<ServiceClosingState?> getDraftFromServer() async {
+    return null;
+  }
+
+  @override
+  Future<void> clearDraftOnServer() async {}
 }
 
 void main() {

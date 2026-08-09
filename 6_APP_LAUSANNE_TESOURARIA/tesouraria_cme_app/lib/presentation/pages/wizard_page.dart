@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -7,8 +8,10 @@ import '../../domain/envelope.dart';
 import '../../core/monetary_utils.dart';
 import '../../core/theme.dart';
 import '../../services/draft_service.dart';
+import '../../services/fechamento_api_service.dart';
 import '../widgets/app_sidebar_drawer.dart';
 import 'dashboard_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum ClosingPhase { setup, counting, review }
 
@@ -30,6 +33,7 @@ class _WizardPageState extends State<WizardPage> {
   String? _validationError;
   late final ServiceClosingBloc _bloc;
   final DraftService _draftService = DraftService();
+  Timer? _syncTimer;
 
   @override
   void initState() {
@@ -38,7 +42,74 @@ class _WizardPageState extends State<WizardPage> {
     _checkForDraft();
   }
 
+  Future<String> _getCurrentUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUser = prefs.getString('username') ?? "Tesoureiro";
+    return savedUser.substring(0, 1).toUpperCase() + savedUser.substring(1);
+  }
+
   Future<void> _checkForDraft() async {
+    // Check server draft first to sync multi-device
+    final serverDraft = await FechamentoApiService().getDraftFromServer();
+    
+    if (serverDraft != null && mounted) {
+      final currentUserName = await _getCurrentUserName();
+      
+      // Auto-assign as co-treasurer if this user is not the main treasurer
+      ServiceClosingState joinedDraft = serverDraft;
+      if (serverDraft.mainTreasurer != currentUserName) {
+        String newCoTreasurer = serverDraft.coTreasurer ?? "";
+        if (!newCoTreasurer.contains(currentUserName)) {
+          newCoTreasurer = newCoTreasurer.isEmpty 
+              ? currentUserName 
+              : "$newCoTreasurer, $currentUserName";
+        }
+        joinedDraft = serverDraft.copyWith(coTreasurer: newCoTreasurer);
+        _bloc.add(InitializeClosingContextEvent(
+          joinedDraft.date ?? DateTime.now(),
+          joinedDraft.mainTreasurer,
+          joinedDraft.coTreasurer ?? '',
+        ));
+      }
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dlgContext) => AlertDialog(
+          title: const Text("Contagem Coletiva"),
+          content: Text("Existe uma contagem ativa iniciada por ${joinedDraft.mainTreasurer} para o culto de ${joinedDraft.date != null ? DateFormat('dd/MM').format(joinedDraft.date!) : ''}. Deseja participar dela?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dlgContext);
+                _checkLocalDraftFallback();
+              },
+              child: const Text("IGNORAR"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _bloc.add(RestoreDraftEvent(joinedDraft));
+                setState(() {
+                  _selectedDate = joinedDraft.date ?? DateTime.now();
+                  _coTreasurerController.text = joinedDraft.coTreasurer ?? "";
+                  _phase = ClosingPhase.counting;
+                });
+                Navigator.pop(dlgContext);
+                _startSyncTimer();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+              child: const Text("PARTICIPAR"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    _checkLocalDraftFallback();
+  }
+
+  Future<void> _checkLocalDraftFallback() async {
     final draft = await _draftService.loadDraft();
     if (draft != null && mounted) {
       showDialog(
@@ -46,11 +117,11 @@ class _WizardPageState extends State<WizardPage> {
         barrierDismissible: false,
         builder: (dlgContext) => AlertDialog(
           title: const Text("Contagem em Andamento"),
-          content: const Text("Encontramos uma contagem que não foi finalizada. Deseja retomá-la de onde parou?"),
+          content: const Text("Encontramos uma contagem local que não foi finalizada. Deseja retomá-la de onde parou?"),
           actions: [
             TextButton(
               onPressed: () {
-                _draftService.clearDraft(); // Descarta o rascunho
+                _draftService.clearDraft();
                 Navigator.pop(dlgContext);
               },
               child: const Text("DESCARTAR", style: TextStyle(color: AppTheme.excludeRed)),
@@ -61,10 +132,12 @@ class _WizardPageState extends State<WizardPage> {
                 setState(() {
                   _selectedDate = draft.date ?? DateTime.now();
                   _coTreasurerController.text = draft.coTreasurer ?? "";
-                  _phase = ClosingPhase.counting; // Retoma direto para a contagem
+                  _phase = ClosingPhase.counting;
                 });
                 Navigator.pop(dlgContext);
+                _startSyncTimer();
               },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
               child: const Text("RETOMAR"),
             ),
           ],
@@ -73,8 +146,30 @@ class _WizardPageState extends State<WizardPage> {
     }
   }
 
+  void _startSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      final serverDraft = await FechamentoApiService().getDraftFromServer();
+      if (serverDraft != null && mounted && _phase == ClosingPhase.counting) {
+        // Only restore if the list or physical total changed on the server to prevent UI stutter
+        if (serverDraft.identifiedEntries.length != _bloc.state.identifiedEntries.length ||
+            serverDraft.anonymousEntries.length != _bloc.state.anonymousEntries.length ||
+            serverDraft.physicalTotal != _bloc.state.physicalTotal ||
+            serverDraft.coTreasurer != _bloc.state.coTreasurer ||
+            serverDraft.mainTreasurer != _bloc.state.mainTreasurer) {
+          _bloc.add(RestoreDraftEvent(serverDraft));
+          setState(() {
+            _selectedDate = serverDraft.date ?? DateTime.now();
+            _coTreasurerController.text = serverDraft.coTreasurer ?? "";
+          });
+        }
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _coTreasurerController.dispose();
     _memberNameController.dispose();
     _bloc.close();
@@ -125,7 +220,9 @@ class _WizardPageState extends State<WizardPage> {
               setState(() {
                 if (_phase == ClosingPhase.review) {
                   _phase = ClosingPhase.counting;
+                  _startSyncTimer();
                 } else if (_phase == ClosingPhase.counting) {
+                  _syncTimer?.cancel();
                   _phase = ClosingPhase.setup;
                 }
               });
@@ -145,6 +242,34 @@ class _WizardPageState extends State<WizardPage> {
             }
           },
         ),
+        bottomNavigationBar: _phase == ClosingPhase.counting
+            ? BottomNavigationBar(
+                currentIndex: _selectedType.index,
+                onTap: (index) {
+                  setState(() {
+                    _selectedType = EnvelopeType.values[index];
+                    _validationError = null;
+                  });
+                },
+                selectedItemColor: const Color(0xFF1E3A8A),
+                unselectedItemColor: const Color(0xFF9CA3AF),
+                showUnselectedLabels: true,
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_pin_circle_outlined),
+                    label: 'Dízimo',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.volunteer_activism_outlined),
+                    label: 'Oferta',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.star_outline_rounded),
+                    label: 'Voto',
+                  ),
+                ],
+              )
+            : null,
       ),
     );
   }
@@ -160,48 +285,70 @@ class _WizardPageState extends State<WizardPage> {
   Widget _buildSetupPhase(BuildContext context, ServiceClosingState state) {
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500),
+        constraints: const BoxConstraints(maxWidth: 400),
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text("Configurações Iniciais", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-            const SizedBox(height: 32),
-            ListTile(
-              title: const Text("Data do Culto"),
-              subtitle: Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
-              trailing: const Icon(Icons.calendar_today),
-              shape: RoundedRectangleBorder(side: BorderSide(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
-              onTap: () async {
-                DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: _selectedDate,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2030),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _selectedDate = picked;
-                  });
+            // Beautiful Date Info Box
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today, color: Color(0xFF4B5563), size: 20),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Data do Fechamento (Automática)",
+                        style: TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        DateFormat('dd/MM/yyyy').format(_selectedDate),
+                        style: const TextStyle(color: Color(0xFF111827), fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 60),
+
+            // Large Play-style start button in the middle
+            ElevatedButton(
+              onPressed: () async {
+                final currentUserName = await _getCurrentUserName();
+                if (context.mounted) {
+                  context.read<ServiceClosingBloc>().add(InitializeClosingContextEvent(_selectedDate, currentUserName, ''));
+                  setState(() => _phase = ClosingPhase.counting);
+                  _startSyncTimer();
                 }
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E3A8A),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.play_arrow_rounded, size: 36),
+                  SizedBox(height: 8),
+                  Text("INICIAR CONTAGEM", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _coTreasurerController,
-              decoration: const InputDecoration(labelText: "Co-Tesoureiro", border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 24),
-            const SizedBox(height: 48),
-            ElevatedButton(
-              onPressed: () {
-                context.read<ServiceClosingBloc>().add(InitializeClosingContextEvent(_selectedDate, _coTreasurerController.text));
-                setState(() => _phase = ClosingPhase.counting);
-              },
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 20)),
-              child: const Text("INICIAR CONTAGEM", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            )
+            const SizedBox(height: 60),
           ],
         ),
       ),
@@ -210,111 +357,91 @@ class _WizardPageState extends State<WizardPage> {
 
   Widget _buildCountingPhase(BuildContext context, ServiceClosingState state) {
     return Center(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SegmentedButton<EnvelopeType>(
-                  segments: EnvelopeType.values.map((type) {
-                    return ButtonSegment<EnvelopeType>(
-                      value: type,
-                      label: Text(type.name.toUpperCase(), style: const TextStyle(fontSize: 12)),
-                    );
-                  }).toList(),
-                  selected: {_selectedType},
-                  onSelectionChanged: (Set<EnvelopeType> newSelection) {
-                    setState(() => _selectedType = newSelection.first);
-                  },
-                  style: SegmentedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    selectedBackgroundColor: AppTheme.institutionalBlue.withValues(alpha: 0.1),
-                    selectedForegroundColor: AppTheme.institutionalBlue,
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
+      child: SingleChildScrollView(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
                   child: Text(
                     "Total: CHF ${BigDecimalConverter.fromRappen(state.identifiedTotal + state.anonymousTotal).toStringAsFixed(2)}", 
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827)),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_selectedType == EnvelopeType.dizimo)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Autocomplete<String>(
-                  optionsBuilder: (TextEditingValue textEditingValue) {
-                    if (textEditingValue.text.isEmpty) {
-                      return const Iterable<String>.empty();
-                    }
-                    final currentText = textEditingValue.text.toLowerCase();
-                    return state.knownMembers.where((String option) {
-                      return option.toLowerCase().contains(currentText);
-                    });
-                  },
-                  onSelected: (String selection) {
-                    _memberNameController.text = selection;
-                    if (_validationError != null) setState(() => _validationError = null);
-                  },
-                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                    // Sincroniza o controller interno do Autocomplete com o nosso
-                    controller.addListener(() {
-                      if (_memberNameController.text != controller.text) {
-                        _memberNameController.text = controller.text;
+              ),
+              if (_selectedType == EnvelopeType.dizimo)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Autocomplete<String>(
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      if (textEditingValue.text.isEmpty) {
+                        return const Iterable<String>.empty();
                       }
-                    });
-                    
-                    // Se a gente esvaziar o nosso externamente, esvazia o do autocomplete
-                    _memberNameController.addListener(() {
-                      if (_memberNameController.text.isEmpty && controller.text.isNotEmpty) {
-                        controller.clear();
-                      }
-                    });
+                      final currentText = textEditingValue.text.toLowerCase();
+                      return state.knownMembers.where((String option) {
+                        return option.toLowerCase().contains(currentText);
+                      });
+                    },
+                    onSelected: (String selection) {
+                      _memberNameController.text = selection;
+                      if (_validationError != null) setState(() => _validationError = null);
+                    },
+                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                      controller.addListener(() {
+                        if (_memberNameController.text != controller.text) {
+                          _memberNameController.text = controller.text;
+                        }
+                      });
+                      
+                      _memberNameController.addListener(() {
+                        if (_memberNameController.text.isEmpty && controller.text.isNotEmpty) {
+                          controller.clear();
+                        }
+                      });
 
-                    return TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      decoration: InputDecoration(
-                        labelText: "Contribuinte (Obrigatório)",
-                        prefixIcon: const Icon(Icons.person),
-                        errorText: _validationError,
-                        border: const OutlineInputBorder(),
-                      ),
-                      onChanged: (_) {
-                        if (_validationError != null) setState(() => _validationError = null);
-                      },
-                    );
-                  },
+                      return TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        decoration: InputDecoration(
+                          labelText: "Contribuinte (Opcional)",
+                          prefixIcon: const Icon(Icons.person),
+                          errorText: _validationError,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) {
+                          if (_validationError != null) setState(() => _validationError = null);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                decoration: BoxDecoration(color: const Color(0xFF111827), borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Valor", style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
+                    Text(
+                      "CHF ${_getDecimalAmountFromBuffer().toStringAsFixed(2)}", 
+                      style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                    ),
+                  ],
                 ),
               ),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-              decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text("Valor", style: TextStyle(color: Colors.grey, fontSize: 16)),
-                  Text("CHF ${_getDecimalAmountFromBuffer().toStringAsFixed(2)}", 
-                    style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: GridView.builder(
+              const SizedBox(height: 12),
+              GridView.builder(
+                shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  childAspectRatio: 1.6,
+                  childAspectRatio: 1.8,
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
                 ),
@@ -326,30 +453,38 @@ class _WizardPageState extends State<WizardPage> {
                   return ElevatedButton(
                     onPressed: () => _onKeyPress(key),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isBackspace ? AppTheme.excludeRed : Colors.grey.shade200,
-                      foregroundColor: isBackspace ? Colors.white : Colors.black87,
+                      backgroundColor: isBackspace ? AppTheme.excludeRed : const Color(0xFFF3F4F6),
+                      foregroundColor: isBackspace ? Colors.white : const Color(0xFF111827),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      elevation: 0,
                     ),
-                    child: Text(key, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    child: Text(key, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   );
                 },
               ),
-            ),
-            ElevatedButton(
-              onPressed: () => _registerEntry(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.mathGreen,
-                padding: const EdgeInsets.symmetric(vertical: 24),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => _registerEntry(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3A8A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
+                ),
+                child: const Text("REGISTRAR", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5)),
               ),
-              child: const Text("REGISTRAR", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => setState(() => _phase = ClosingPhase.review),
-              child: const Text("Finalizar contagem", style: TextStyle(color: Colors.grey, fontSize: 16)),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  _syncTimer?.cancel();
+                  setState(() => _phase = ClosingPhase.review);
+                },
+                child: const Text("Ir para revisão →", style: TextStyle(color: Color(0xFF4B5563), fontSize: 13, fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -364,11 +499,6 @@ class _WizardPageState extends State<WizardPage> {
       return;
     }
 
-    if (_selectedType == EnvelopeType.dizimo && memberName.isEmpty) {
-      setState(() => _validationError = "Nome obrigatório para dízimo.");
-      return;
-    }
-
     if (memberName.isNotEmpty) {
       final entryId = DateTime.now().microsecondsSinceEpoch.toString();
       final envelope = Envelope(id: entryId, memberName: memberName, type: _selectedType, amount: rappen);
@@ -377,11 +507,12 @@ class _WizardPageState extends State<WizardPage> {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text("Lançamento identificado salvo!"),
-        duration: const Duration(seconds: 3),
-        action: SnackBarAction(label: "DESFAZER", onPressed: () => context.read<ServiceClosingBloc>().add(UndoAddedEntryEvent(entryId))),
+        duration: const Duration(milliseconds: 1200),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(label: "DESFAZER", textColor: Colors.yellow, onPressed: () => context.read<ServiceClosingBloc>().add(UndoAddedEntryEvent(entryId))),
       ));
     } else {
-      // Oferta anônima
+      // Anonymous
       final entry = AnonymousEntry(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         type: _selectedType,
@@ -391,9 +522,10 @@ class _WizardPageState extends State<WizardPage> {
       
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text("Oferta anônima somada ao caixa!"),
-        duration: const Duration(seconds: 3),
-        action: SnackBarAction(label: "DESFAZER", onPressed: () => context.read<ServiceClosingBloc>().add(UndoAnonymousOfferingEvent(entry.id))),
+        content: Text("${_selectedType == EnvelopeType.dizimo ? 'Dízimo' : _selectedType == EnvelopeType.voto ? 'Voto' : 'Oferta'} anônima somada!"),
+        duration: const Duration(milliseconds: 1200),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(label: "DESFAZER", textColor: Colors.yellow, onPressed: () => context.read<ServiceClosingBloc>().add(UndoAnonymousOfferingEvent(entry.id))),
       ));
     }
 
@@ -410,7 +542,7 @@ class _WizardPageState extends State<WizardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text("Revisão e Matemática do Caixa", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text("Revisão e Matemática do Caixa", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
           const SizedBox(height: 16),
           Expanded(
             child: Row(
@@ -421,26 +553,26 @@ class _WizardPageState extends State<WizardPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text("Lançamentos Identificados", style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text("Lançamentos Identificados", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF4B5563))),
                       const SizedBox(height: 8),
                       Expanded(
                         child: Container(
-                          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                          decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE5E7EB)), borderRadius: BorderRadius.circular(8), color: Colors.white),
                           child: state.identifiedEntries.isEmpty
-                            ? const Center(child: Text("Nenhum lançamento identificado."))
+                            ? const Center(child: Text("Nenhum lançamento identificado.", style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)))
                             : ListView.builder(
                                 itemCount: state.identifiedEntries.length,
                                 itemBuilder: (context, index) {
                                   final env = state.identifiedEntries[state.identifiedEntries.length - 1 - index];
                                   return ListTile(
-                                    leading: const Icon(Icons.mail),
-                                    title: Text(env.memberName),
-                                    subtitle: Text(env.type.name.toUpperCase()),
+                                    leading: const Icon(Icons.mail_outline_rounded, color: Color(0xFF1E3A8A)),
+                                    title: Text(env.memberName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                    subtitle: Text(env.type.name.toUpperCase(), style: const TextStyle(fontSize: 10)),
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text('CHF ${BigDecimalConverter.fromRappen(env.amount).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        IconButton(icon: const Icon(Icons.delete, color: AppTheme.excludeRed), onPressed: () => context.read<ServiceClosingBloc>().add(RemoveEnvelopeEvent(env.id))),
+                                        Text('CHF ${BigDecimalConverter.fromRappen(env.amount).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                        IconButton(icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.excludeRed), onPressed: () => context.read<ServiceClosingBloc>().add(RemoveEnvelopeEvent(env.id))),
                                       ],
                                     ),
                                   );
@@ -459,40 +591,71 @@ class _WizardPageState extends State<WizardPage> {
                     children: [
                       Container(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: AppTheme.mathGreen.withValues(alpha: 0.1), border: Border.all(color: AppTheme.mathGreen), borderRadius: BorderRadius.circular(8)),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB), 
+                          border: Border.all(color: const Color(0xFFE5E7EB)), 
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         child: Column(
                           children: [
                             _buildCategoryReview(context, state, EnvelopeType.dizimo, "DÍZIMO"),
                             _buildCategoryReview(context, state, EnvelopeType.oferta, "OFERTA"),
                             _buildCategoryReview(context, state, EnvelopeType.voto, "VOTO"),
-                            const Divider(thickness: 2),
+                            const Divider(thickness: 1, color: Color(0xFFE5E7EB)),
                             _mathRow("TOTAL REGISTRADO", state.registeredTotal, isBold: true),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             _mathRow("Total físico contado", state.physicalTotal),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             ElevatedButton.icon(
                               onPressed: () => _showPhysicalTotalDialog(context, state),
-                              icon: const Icon(Icons.calculate),
-                              label: const Text("Informar Total Físico da Mesa"),
+                              icon: const Icon(Icons.calculate_outlined, size: 16),
+                              label: const Text("Informar Total Físico"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFF3F4F6),
+                                foregroundColor: const Color(0xFF1E3A8A),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              ),
                             ),
-                            const SizedBox(height: 16),
-                            _mathRow("DIFERENÇA", state.difference, isBold: true, color: state.difference == 0 ? Colors.black87 : AppTheme.excludeRed),
+                            const SizedBox(height: 12),
+                            _mathRow("DIFERENÇA", state.difference, isBold: true, color: state.difference == 0 ? Colors.green.shade700 : AppTheme.excludeRed),
                             if (state.difference == 0 && state.physicalTotal > 0)
-                              const Align(alignment: Alignment.centerRight, child: Text("✓", style: TextStyle(color: Colors.green, fontSize: 24, fontWeight: FontWeight.bold))),
-                            if (state.error != null) Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(state.error!, style: const TextStyle(color: AppTheme.excludeRed, fontWeight: FontWeight.bold))),
-                            if (state.difference != 0) const Padding(padding: EdgeInsets.only(top: 8.0), child: Text("A diferença deve ser zero para fechar o caixa.", style: TextStyle(color: AppTheme.excludeRed, fontWeight: FontWeight.bold))),
+                              const Align(alignment: Alignment.centerRight, child: Icon(Icons.check_circle, color: Colors.green, size: 24)),
+                            if (state.error != null) Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(state.error!, style: const TextStyle(color: AppTheme.excludeRed, fontWeight: FontWeight.bold, fontSize: 12))),
+                            if (state.difference != 0) const Padding(padding: EdgeInsets.only(top: 6.0), child: Text("A diferença deve ser zero para fechar.", style: TextStyle(color: AppTheme.excludeRed, fontWeight: FontWeight.bold, fontSize: 11))),
                           ],
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Co-Treasurer Input at Final Review
+                      TextField(
+                        controller: _coTreasurerController,
+                        decoration: const InputDecoration(
+                          labelText: "Co-Tesoureiro",
+                          border: OutlineInputBorder(),
+                          fillColor: Colors.white,
+                          filled: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
+                        style: const TextStyle(fontSize: 13),
                       ),
                       const Spacer(),
                       ElevatedButton(
                         onPressed: (state.error == null && state.difference == 0 && state.physicalTotal > 0) ? () {
+                          context.read<ServiceClosingBloc>().add(
+                            InitializeClosingContextEvent(state.date ?? DateTime.now(), state.mainTreasurer, _coTreasurerController.text)
+                          );
                           context.read<ServiceClosingBloc>().add(SubmitClosingEvent());
-                          // Na vida real, haveria um BlocListener escutando o sucesso.
                           Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const DashboardScreen()));
                         } : null,
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 24)),
-                        child: const Text("ENVIAR FECHAMENTO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E3A8A), 
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                        child: const Text("ENVIAR FECHAMENTO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                       )
                     ],
                   ),
@@ -561,7 +724,12 @@ class _WizardPageState extends State<WizardPage> {
                         String key = keys[index];
                         return ElevatedButton(
                           onPressed: () => dlgKeyPress(key),
-                          style: ElevatedButton.styleFrom(backgroundColor: key == '⌫' ? AppTheme.excludeRed : Colors.grey.shade200, foregroundColor: key == '⌫' ? Colors.white : Colors.black87, padding: EdgeInsets.zero),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: key == '⌫' ? AppTheme.excludeRed : Colors.grey.shade200, 
+                            foregroundColor: key == '⌫' ? Colors.white : Colors.black87, 
+                            padding: EdgeInsets.zero,
+                            elevation: 0,
+                          ),
                           child: Text(key, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         );
                       },
@@ -576,6 +744,7 @@ class _WizardPageState extends State<WizardPage> {
                     context.read<ServiceClosingBloc>().add(SetPhysicalTotalEvent(int.tryParse(localBuffer) ?? 0));
                     Navigator.pop(dlgContext);
                   },
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
                   child: const Text("SALVAR TOTAL"),
                 ),
               ],
@@ -592,14 +761,15 @@ class _WizardPageState extends State<WizardPage> {
     if (ident == 0 && anon == 0) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.only(bottom: 12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF111827))),
+          const SizedBox(height: 2),
           _mathRow("Identificado", ident),
-          _mathRow("Não identificado", anon),
-          const Divider(),
+          _mathRow("Anônimo", anon),
+          const Divider(color: Color(0xFFE5E7EB)),
           _mathRow("Subtotal", ident + anon, isBold: true),
         ],
       ),
@@ -609,12 +779,12 @@ class _WizardPageState extends State<WizardPage> {
   Widget _mathRow(String label, int amountRappen, {bool isBold = false, Color color = Colors.black87}) {
     double amount = BigDecimalConverter.fromRappen(amountRappen);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: 15, color: color)),
-          Text("CHF ${amount.toStringAsFixed(2)}", style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: 15, color: color)),
+          Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: 13, color: color)),
+          Text("CHF ${amount.toStringAsFixed(2)}", style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: 13, color: color)),
         ],
       ),
     );
