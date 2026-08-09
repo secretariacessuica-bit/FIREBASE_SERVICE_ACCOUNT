@@ -47,12 +47,10 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // Premium gradient background
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          image: DecorationImage(
+            image: AssetImage('assets/images/login_bg.png'),
+            fit: BoxFit.cover,
           ),
         ),
         child: Center(
@@ -63,8 +61,9 @@ class _LoginPageState extends State<LoginPage> {
               child: Container(
                 padding: const EdgeInsets.all(40.0),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.black.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.2),
@@ -95,15 +94,15 @@ class _LoginPageState extends State<LoginPage> {
                       "CME Lausanne",
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF1F2937),
+                        color: Colors.white,
                         letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       "Acesso da Tesouraria",
                       style: TextStyle(
-                        color: Color(0xFF6B7280),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
@@ -112,16 +111,20 @@ class _LoginPageState extends State<LoginPage> {
                     // Inputs
                     TextField(
                       controller: _usernameController,
-                      style: const TextStyle(fontSize: 16),
+                      style: const TextStyle(fontSize: 16, color: Colors.white),
                       decoration: InputDecoration(
                         labelText: 'Usuário',
-                        labelStyle: const TextStyle(color: Color(0xFF6B7280)),
-                        prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF9CA3AF)),
+                        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                        prefixIcon: Icon(Icons.person_outline, color: Colors.white.withValues(alpha: 0.6)),
                         filled: true,
-                        fillColor: const Color(0xFFF3F4F6),
+                        fillColor: Colors.white.withValues(alpha: 0.1),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -134,16 +137,20 @@ class _LoginPageState extends State<LoginPage> {
                     TextField(
                       controller: _passwordController,
                       obscureText: true,
-                      style: const TextStyle(fontSize: 16),
+                      style: const TextStyle(fontSize: 16, color: Colors.white),
                       decoration: InputDecoration(
                         labelText: 'Senha',
-                        labelStyle: const TextStyle(color: Color(0xFF6B7280)),
-                        prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF9CA3AF)),
+                        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                        prefixIcon: Icon(Icons.lock_outline, color: Colors.white.withValues(alpha: 0.6)),
                         filled: true,
-                        fillColor: const Color(0xFFF3F4F6),
+                        fillColor: Colors.white.withValues(alpha: 0.1),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -169,14 +176,16 @@ class _LoginPageState extends State<LoginPage> {
                                 });
                               },
                               activeColor: AppTheme.primaryGreen,
+                              checkColor: Colors.white,
+                              side: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ),
-                            const Text(
+                            Text(
                               "Lembrar-me",
                               style: TextStyle(
-                                color: Color(0xFF4B5563),
+                                color: Colors.white.withValues(alpha: 0.9),
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),

@@ -16,15 +16,33 @@ class ServiceClosingSummary {
   });
 
   factory ServiceClosingSummary.fromJson(Map<String, dynamic> json) {
+    String parseDate(dynamic val) {
+      if (val == null) return '-';
+      if (val is String) {
+        // e.g. "2026-08-09"
+        final parts = val.split('-');
+        if (parts.length == 3) {
+          return '${parts[2].padLeft(2, '0')}/${parts[1].padLeft(2, '0')}/${parts[0]}';
+        }
+        return val;
+      }
+      if (val is List && val.length == 3) {
+        // e.g. [2026, 8, 9]
+        return '${val[2].toString().padLeft(2, '0')}/${val[1].toString().padLeft(2, '0')}/${val[0]}';
+      }
+      return '-';
+    }
+
     return ServiceClosingSummary(
       id: json['id'],
-      serviceDate: json['serviceDate'] ?? '-',
+      serviceDate: parseDate(json['serviceDate']),
       mainTreasurer: json['mainTreasurer'] ?? '-',
       coTreasurer: json['coTreasurer'] ?? '-',
       physicalTotal: (json['physicalTotal'] ?? 0).toDouble(),
     );
   }
 }
+
 
 class ServiceClosingDetail {
   final int id;
@@ -76,9 +94,24 @@ class ServiceClosingDetail {
       );
     }).toList().cast<Envelope>();
 
+    String parseDate(dynamic val) {
+      if (val == null) return '-';
+      if (val is String) {
+        final parts = val.split('-');
+        if (parts.length == 3) {
+          return '${parts[2].padLeft(2, '0')}/${parts[1].padLeft(2, '0')}/${parts[0]}';
+        }
+        return val;
+      }
+      if (val is List && val.length == 3) {
+        return '${val[2].toString().padLeft(2, '0')}/${val[1].toString().padLeft(2, '0')}/${val[0]}';
+      }
+      return '-';
+    }
+
     return ServiceClosingDetail(
       id: json['id'],
-      serviceDate: json['serviceDate'] ?? '-',
+      serviceDate: parseDate(json['serviceDate']),
       mainTreasurer: json['mainTreasurer'] ?? '-',
       coTreasurer: json['coTreasurer'] ?? '-',
       identifiedEntries: entries,

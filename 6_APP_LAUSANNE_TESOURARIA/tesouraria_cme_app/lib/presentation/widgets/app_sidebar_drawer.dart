@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../services/auth_api_service.dart';
 import '../pages/login_page.dart';
-import '../pages/wizard_page.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/placeholder_page.dart';
 
