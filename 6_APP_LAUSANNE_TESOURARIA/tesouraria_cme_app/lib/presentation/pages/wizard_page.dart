@@ -209,39 +209,69 @@ class _WizardPageState extends State<WizardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+
+    Widget bodyContent = BlocBuilder<ServiceClosingBloc, ServiceClosingState>(
+      builder: (context, state) {
+        switch (_phase) {
+          case ClosingPhase.setup:
+            return _buildSetupPhase(context, state, isDesktop);
+          case ClosingPhase.counting:
+            return _buildCountingPhase(context, state);
+          case ClosingPhase.review:
+            return _buildReviewPhase(context, state);
+        }
+      },
+    );
+
+    // If we are on desktop and in the setup phase, show sidebar side-by-side
+    if (isDesktop && _phase == ClosingPhase.setup) {
+      bodyContent = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSidebarDrawer(activeRoute: 'fechamento', permanent: true),
+          Expanded(child: bodyContent),
+        ],
+      );
+    }
+
     return BlocProvider.value(
       value: _bloc,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(_getAppBarTitle()),
-          leading: _phase != ClosingPhase.setup ? IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              setState(() {
-                if (_phase == ClosingPhase.review) {
-                  _phase = ClosingPhase.counting;
-                  _startSyncTimer();
-                } else if (_phase == ClosingPhase.counting) {
-                  _syncTimer?.cancel();
-                  _phase = ClosingPhase.setup;
-                }
-              });
-            },
-          ) : null,
-        ),
-        drawer: _phase == ClosingPhase.setup ? const AppSidebarDrawer(activeRoute: 'fechamento') : null,
-        body: BlocBuilder<ServiceClosingBloc, ServiceClosingState>(
-          builder: (context, state) {
-            switch (_phase) {
-              case ClosingPhase.setup:
-                return _buildSetupPhase(context, state);
-              case ClosingPhase.counting:
-                return _buildCountingPhase(context, state);
-              case ClosingPhase.review:
-                return _buildReviewPhase(context, state);
-            }
-          },
-        ),
+        backgroundColor: const Color(0xFFFAFAFA),
+        appBar: (isDesktop && _phase == ClosingPhase.setup)
+            ? null // Hide AppBar on desktop setup phase to match dashboard
+            : AppBar(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF0F172A),
+                elevation: 0,
+                shape: const Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+                title: Text(
+                  _getAppBarTitle(),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
+                ),
+                leading: _phase != ClosingPhase.setup
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () {
+                          setState(() {
+                            if (_phase == ClosingPhase.review) {
+                              _phase = ClosingPhase.counting;
+                              _startSyncTimer();
+                            } else if (_phase == ClosingPhase.counting) {
+                              _syncTimer?.cancel();
+                              _phase = ClosingPhase.setup;
+                            }
+                          });
+                        },
+                      )
+                    : null,
+              ),
+        drawer: (isDesktop || _phase != ClosingPhase.setup)
+            ? null
+            : const AppSidebarDrawer(activeRoute: 'fechamento'),
+        body: bodyContent,
         bottomNavigationBar: _phase == ClosingPhase.counting
             ? BottomNavigationBar(
                 currentIndex: _selectedType.index,
@@ -276,80 +306,123 @@ class _WizardPageState extends State<WizardPage> {
 
   String _getAppBarTitle() {
     switch (_phase) {
-      case ClosingPhase.setup: return "Configurar Sessão";
+      case ClosingPhase.setup: return "Novo fechamento";
       case ClosingPhase.counting: return "PDV - Modo Contagem";
       case ClosingPhase.review: return "Revisão e Fechamento";
     }
   }
 
-  Widget _buildSetupPhase(BuildContext context, ServiceClosingState state) {
-    return Center(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Beautiful Date Info Box
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.calendar_today, color: Color(0xFF4B5563), size: 20),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Data do Fechamento (Automática)",
-                        style: TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        DateFormat('dd/MM/yyyy').format(_selectedDate),
-                        style: const TextStyle(color: Color(0xFF111827), fontSize: 15, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 60),
+  Widget _buildSetupPhase(BuildContext context, ServiceClosingState state, bool isDesktop) {
+    // Format date: e.g. "Domingo, 09 de agosto de 2026"
+    String formattedDate = DateFormat("EEEE, dd 'de' MMMM 'de' yyyy", 'pt_BR').format(_selectedDate);
+    if (formattedDate.isNotEmpty) {
+      formattedDate = formattedDate.substring(0, 1).toUpperCase() + formattedDate.substring(1);
+    }
 
-            // Large Play-style start button in the middle
-            ElevatedButton(
-              onPressed: () async {
-                final currentUserName = await _getCurrentUserName();
-                if (context.mounted) {
-                  context.read<ServiceClosingBloc>().add(InitializeClosingContextEvent(_selectedDate, currentUserName, ''));
-                  setState(() => _phase = ClosingPhase.counting);
-                  _startSyncTimer();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A8A),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-              child: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.play_arrow_rounded, size: 36),
-                  SizedBox(height: 8),
-                  Text("INICIAR CONTAGEM", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                ],
-              ),
+    return Container(
+      color: const Color(0xFFFAFAFA),
+      width: double.infinity,
+      height: double.infinity,
+      child: Center(
+        child: SingleChildScrollView(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 600),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // CONTAGEM DE CULTO
+                Text(
+                  "CONTAGEM DE CULTO",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: isDesktop ? 13 : 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF64748B),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Date text
+                Text(
+                  formattedDate,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: isDesktop ? 36 : 26,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF0F172A),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                
+                // Space between date and button
+                SizedBox(height: isDesktop ? 100 : 80),
+                
+                // INICIAR button
+                Container(
+                  width: isDesktop ? 360 : double.infinity,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF0A2E6B), // dark navy
+                        Color(0xFF0C53D4), // royal blue
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () async {
+                        final currentUserName = await _getCurrentUserName();
+                        if (context.mounted) {
+                          context.read<ServiceClosingBloc>().add(
+                            InitializeClosingContextEvent(_selectedDate, currentUserName, '')
+                          );
+                          setState(() => _phase = ClosingPhase.counting);
+                          _startSyncTimer();
+                        }
+                      },
+                      child: const Center(
+                        child: Text(
+                          "INICIAR",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Space between button and text
+                const SizedBox(height: 48),
+                
+                // Explanatory text below
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 380),
+                  child: const Text(
+                    "Ao iniciar, você poderá registrar os valores de dízimos, ofertas e votos e finalizar o fechamento.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF64748B),
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 60),
-          ],
+          ),
         ),
       ),
     );
