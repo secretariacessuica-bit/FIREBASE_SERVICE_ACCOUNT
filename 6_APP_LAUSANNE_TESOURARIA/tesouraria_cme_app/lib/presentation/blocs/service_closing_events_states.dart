@@ -72,7 +72,22 @@ class SetPhysicalTotalEvent extends ServiceClosingEvent {
   SetPhysicalTotalEvent(this.physicalTotal);
 }
 
-class SubmitClosingEvent extends ServiceClosingEvent {}
+class SubmitClosingEvent extends ServiceClosingEvent {
+  final String? coTreasurer;
+  SubmitClosingEvent({this.coTreasurer});
+
+  @override
+  List<Object?> get props => [coTreasurer];
+}
+
+class AddLocalMemberEvent extends ServiceClosingEvent {
+  final String name;
+  AddLocalMemberEvent(this.name);
+
+  @override
+  List<Object?> get props => [name];
+}
+
 class UndoAddedEntryEvent extends ServiceClosingEvent {
   final String entryId;
   UndoAddedEntryEvent(this.entryId);
@@ -90,6 +105,8 @@ class ServiceClosingState extends Equatable {
   final int physicalTotal;
   final String? error;
   final List<String> knownMembers;
+  final bool isSubmitting;
+  final bool isSuccess;
 
   int get identifiedTotal => identifiedEntries.fold(0, (sum, item) => sum + item.amount);
   int get anonymousTotal => anonymousEntries.fold(0, (sum, item) => sum + item.amount);
@@ -108,6 +125,8 @@ class ServiceClosingState extends Equatable {
     this.physicalTotal = 0,
     this.error,
     this.knownMembers = const [],
+    this.isSubmitting = false,
+    this.isSuccess = false,
   });
 
   ServiceClosingState copyWith({
@@ -119,6 +138,8 @@ class ServiceClosingState extends Equatable {
     int? physicalTotal,
     String? error,
     List<String>? knownMembers,
+    bool? isSubmitting,
+    bool? isSuccess,
   }) {
     return ServiceClosingState(
       date: date ?? this.date,
@@ -129,13 +150,16 @@ class ServiceClosingState extends Equatable {
       physicalTotal: physicalTotal ?? this.physicalTotal,
       error: error,
       knownMembers: knownMembers ?? this.knownMembers,
+      isSubmitting: isSubmitting ?? this.isSubmitting,
+      isSuccess: isSuccess ?? this.isSuccess,
     );
   }
 
   @override
   List<Object?> get props => [
     date, mainTreasurer, coTreasurer, 
-    identifiedEntries, anonymousEntries, physicalTotal, error, knownMembers
+    identifiedEntries, anonymousEntries, physicalTotal, error, knownMembers,
+    isSubmitting, isSuccess
   ];
 
   Map<String, dynamic> toJson() {
@@ -148,6 +172,8 @@ class ServiceClosingState extends Equatable {
       'physicalTotal': physicalTotal,
       'error': error,
       'knownMembers': knownMembers,
+      'isSubmitting': isSubmitting,
+      'isSuccess': isSuccess,
     };
   }
 
@@ -170,6 +196,8 @@ class ServiceClosingState extends Equatable {
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      isSubmitting: json['isSubmitting'] ?? false,
+      isSuccess: json['isSuccess'] ?? false,
     );
   }
 }

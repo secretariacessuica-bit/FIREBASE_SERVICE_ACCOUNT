@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../blocs/service_closing_bloc.dart';
@@ -25,6 +26,13 @@ class WizardPage extends StatefulWidget {
 class _WizardPageState extends State<WizardPage> {
   final TextEditingController _coTreasurerController = TextEditingController();
   final TextEditingController _memberNameController = TextEditingController();
+  final FocusNode _keyboardFocusNode = FocusNode();
+
+  bool _isTextFieldFocused() {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    return primaryFocus.context?.widget is EditableText;
+  }
   
   ClosingPhase _phase = ClosingPhase.setup;
   EnvelopeType _selectedType = EnvelopeType.dizimo;
@@ -171,6 +179,7 @@ class _WizardPageState extends State<WizardPage> {
     _syncTimer?.cancel();
     _coTreasurerController.dispose();
     _memberNameController.dispose();
+    _keyboardFocusNode.dispose();
     _bloc.close();
     super.dispose();
   }
@@ -404,23 +413,75 @@ class _WizardPageState extends State<WizardPage> {
   Widget _buildCountingPhase(BuildContext context, ServiceClosingState state) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 800;
+
+    if (!_keyboardFocusNode.hasFocus && !_isTextFieldFocused()) {
+      _keyboardFocusNode.requestFocus();
+    }
     
-    return Container(
-      color: const Color(0xFFFAFAFA),
-      width: double.infinity,
-      height: double.infinity,
-      child: isDesktop
-          ? SingleChildScrollView(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1000),
-                  child: _buildDesktopCountingLayout(context, state),
+    return Focus(
+      focusNode: _keyboardFocusNode,
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (_isTextFieldFocused()) return KeyEventResult.ignored;
+        if (event is KeyDownEvent) {
+          final logicalKey = event.logicalKey;
+          if (logicalKey == LogicalKeyboardKey.digit0 || logicalKey == LogicalKeyboardKey.numpad0) {
+            _onKeyPress('0');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.digit1 || logicalKey == LogicalKeyboardKey.numpad1) {
+            _onKeyPress('1');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.digit2 || logicalKey == LogicalKeyboardKey.numpad2) {
+            _onKeyPress('2');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.digit3 || logicalKey == LogicalKeyboardKey.numpad3) {
+            _onKeyPress('3');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.digit4 || logicalKey == LogicalKeyboardKey.numpad4) {
+            _onKeyPress('4');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.digit5 || logicalKey == LogicalKeyboardKey.numpad5) {
+            _onKeyPress('5');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.digit6 || logicalKey == LogicalKeyboardKey.numpad6) {
+            _onKeyPress('6');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.digit7 || logicalKey == LogicalKeyboardKey.numpad7) {
+            _onKeyPress('7');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.digit8 || logicalKey == LogicalKeyboardKey.numpad8) {
+            _onKeyPress('8');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.digit9 || logicalKey == LogicalKeyboardKey.numpad9) {
+            _onKeyPress('9');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.backspace || logicalKey == LogicalKeyboardKey.delete) {
+            _onKeyPress('⌫');
+            return KeyEventResult.handled;
+          } else if (logicalKey == LogicalKeyboardKey.enter) {
+            _registerEntry(context);
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Container(
+        color: const Color(0xFFFAFAFA),
+        width: double.infinity,
+        height: double.infinity,
+        child: isDesktop
+            ? SingleChildScrollView(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1000),
+                    child: _buildDesktopCountingLayout(context, state),
+                  ),
                 ),
+              )
+            : SingleChildScrollView(
+                child: _buildMobileCountingLayout(context, state),
               ),
-            )
-          : SingleChildScrollView(
-              child: _buildMobileCountingLayout(context, state),
-            ),
+      ),
     );
   }
 
@@ -1178,55 +1239,102 @@ class _WizardPageState extends State<WizardPage> {
 
             double amount = BigDecimalConverter.fromRappen(int.tryParse(localBuffer) ?? 0);
 
-            return AlertDialog(
-              title: const Text("Total Físico (Dinheiro na mesa)"),
-              content: SizedBox(
-                width: 300,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
-                      child: Center(
-                        child: Text("CHF ${amount.toStringAsFixed(2)}", style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 1.5, mainAxisSpacing: 8, crossAxisSpacing: 8),
-                      itemCount: 12,
-                      itemBuilder: (context, index) {
-                        final keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', '⌫'];
-                        String key = keys[index];
-                        return ElevatedButton(
-                          onPressed: () => dlgKeyPress(key),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: key == '⌫' ? AppTheme.excludeRed : Colors.grey.shade200, 
-                            foregroundColor: key == '⌫' ? Colors.white : Colors.black87, 
-                            padding: EdgeInsets.zero,
-                            elevation: 0,
-                          ),
-                          child: Text(key, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(dlgContext), child: const Text("CANCELAR")),
-                ElevatedButton(
-                  onPressed: () {
+            return Focus(
+              autofocus: true,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent) {
+                  final logicalKey = event.logicalKey;
+                  if (logicalKey == LogicalKeyboardKey.digit0 || logicalKey == LogicalKeyboardKey.numpad0) {
+                    dlgKeyPress('0');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.digit1 || logicalKey == LogicalKeyboardKey.numpad1) {
+                    dlgKeyPress('1');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.digit2 || logicalKey == LogicalKeyboardKey.numpad2) {
+                    dlgKeyPress('2');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.digit3 || logicalKey == LogicalKeyboardKey.numpad3) {
+                    dlgKeyPress('3');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.digit4 || logicalKey == LogicalKeyboardKey.numpad4) {
+                    dlgKeyPress('4');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.digit5 || logicalKey == LogicalKeyboardKey.numpad5) {
+                    dlgKeyPress('5');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.digit6 || logicalKey == LogicalKeyboardKey.numpad6) {
+                    dlgKeyPress('6');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.digit7 || logicalKey == LogicalKeyboardKey.numpad7) {
+                    dlgKeyPress('7');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.digit8 || logicalKey == LogicalKeyboardKey.numpad8) {
+                    dlgKeyPress('8');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.digit9 || logicalKey == LogicalKeyboardKey.numpad9) {
+                    dlgKeyPress('9');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.backspace || logicalKey == LogicalKeyboardKey.delete) {
+                    dlgKeyPress('⌫');
+                    return KeyEventResult.handled;
+                  } else if (logicalKey == LogicalKeyboardKey.enter) {
                     context.read<ServiceClosingBloc>().add(SetPhysicalTotalEvent(int.tryParse(localBuffer) ?? 0));
                     Navigator.pop(dlgContext);
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                  child: const Text("SALVAR TOTAL"),
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: AlertDialog(
+                title: const Text("Total Físico (Dinheiro na mesa)"),
+                content: SizedBox(
+                  width: 300,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
+                        child: Center(
+                          child: Text("CHF ${amount.toStringAsFixed(2)}", style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 1.5, mainAxisSpacing: 8, crossAxisSpacing: 8),
+                        itemCount: 12,
+                        itemBuilder: (context, index) {
+                          final keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', '⌫'];
+                          String key = keys[index];
+                          return ElevatedButton(
+                            onPressed: () => dlgKeyPress(key),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: key == '⌫' ? AppTheme.excludeRed : Colors.grey.shade200, 
+                              foregroundColor: key == '⌫' ? Colors.white : Colors.black87, 
+                              padding: EdgeInsets.zero,
+                              elevation: 0,
+                            ),
+                            child: Text(key, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(dlgContext), child: const Text("CANCELAR")),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<ServiceClosingBloc>().add(SetPhysicalTotalEvent(int.tryParse(localBuffer) ?? 0));
+                      Navigator.pop(dlgContext);
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+                    child: const Text("SALVAR TOTAL"),
+                  ),
+                ],
+              ),
             );
           }
         );

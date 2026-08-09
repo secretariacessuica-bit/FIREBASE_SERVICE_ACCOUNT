@@ -58,14 +58,32 @@ class ServiceClosingBloc extends Bloc<ServiceClosingEvent, ServiceClosingState> 
     });
 
     on<SubmitClosingEvent>((event, emit) async {
+      final updatedState = state.copyWith(
+        isSubmitting: true,
+        error: null,
+        isSuccess: false,
+        coTreasurer: event.coTreasurer ?? state.coTreasurer,
+      );
+      emit(updatedState);
+
       try {
         final apiService = FechamentoApiService();
-        await apiService.submitClosing(state);
+        await apiService.submitClosing(updatedState);
         await _draftService.clearDraft();
         await apiService.clearDraftOnServer();
+        emit(updatedState.copyWith(isSubmitting: false, isSuccess: true));
       } catch (e) {
-        emit(state.copyWith(error: e.toString()));
+        emit(updatedState.copyWith(isSubmitting: false, error: e.toString()));
       }
+    });
+
+    on<AddLocalMemberEvent>((event, emit) {
+      final updatedList = List<String>.from(state.knownMembers);
+      if (!updatedList.any((m) => m.toLowerCase() == event.name.trim().toLowerCase())) {
+        updatedList.add(event.name.trim());
+        updatedList.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      }
+      emit(state.copyWith(knownMembers: updatedList));
     });
   }
 
