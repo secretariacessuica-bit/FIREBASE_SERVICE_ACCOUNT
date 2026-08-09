@@ -66,9 +66,14 @@ class FechamentoApiService {
 
   Future<List<String>> fetchMembros() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
       final response = await http.get(
         Uri.parse('$_baseUrl/membros'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode == 200) {
