@@ -4,6 +4,7 @@ import '../../services/auth_api_service.dart';
 import '../pages/login_page.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/placeholder_page.dart';
+import '../pages/wizard_page.dart';
 
 class AppSidebarDrawer extends StatelessWidget {
   final String activeRoute;
@@ -80,6 +81,18 @@ class AppSidebarDrawer extends StatelessWidget {
                 ),
                 _buildMenuItem(
                   context: context,
+                  icon: Icons.add_circle_outline_rounded,
+                  title: 'Novo fechamento',
+                  isActive: activeRoute == 'fechamento',
+                  onTap: () {
+                    if (!permanent) Navigator.pop(context);
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const WizardPage()),
+                    );
+                  },
+                ),
+                _buildMenuItem(
+                  context: context,
                   icon: Icons.receipt_long_rounded,
                   title: 'Movimentos',
                   isActive: activeRoute == 'movimentos',
@@ -133,12 +146,17 @@ class AppSidebarDrawer extends StatelessWidget {
                   context: context,
                   icon: Icons.point_of_sale_rounded,
                   title: 'Fechamentos',
-                  isActive: activeRoute == 'fechamento',
+                  isActive: activeRoute == 'fechamentos',
                   onTap: () {
                     if (!permanent) Navigator.pop(context);
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const DashboardScreen()),
-                    );
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(
+                      builder: (_) => const PlaceholderPage(
+                        title: 'Fechamentos',
+                        route: 'fechamentos',
+                        icon: Icons.point_of_sale_rounded,
+                        description: 'Visualizar histórico de fechamentos\ne relatórios passados.',
+                      ),
+                    ));
                   },
                 ),
                 _buildMenuItem(
@@ -252,8 +270,9 @@ class AppSidebarDrawer extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: isActive ? AppTheme.primaryGreen : Colors.transparent,
+        color: isActive ? const Color(0xFF1E293B) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
+        border: isActive ? const Border(left: BorderSide(color: Color(0xFF1E7E34), width: 3)) : null,
       ),
       child: ListTile(
         dense: true,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/monetary_utils.dart';
 
 class DashboardSummaryCards extends StatelessWidget {
   final double entradas;
@@ -14,82 +15,149 @@ class DashboardSummaryCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth > 800) {
-          // Desktop/Tablet landscape
-          return Row(
-            children: [
-              Expanded(child: _buildCard('ENTRADAS', entradas, context)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildCard('SAÍDAS', saidas, context, isExpense: true)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildCard('SALDO DO MÊS', saldo, context, isTotal: true)),
-            ],
-          );
-        } else {
-          // Mobile/Tablet portrait
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildCard('ENTRADAS', entradas, context),
-              const SizedBox(height: 10),
-              _buildCard('SAÍDAS', saidas, context, isExpense: true),
-              const SizedBox(height: 10),
-              _buildCard('SALDO DO MÊS', saldo, context, isTotal: true),
-            ],
-          );
-        }
-      },
-    );
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+
+    if (isDesktop) {
+      // Desktop / Tablet landscape: Single elegant container with vertical dividers
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildDesktopSection(
+                title: 'ENTRADAS',
+                amount: entradas,
+                amountColor: const Color(0xFF1E7E34), // Controlled green for positive
+              ),
+            ),
+            Container(
+              height: 48,
+              width: 1,
+              color: const Color(0xFFE2E8F0),
+            ),
+            Expanded(
+              child: _buildDesktopSection(
+                title: 'SAÍDAS',
+                amount: saidas,
+                amountColor: const Color(0xFF0F172A), // Navy
+              ),
+            ),
+            Container(
+              height: 48,
+              width: 1,
+              color: const Color(0xFFE2E8F0),
+            ),
+            Expanded(
+              child: _buildDesktopSection(
+                title: 'SALDO DO MÊS',
+                amount: saldo,
+                amountColor: const Color(0xFF1E3A8A), // Deep financial blue
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Mobile text-only summary layout
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12.0),
+            child: Text(
+              'RESUMO DO MÊS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF64748B),
+                letterSpacing: 1.0,
+              ),
+            ),
+          ),
+          _buildMobileRow('Entradas', entradas, amountColor: const Color(0xFF1E7E34)),
+          const SizedBox(height: 8),
+          _buildMobileRow('Saídas', saidas, amountColor: const Color(0xFF0F172A)),
+          const SizedBox(height: 8),
+          _buildMobileRow('Saldo', saldo, amountColor: const Color(0xFF1E3A8A), isBold: true),
+        ],
+      );
+    }
   }
 
-  Widget _buildCard(String title, double amount, BuildContext context, {bool isExpense = false, bool isTotal = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
+  Widget _buildDesktopSection({
+    required String title,
+    required double amount,
+    required Color amountColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF6B7280),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              if (isExpense || isTotal)
-                const Text(
-                  'Em breve',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF9CA3AF),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
           Text(
-            'CHF ${amount.toStringAsFixed(2)}',
+            title,
             style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF111827),
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF64748B),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "CHF ${BigDecimalConverter.format(amount)}",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: amountColor,
+              fontFamily: 'monospace',
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMobileRow(
+    String label,
+    double amount, {
+    required Color amountColor,
+    bool isBold = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: const Color(0xFF0F172A),
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            fontSize: 14,
+          ),
+        ),
+        Text(
+          "CHF ${BigDecimalConverter.format(amount)}",
+          style: TextStyle(
+            color: amountColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            fontFamily: 'monospace',
+          ),
+        ),
+      ],
     );
   }
 }
