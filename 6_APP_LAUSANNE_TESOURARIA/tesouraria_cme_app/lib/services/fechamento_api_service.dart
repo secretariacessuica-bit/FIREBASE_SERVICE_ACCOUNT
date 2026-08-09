@@ -1,0 +1,126 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../core/monetary_utils.dart';
+import '../domain/service_closing_history_models.dart';
+import '../presentation/blocs/service_closing_events_states.dart';
+import '../domain/envelope.dart';
+
+class FechamentoApiService {
+  static const String _baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'https://tesouraria-cme-db.onrender.com/api');
+
+  Future<void> submitClosing(ServiceClosingState state) async {
+    final Map<String, dynamic> payload = {
+      "serviceDate": state.date != null ? "\${state.date!.year.toString().padLeft(4, '0')}-\${state.date!.month.toString().padLeft(2, '0')}-\${state.date!.day.toString().padLeft(2, '0')}" : null,
+      "mainTreasurer": state.mainTreasurer,
+      "coTreasurer": state.coTreasurer,
+      "physicalTotal": BigDecimalConverter.fromRappen(state.physicalTotal),
+      "identifiedEntries": state.identifiedEntries.map((e) => {
+        "memberName": e.memberName,
+        "type": e.type.name.toUpperCase(),
+        "amount": BigDecimalConverter.fromRappen(e.amount),
+      }).toList(),
+      "unidentifiedDizimoTotal": BigDecimalConverter.fromRappen(state.anonymousTotalBy(EnvelopeType.dizimo)),
+      "unidentifiedOfertaTotal": BigDecimalConverter.fromRappen(state.anonymousTotalBy(EnvelopeType.oferta)),
+      "unidentifiedVotoTotal": BigDecimalConverter.fromRappen(state.anonymousTotalBy(EnvelopeType.voto)),
+    };
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/fechamento-culto'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(payload),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Falha ao sincronizar o fechamento: \${response.body}');
+    }
+  }
+
+  Future<List<ServiceClosingSummary>> fetchHistorico() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/fechamento-culto'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => ServiceClosingSummary.fromJson(json)).toList();
+    } else if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('UNAUTHORIZED');
+    } else {
+      throw Exception('Falha ao carregar historico');
+    }
+  }
+
+  Future<List<String>> fetchMembros() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/membros'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> body = jsonDecode(response.body);
+        return body.map((e) => e.toString()).toList();
+      } else {
+        throw Exception('Erro ao buscar membros: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Falha de rede: $e');
+    }
+  }
+
+  Future<ServiceClosingDetail> fetchClosingDetail(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/fechamento-culto/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = jsonDecode(response.body);
+      return ServiceClosingDetail.fromJson(data);
+    } else if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('UNAUTHORIZED');
+    } else {
+      throw Exception('Falha ao carregar detalhes do fechamento');
+    }
+  }
+
+  Future<void> deleteClosing(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/fechamento-culto/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw Exception('UNAUTHORIZED');
+      }
+      throw Exception('Erro ao deletar fechamento: ${response.statusCode}');
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# IDEs and Common
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+Thumbs.db
+*.log
+
+# Java Backend (tesouraria_cme_api)
+tesouraria_cme_api/target/
+tesouraria_cme_api/.apt_generated
+tesouraria_cme_api/.classpath
+tesouraria_cme_api/.factorypath
+tesouraria_cme_api/.project
+tesouraria_cme_api/.settings
+tesouraria_cme_api/.springBeans
+tesouraria_cme_api/.sts4-cache
+
+# Flutter Frontend (tesouraria_cme_app)
+tesouraria_cme_app/.dart_tool/
+tesouraria_cme_app/.flutter-plugins
+tesouraria_cme_app/.flutter-plugins-dependencies
+tesouraria_cme_app/.pub-cache/
+tesouraria_cme_app/.pub/
+tesouraria_cme_app/build/
+tesouraria_cme_app/android/app/debug
+tesouraria_cme_app/android/app/profile
+tesouraria_cme_app/android/app/release
