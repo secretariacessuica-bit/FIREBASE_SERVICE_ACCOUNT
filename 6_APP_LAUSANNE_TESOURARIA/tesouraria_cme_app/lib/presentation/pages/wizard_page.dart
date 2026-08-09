@@ -30,7 +30,6 @@ class _WizardPageState extends State<WizardPage> {
   EnvelopeType _selectedType = EnvelopeType.dizimo;
   DateTime _selectedDate = DateTime.now();
   String _keyboardBuffer = '0';
-  String? _validationError;
   late final ServiceClosingBloc _bloc;
   final DraftService _draftService = DraftService();
   Timer? _syncTimer;
@@ -178,7 +177,6 @@ class _WizardPageState extends State<WizardPage> {
 
   void _onKeyPress(String val) {
     setState(() {
-      _validationError = null;
       if (val == '⌫') {
         if (_keyboardBuffer.length > 1) {
           _keyboardBuffer = _keyboardBuffer.substring(0, _keyboardBuffer.length - 1);
@@ -225,8 +223,8 @@ class _WizardPageState extends State<WizardPage> {
       },
     );
 
-    // If we are on desktop and in the setup phase, show sidebar side-by-side
-    if (isDesktop && _phase == ClosingPhase.setup) {
+    // If we are on desktop and in the setup or counting phase, show sidebar side-by-side
+    if (isDesktop && (_phase == ClosingPhase.setup || _phase == ClosingPhase.counting)) {
       bodyContent = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -240,8 +238,8 @@ class _WizardPageState extends State<WizardPage> {
       value: _bloc,
       child: Scaffold(
         backgroundColor: const Color(0xFFFAFAFA),
-        appBar: (isDesktop && _phase == ClosingPhase.setup)
-            ? null // Hide AppBar on desktop setup phase to match dashboard
+        appBar: (isDesktop && (_phase == ClosingPhase.setup || _phase == ClosingPhase.counting))
+            ? null // Hide AppBar on desktop setup/counting phase to match dashboard and mock
             : AppBar(
                 backgroundColor: Colors.white,
                 foregroundColor: const Color(0xFF0F172A),
@@ -273,32 +271,7 @@ class _WizardPageState extends State<WizardPage> {
             : const AppSidebarDrawer(activeRoute: 'fechamento'),
         body: bodyContent,
         bottomNavigationBar: _phase == ClosingPhase.counting
-            ? BottomNavigationBar(
-                currentIndex: _selectedType.index,
-                onTap: (index) {
-                  setState(() {
-                    _selectedType = EnvelopeType.values[index];
-                    _validationError = null;
-                  });
-                },
-                selectedItemColor: const Color(0xFF1E3A8A),
-                unselectedItemColor: const Color(0xFF9CA3AF),
-                showUnselectedLabels: true,
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.person_pin_circle_outlined),
-                    label: 'Dízimo',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.volunteer_activism_outlined),
-                    label: 'Oferta',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.star_outline_rounded),
-                    label: 'Voto',
-                  ),
-                ],
-              )
+            ? _buildCustomBottomBar()
             : null,
       ),
     );
@@ -307,7 +280,7 @@ class _WizardPageState extends State<WizardPage> {
   String _getAppBarTitle() {
     switch (_phase) {
       case ClosingPhase.setup: return "Novo fechamento";
-      case ClosingPhase.counting: return "PDV - Modo Contagem";
+      case ClosingPhase.counting: return "Contagem do culto";
       case ClosingPhase.review: return "Revisão e Fechamento";
     }
   }
@@ -429,138 +402,570 @@ class _WizardPageState extends State<WizardPage> {
   }
 
   Widget _buildCountingPhase(BuildContext context, ServiceClosingState state) {
-    return Center(
-      child: SingleChildScrollView(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    
+    return Container(
+      color: const Color(0xFFFAFAFA),
+      width: double.infinity,
+      height: double.infinity,
+      child: isDesktop
+          ? SingleChildScrollView(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1000),
+                  child: _buildDesktopCountingLayout(context, state),
+                ),
+              ),
+            )
+          : SingleChildScrollView(
+              child: _buildMobileCountingLayout(context, state),
+            ),
+    );
+  }
+
+  Widget _buildMobileCountingLayout(BuildContext context, ServiceClosingState state) {
+    final double total = BigDecimalConverter.fromRappen(state.identifiedTotal + state.anonymousTotal);
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Top Row: Contribuinte button and Total
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Align(
-                alignment: Alignment.centerRight,
+              // Contribuinte clickable text
+              InkWell(
+                onTap: () => _showContributorSelector(context, state, false),
+                borderRadius: BorderRadius.circular(4),
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: Text(
-                    "Total: CHF ${BigDecimalConverter.fromRappen(state.identifiedTotal + state.anonymousTotal).toStringAsFixed(2)}", 
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827)),
+                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.person_search_outlined,
+                        size: 16,
+                        color: _memberNameController.text.isNotEmpty ? const Color(0xFF1E3A8A) : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _memberNameController.text.isNotEmpty 
+                            ? _memberNameController.text 
+                            : "Contribuinte (opcional)",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: _memberNameController.text.isNotEmpty ? FontWeight.bold : FontWeight.normal,
+                          color: _memberNameController.text.isNotEmpty ? const Color(0xFF1E3A8A) : const Color(0xFF64748B),
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              if (_selectedType == EnvelopeType.dizimo)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: Autocomplete<String>(
-                    optionsBuilder: (TextEditingValue textEditingValue) {
-                      if (textEditingValue.text.isEmpty) {
-                        return const Iterable<String>.empty();
-                      }
-                      final currentText = textEditingValue.text.toLowerCase();
-                      return state.knownMembers.where((String option) {
-                        return option.toLowerCase().contains(currentText);
-                      });
-                    },
-                    onSelected: (String selection) {
-                      _memberNameController.text = selection;
-                      if (_validationError != null) setState(() => _validationError = null);
-                    },
-                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                      controller.addListener(() {
-                        if (_memberNameController.text != controller.text) {
-                          _memberNameController.text = controller.text;
-                        }
-                      });
-                      
-                      _memberNameController.addListener(() {
-                        if (_memberNameController.text.isEmpty && controller.text.isNotEmpty) {
-                          controller.clear();
-                        }
-                      });
-
-                      return TextField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        decoration: InputDecoration(
-                          labelText: "Contribuinte (Opcional)",
-                          prefixIcon: const Icon(Icons.person),
-                          errorText: _validationError,
-                          border: const OutlineInputBorder(),
-                        ),
-                        onChanged: (_) {
-                          if (_validationError != null) setState(() => _validationError = null);
-                        },
-                      );
-                    },
+              
+              // Total
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text(
+                    "Total",
+                    style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                   ),
-                ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "CHF ${total.toStringAsFixed(2)}",
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Card VALOR
+          _buildValorCard(),
+          const SizedBox(height: 12),
+          
+          // Keyboard Grid
+          _buildKeyboardGrid(false),
+          const SizedBox(height: 12),
+          
+          // Button REGISTRAR
+          _buildRegisterButton(context),
+          const SizedBox(height: 8),
+          
+          // Ir para revisão
+          _buildReviewLink(),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopCountingLayout(BuildContext context, ServiceClosingState state) {
+    final double total = BigDecimalConverter.fromRappen(state.identifiedTotal + state.anonymousTotal);
+    final allEntries = [
+      ...state.identifiedEntries.map((e) => _SessionEntryItem(
+        title: e.memberName,
+        type: e.type.name.toUpperCase(),
+        amount: BigDecimalConverter.fromRappen(e.amount),
+        isAnonymous: false,
+        id: e.id,
+      )),
+      ...state.anonymousEntries.map((e) => _SessionEntryItem(
+        title: 'Anônimo',
+        type: e.type.name.toUpperCase(),
+        amount: BigDecimalConverter.fromRappen(e.amount),
+        isAnonymous: true,
+        id: e.id,
+      )),
+    ];
+    
+    // Sort recent first
+    allEntries.sort((a, b) => b.id.compareTo(a.id));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header of counting
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Contagem do culto",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              ),
+              Row(
+                children: [
+                  const Text(
+                    "Total ",
+                    style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+                  ),
+                  Text(
+                    "CHF ${total.toStringAsFixed(2)}",
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          // Two column layout
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Main column (Keyboard, valor, selector)
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                decoration: BoxDecoration(color: const Color(0xFF111827), borderRadius: BorderRadius.circular(8)),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                width: 380,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text("Valor", style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
-                    Text(
-                      "CHF ${_getDecimalAmountFromBuffer().toStringAsFixed(2)}", 
-                      style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                    // Contribuinte selector
+                    InkWell(
+                      onTap: () => _showContributorSelector(context, state, true),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _memberNameController.text.isNotEmpty 
+                                  ? _memberNameController.text 
+                                  : "Contribuinte (opcional)",
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: _memberNameController.text.isNotEmpty ? FontWeight.bold : FontWeight.normal,
+                                  color: _memberNameController.text.isNotEmpty ? const Color(0xFF1E3A8A) : const Color(0xFF64748B),
+                              ),
+                            ),
+                            const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
+                          ],
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 16),
+                    
+                    // Card VALOR
+                    _buildValorCard(),
+                    const SizedBox(height: 16),
+                    
+                    // Custom numeric keyboard
+                    _buildKeyboardGrid(true),
+                    const SizedBox(height: 16),
+                    
+                    // Registrar button
+                    _buildRegisterButton(context),
+                    const SizedBox(height: 12),
+                    
+                    // Ir para revisão
+                    _buildReviewLink(),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: 1.8,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
+              const SizedBox(width: 32),
+              
+              // Secondary column (Últimos Lançamentos)
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        "Últimos lançamentos",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (allEntries.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40.0),
+                          child: Center(
+                            child: Text(
+                              "Nenhum lançamento nesta sessão.",
+                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                            ),
+                          ),
+                        )
+                      else
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: allEntries.length > 5 ? 5 : allEntries.length,
+                          separatorBuilder: (context, index) => const Divider(color: Color(0xFFF1F5F9)),
+                          itemBuilder: (context, index) {
+                            final entry = allEntries[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        entry.title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        entry.type,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    "CHF ${entry.amount.toStringAsFixed(2)}",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Color(0xFF0F172A),
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
                 ),
-                itemCount: 12,
-                itemBuilder: (context, index) {
-                  final keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', '⌫'];
-                  String key = keys[index];
-                  bool isBackspace = key == '⌫';
-                  return ElevatedButton(
-                    onPressed: () => _onKeyPress(key),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isBackspace ? AppTheme.excludeRed : const Color(0xFFF3F4F6),
-                      foregroundColor: isBackspace ? Colors.white : const Color(0xFF111827),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      elevation: 0,
-                    ),
-                    child: Text(key, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  );
-                },
               ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => _registerEntry(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3A8A),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  elevation: 0,
-                ),
-                child: const Text("REGISTRAR", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5)),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () {
-                  _syncTimer?.cancel();
-                  setState(() => _phase = ClosingPhase.review);
-                },
-                child: const Text("Ir para revisão →", style: TextStyle(color: Color(0xFF4B5563), fontSize: 13, fontWeight: FontWeight.w600)),
-              ),
-              const SizedBox(height: 8),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValorCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1931),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text("VALOR", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.bold)),
+          Text(
+            "CHF ${_getDecimalAmountFromBuffer().toStringAsFixed(2)}", 
+            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKeyboardGrid(bool isDesktop) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: isDesktop ? 1.9 : 1.7,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+      ),
+      itemCount: 12,
+      itemBuilder: (context, index) {
+        final keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', '⌫'];
+        String key = keys[index];
+        bool isBackspace = key == '⌫';
+        
+        return ElevatedButton(
+          onPressed: () => _onKeyPress(key),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isBackspace ? const Color(0xFFFEE2E2) : const Color(0xFFF8FAFC),
+            foregroundColor: isBackspace ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            side: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+            elevation: 0,
+            padding: EdgeInsets.zero,
+          ),
+          child: isBackspace
+              ? const Icon(Icons.backspace_outlined, size: 20)
+              : Text(key, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        );
+      },
+    );
+  }
+
+  Widget _buildRegisterButton(BuildContext context) {
+    return ElevatedButton(
+      onPressed: () => _registerEntry(context),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF1E3A8A),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        elevation: 0,
+      ),
+      child: const Text("REGISTRAR", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5)),
+    );
+  }
+
+  Widget _buildReviewLink() {
+    return Center(
+      child: TextButton(
+        onPressed: () {
+          _syncTimer?.cancel();
+          setState(() => _phase = ClosingPhase.review);
+        },
+        child: const Text("Ir para revisão →", style: TextStyle(color: Color(0xFF1E3A8A), fontSize: 13, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildCustomBottomBar() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+      ),
+      child: SafeArea(
+        child: Row(
+          children: EnvelopeType.values.map((type) {
+            final isSelected = _selectedType == type;
+            final label = type == EnvelopeType.dizimo 
+                ? 'DÍZIMO' 
+                : type == EnvelopeType.oferta 
+                    ? 'OFERTA' 
+                    : 'VOTO';
+                    
+            return Expanded(
+              child: Material(
+                color: isSelected ? const Color(0xFF1E3A8A) : Colors.white,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _selectedType = type;
+                    });
+                  },
+                  child: Container(
+                    height: 56,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : const Color(0xFF64748B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(height: 2),
+                          Container(
+                            width: 24,
+                            height: 2,
+                            color: Colors.white,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ),
     );
+  }
+
+  void _showContributorSelector(BuildContext context, ServiceClosingState state, bool isDesktop) {
+    String filterText = "";
+    
+    Widget selectorContent(StateSetter setDialogState) {
+      final filteredMembers = state.knownMembers.where((m) => m.toLowerCase().contains(filterText.toLowerCase())).toList();
+      return Container(
+        constraints: const BoxConstraints(maxHeight: 350),
+        width: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Pesquisar Contribuinte',
+                  prefixIcon: Icon(Icons.search),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (val) {
+                  setDialogState(() {
+                    filterText = val;
+                  });
+                },
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: filteredMembers.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text("Nenhum contribuinte encontrado", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: filteredMembers.length,
+                      itemBuilder: (context, index) {
+                        final member = filteredMembers[index];
+                        return ListTile(
+                          title: Text(member, style: const TextStyle(fontSize: 14)),
+                          onTap: () {
+                            setState(() {
+                              _memberNameController.text = member;
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+            ),
+            if (_memberNameController.text.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.clear, color: AppTheme.excludeRed),
+                title: const Text("Remover / Tornar Anônimo", style: TextStyle(color: AppTheme.excludeRed, fontWeight: FontWeight.bold, fontSize: 13)),
+                onTap: () {
+                  setState(() {
+                    _memberNameController.clear();
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+          ],
+        ),
+      );
+    }
+
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            child: StatefulBuilder(
+              builder: (context, setDialogState) {
+                return Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: selectorContent(setDialogState),
+                );
+              },
+            ),
+          );
+        },
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+        builder: (sheetContext) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+            ),
+            child: StatefulBuilder(
+              builder: (context, setDialogState) {
+                return SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: selectorContent(setDialogState),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      );
+    }
   }
 
   void _registerEntry(BuildContext context) {
@@ -568,7 +973,9 @@ class _WizardPageState extends State<WizardPage> {
     final int rappen = _getAmountFromBuffer();
     
     if (rappen <= 0) {
-      setState(() => _validationError = "Valor inválido.");
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Por favor, digite um valor maior que zero."),
+      ));
       return;
     }
 
@@ -605,7 +1012,6 @@ class _WizardPageState extends State<WizardPage> {
     _memberNameController.clear();
     setState(() {
       _keyboardBuffer = '0';
-      _validationError = null;
     });
   }
 
@@ -862,4 +1268,20 @@ class _WizardPageState extends State<WizardPage> {
       ),
     );
   }
+}
+
+class _SessionEntryItem {
+  final String title;
+  final String type;
+  final double amount;
+  final bool isAnonymous;
+  final String id;
+
+  _SessionEntryItem({
+    required this.title,
+    required this.type,
+    required this.amount,
+    required this.isAnonymous,
+    required this.id,
+  });
 }
