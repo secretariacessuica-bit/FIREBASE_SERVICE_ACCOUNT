@@ -98,10 +98,10 @@ class _AvatarEditorPageState extends ConsumerState<AvatarEditorPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildTabIcon(Icons.face, 0),
-          _buildTabIcon(Icons.remove_red_eye, 1),
-          _buildTabIcon(Icons.cut, 2),
-          _buildTabIcon(Icons.checkroom, 3),
+          _buildTabIcon(Icons.face, 0), // Corpo & Pele
+          _buildTabIcon(Icons.mood, 1), // Expressão
+          _buildTabIcon(Icons.cut, 2), // Cabelo
+          _buildTabIcon(Icons.checkroom, 3), // Roupas (Camisas & Calças)
         ],
       ),
     );
@@ -129,65 +129,103 @@ class _AvatarEditorPageState extends ConsumerState<AvatarEditorPage> {
 
   Widget _buildTabContent(OikosAvatar avatar) {
     switch (_currentTab) {
-      case 0: // Rosto & Pele
-        return _buildOptionsGrid<HeadType>(
-          title: 'Formato do Rosto',
-          items: HeadType.values,
-          selected: avatar.head,
-          onSelect: (type) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateHead(type),
-          extra: _buildColorPalette(
+      case 0: // Corpo & Pele
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: _buildColorPalette(
             title: 'Cor da Pele',
-            colors: [const Color(0xFFFFE0BD), const Color(0xFFFFCD94), const Color(0xFFEAC086), const Color(0xFFFFAD60), const Color(0xFF8D5524), const Color(0xFF4A3B32)],
+            colors: const [Color(0xFFFFCD94), Color(0xFFEAC086), Color(0xFF8D5524), Color(0xFF4A3B32)],
             selected: avatar.theme.skinColor,
             onSelect: (c) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateSkinColor(c),
           ),
         );
-      case 1: // Olhos & Boca
-        return Column(
-          children: [
-            Expanded(
-              child: _buildOptionsGrid<EyeType>(
-                title: 'Olhos',
-                items: EyeType.values,
-                selected: avatar.eyes,
-                onSelect: (type) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateEyes(type),
-              ),
-            ),
-            Expanded(
-              child: _buildOptionsGrid<MouthType>(
-                title: 'Boca',
-                items: MouthType.values,
-                selected: avatar.mouth,
-                onSelect: (type) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateMouth(type),
-              ),
-            ),
-          ],
+      case 1: // Expressão (Olhos + Boca Combinados)
+        return _buildOptionsGrid<MouthType>(
+          title: 'Expressão Facial',
+          items: MouthType.values,
+          selected: avatar.activeMouth,
+          labels: const {
+            MouthType.face01: 'ROSTO 1',
+            MouthType.face02: 'ROSTO 2',
+            MouthType.face03: 'ROSTO 3',
+            MouthType.face04: 'ROSTO 4',
+            MouthType.face05: 'ROSTO 5',
+            MouthType.face06: 'ROSTO 6',
+            MouthType.face07: 'ROSTO 7',
+            MouthType.face08: 'ROSTO 8',
+            MouthType.face09: 'ROSTO 9',
+            MouthType.face10: 'ROSTO 10',
+            MouthType.face11: 'ROSTO 11',
+            MouthType.face12: 'ROSTO 12',
+          },
+          onSelect: (type) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateMouth(type),
         );
       case 2: // Cabelo
         return _buildOptionsGrid<HairType>(
-          title: 'Cabelo',
+          title: 'Estilo de Cabelo',
           items: HairType.values,
           selected: avatar.hair,
+          labels: const {
+            HairType.none: 'NENHUM',
+            HairType.short01: 'CURTO 1',
+            HairType.short02: 'CURTO 2',
+            HairType.long01: 'LONGO 1',
+            HairType.long02: 'LONGO 2',
+            HairType.bun: 'COQUE',
+          },
           onSelect: (type) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateHair(type),
           extra: _buildColorPalette(
-            title: 'Cor do Cabelo',
+            title: 'Cor do Cabelo (Original)',
             colors: [const Color(0xFF000000), const Color(0xFF4A3B32), const Color(0xFF8B4513), const Color(0xFFF5DEB3), const Color(0xFFFF69B4), const Color(0xFF2196F3)],
             selected: avatar.theme.hairColor,
             onSelect: (c) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateHairColor(c),
           ),
         );
-      case 3: // Roupas
-        return _buildOptionsGrid<ShirtType>(
-          title: 'Camisa',
-          items: ShirtType.values,
-          selected: avatar.shirt,
-          onSelect: (type) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateShirt(type),
-          extra: _buildColorPalette(
-            title: 'Cor da Camisa',
-            colors: [const Color(0xFF88B04B), const Color(0xFFF44336), const Color(0xFF2196F3), const Color(0xFFFFEB3B), const Color(0xFF9C27B0), const Color(0xFFFFFFFF)],
-            selected: avatar.theme.shirtColor,
-            onSelect: (c) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateShirtColor(c),
-          ),
+      case 3: // Roupas (Camisas & Calças)
+        return ListView(
+          shrinkWrap: true,
+          physics: const ClampingScrollPhysics(),
+          children: [
+            _buildOptionsGrid<ShirtType>(
+              title: 'Camisa / Agasalho',
+              items: ShirtType.values,
+              selected: avatar.shirt,
+              labels: const {
+                ShirtType.none: 'NENHUMA',
+                ShirtType.basic: 'BÁSICA',
+                ShirtType.hoodie: 'MOLETOM',
+                ShirtType.jacket: 'JAQUETA',
+              },
+              onSelect: (type) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateShirt(type),
+              extra: _buildColorPalette(
+                title: 'Cor da Roupa (Original)',
+                colors: [const Color(0xFF88B04B), const Color(0xFFF44336), const Color(0xFF2196F3), const Color(0xFFFFEB3B), const Color(0xFF9C27B0), const Color(0xFFFFFFFF)],
+                selected: avatar.theme.shirtColor,
+                onSelect: (c) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updateShirtColor(c),
+              ),
+            ),
+            const Divider(height: 32, thickness: 1, indent: 16, endIndent: 16),
+            _buildOptionsGrid<PantsType>(
+              title: 'Calça / Short',
+              items: PantsType.values,
+              selected: avatar.pants,
+              labels: const {
+                PantsType.none: 'NENHUMA',
+                PantsType.pants01: 'JEANS COMPRIDO',
+                PantsType.pants02: 'SHORT JEANS',
+                PantsType.pants03: 'CALÇA BEGE',
+                PantsType.pants04: 'CARGO VERDE',
+                PantsType.pants05: 'JEANS DOBRADA',
+                PantsType.pants06: 'CALÇA AZUL 2',
+                PantsType.pants07: 'SHORT BEGE',
+                PantsType.pants08: 'SHORT PRETO',
+                PantsType.pants09: 'SHORT VERDE',
+                PantsType.pants10: 'SHORT LARANJA',
+              },
+              onSelect: (type) => ref.read(avatarEditorProvider(widget.avatarId).notifier).updatePants(type),
+            ),
+            const SizedBox(height: 32),
+          ],
         );
       default:
         return const SizedBox();
@@ -199,6 +237,7 @@ class _AvatarEditorPageState extends ConsumerState<AvatarEditorPage> {
     required List<T> items,
     required T selected,
     required Function(T) onSelect,
+    Map<T, String>? labels,
     Widget? extra,
   }) {
     return Padding(
@@ -216,6 +255,9 @@ class _AvatarEditorPageState extends ConsumerState<AvatarEditorPage> {
               itemBuilder: (context, index) {
                 final item = items[index];
                 final isSelected = item == selected;
+                final String displayName = labels != null && labels.containsKey(item)
+                    ? labels[item]!
+                    : item.name.replaceAll(RegExp(r'\d+'), '').toUpperCase();
                 return GestureDetector(
                   onTap: () => onSelect(item),
                   child: AnimatedContainer(
@@ -229,7 +271,7 @@ class _AvatarEditorPageState extends ConsumerState<AvatarEditorPage> {
                     ),
                     child: Center(
                       child: Text(
-                        item.name.replaceAll(RegExp(r'\d+'), '').toUpperCase(), // Simplifica o nome (ex: short01 -> SHORT)
+                        displayName,
                         style: TextStyle(
                           color: isSelected ? Colors.blue : Colors.black54,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,

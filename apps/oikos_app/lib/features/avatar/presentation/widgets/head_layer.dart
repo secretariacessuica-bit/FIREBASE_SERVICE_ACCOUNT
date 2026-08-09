@@ -17,9 +17,7 @@ class HeadLayer extends StatelessWidget {
     
     return SvgPicture.asset(
       path,
-      // theme.skinColor could be used to tint the SVG if the SVG uses currentColor
-      // but usually the SVG is pre-colored, or we use ColorFilter
-      colorFilter: ColorFilter.mode(theme.skinColor, BlendMode.srcATop),
+      theme: SvgTheme(currentColor: theme.skinColor),
     );
   }
 }

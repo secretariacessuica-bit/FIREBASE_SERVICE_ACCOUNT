@@ -37,7 +37,7 @@ class HairLayer extends StatelessWidget {
     final path = 'assets/avatars/hairs/$filename';
     return SvgPicture.asset(
       path,
-      colorFilter: ColorFilter.mode(theme.hairColor, BlendMode.srcATop),
+      theme: SvgTheme(currentColor: theme.hairColor),
     );
   }
 }

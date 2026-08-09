@@ -38,7 +38,7 @@ class _FamilyNamePageState extends ConsumerState<FamilyNamePage> {
   Widget build(BuildContext context) {
     return OnboardingScaffold(
       title: 'Nome da Família',
-      subtitle: 'Como vocês gostariam de ser chamados?',
+      subtitle: 'Como sua família gostaria de ser conhecida aqui?',
       progress: 0.15,
       onBack: () => ref.read(onboardingWizardProvider.notifier).previousStep(),
       onNext: _onNext,

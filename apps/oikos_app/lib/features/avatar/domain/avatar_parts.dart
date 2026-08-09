@@ -17,10 +17,18 @@ enum EyebrowType {
 }
 
 enum MouthType {
-  smile,
-  sad,
-  straight,
-  open,
+  face01,
+  face02,
+  face03,
+  face04,
+  face05,
+  face06,
+  face07,
+  face08,
+  face09,
+  face10,
+  face11,
+  face12,
 }
 
 enum HairType {
@@ -41,9 +49,16 @@ enum ShirtType {
 
 enum PantsType {
   none,
-  basic,
-  shorts,
-  skirt,
+  pants01,
+  pants02,
+  pants03,
+  pants04,
+  pants05,
+  pants06,
+  pants07,
+  pants08,
+  pants09,
+  pants10,
 }
 
 enum ShoeType {

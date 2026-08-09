@@ -55,6 +55,14 @@ class AvatarEditorNotifier extends StateNotifier<OikosAvatar> {
     );
   }
 
+  void updatePants(PantsType type) {
+    state = OikosAvatar(
+      id: state.id, head: state.head, eyes: state.eyes, eyebrow: state.eyebrow, mouth: state.mouth,
+      hair: state.hair, shirt: state.shirt, pants: type, shoes: state.shoes,
+      accessory: state.accessory, theme: state.theme, heightScale: state.heightScale,
+    );
+  }
+
   void updateSkinColor(Color color) {
     final newTheme = AvatarTheme(
       skinColor: color, hairColor: state.theme.hairColor, shirtColor: state.theme.shirtColor,

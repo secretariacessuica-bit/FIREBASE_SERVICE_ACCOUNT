@@ -32,20 +32,20 @@ class AvatarExpression {
         return const AvatarExpression(
           type: AvatarExpressionType.happy,
           eyebrowOverride: EyebrowType.happy,
-          mouthOverride: MouthType.open,
+          mouthOverride: MouthType.face02,
         );
       case AvatarExpressionType.thinking:
       case AvatarExpressionType.studying:
         return const AvatarExpression(
           type: AvatarExpressionType.thinking,
           eyebrowOverride: EyebrowType.angry, // Sobrancelhas franzidas de concentração
-          mouthOverride: MouthType.straight,
+          mouthOverride: MouthType.face03,
         );
       case AvatarExpressionType.sad:
         return const AvatarExpression(
           type: AvatarExpressionType.sad,
           eyebrowOverride: EyebrowType.sad,
-          mouthOverride: MouthType.sad,
+          mouthOverride: MouthType.face04,
         );
       case AvatarExpressionType.neutral:
       default:

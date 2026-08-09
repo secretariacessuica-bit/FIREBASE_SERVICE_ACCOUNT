@@ -76,13 +76,19 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
     
     return OnboardingScaffold(
       title: 'Proteja a Família',
-      subtitle: _isConfirming ? 'Confirme o PIN para finalizar.' : 'Crie um PIN de 4 dígitos para acessar o Life.',
+      subtitle: _isConfirming ? 'Confirme o PIN para finalizar.' : 'Crie um PIN de 4 dígitos para acessar o Oikos.',
       progress: 0.60,
       onBack: _onBack,
       onNext: null, // we auto-proceed when pin is 4 digits
       child: Column(
         children: [
-          const SizedBox(height: 32),
+          const SizedBox(height: 8),
+          const Text(
+            'Este PIN protege as informações da sua família.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
           // PIN Dots
           Row(
             mainAxisAlignment: MainAxisAlignment.center,

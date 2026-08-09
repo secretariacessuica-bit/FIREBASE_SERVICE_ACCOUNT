@@ -68,7 +68,7 @@ class _ChildrenPageState extends ConsumerState<ChildrenPage> {
 
     return OnboardingScaffold(
       title: 'Crianças e Membros',
-      subtitle: 'Adicione quem mais vai participar do Life.',
+      subtitle: 'Você pode adicionar crianças, parceiro(a) ou outros familiares.',
       progress: 0.45,
       onBack: () => ref.read(onboardingWizardProvider.notifier).previousStep(),
       onNext: () => ref.read(onboardingWizardProvider.notifier).nextStep(),

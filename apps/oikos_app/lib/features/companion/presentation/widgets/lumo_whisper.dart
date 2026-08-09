@@ -15,9 +15,9 @@ class LumoWhisper extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.lumoGreen.withOpacity(0.05),
+        color: AppColors.lumoGreen.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.lumoGreen.withOpacity(0.2), width: 1),
+        border: Border.all(color: AppColors.lumoGreen.withValues(alpha: 0.2), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,7 +31,7 @@ class LumoWhisper extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary.withOpacity(0.7),
+                  color: AppColors.textSecondary.withValues(alpha: 0.7),
                   letterSpacing: 1.2,
                 ),
               ),

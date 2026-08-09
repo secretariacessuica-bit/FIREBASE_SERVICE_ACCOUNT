@@ -6987,17 +6987,24 @@ const App = {
 
         try {
             const membros = await DbService.getMembros();
+            const dateVal = document.getElementById('escala-data').value;
+            const timeVal = document.getElementById('escala-horainicio').value;
+            const currentEscalaId = document.getElementById('escala-form-id').value || '';
+
+            // Buscar escalas no dia para verificar conflito de horários
+            let escalasNoDia = [];
+            if (dateVal) {
+                try {
+                    escalasNoDia = await DbService.getEscalas(null, dateVal, dateVal);
+                } catch (err) {
+                    console.warn("Erro ao buscar escalas do dia para conflitos:", err);
+                }
+            }
+
             const sectorMembers = membros.filter(m => {
                 if (m.status !== 'ativo') return false;
                 if (m.perfil === 'admin') return false; // Supervisor/Admin não pode entrar em nenhuma escala
-                
-                // Allow the currently selected member even if they are not available
                 if (m.id === currentMemberId) return true;
-
-                // Exclude if not available on the scale date
-                const dateVal = document.getElementById('escala-data').value;
-                const timeVal = document.getElementById('escala-horainicio').value;
-                if (!App.isMembroDisponivel(m, dateVal, timeVal)) return false;
 
                 if (sectorId === 'escala_livre') return true;
                 if (Array.isArray(m.setores)) {
@@ -7005,16 +7012,94 @@ const App = {
                 }
                 return m.setor === sectorId;
             });
-            
+
             if (sectorMembers.length === 0) {
                 mSelect.innerHTML = '<option value="" disabled>Nenhum voluntário ativo no setor</option>';
                 this.adjustEscalaFormFields();
                 return;
             }
 
+            const grupoDisponiveis = [];
+            const grupoIndisponiveis = [];
+            const grupoAfastados = [];
+
             sectorMembers.forEach(m => {
-                mSelect.innerHTML += `<option value="${m.id}" data-nome="${m.nome}">${m.nome}</option>`;
+                const isAfastado = (m.afastamentoInicio && m.afastamentoFim && dateVal >= m.afastamentoInicio && dateVal <= m.afastamentoFim) || 
+                                  (m.statusOperacional && m.statusOperacional !== 'Disponível');
+
+                if (isAfastado) {
+                    let motivoAfastamento = m.afastamentoMotivo || 'Afastado';
+                    grupoAfastados.push({
+                        id: m.id,
+                        nome: m.nome,
+                        label: `${m.nome} (${motivoAfastamento})`
+                    });
+                } else {
+                    const hasConflict = dateVal && timeVal && escalasNoDia.some(e => e.membroId === m.id && e.horarioInicio === timeVal && e.id !== currentEscalaId);
+                    const isDisponivelGeral = App.isMembroDisponivel(m, dateVal, timeVal);
+
+                    if (hasConflict || !isDisponivelGeral) {
+                        let motivo = 'Restrição';
+                        if (hasConflict) {
+                            motivo = 'Já escalado neste horário';
+                        } else if (dateVal && m.indisponibilidades_mensais && m.indisponibilidades_mensais[dateVal] === 'nao_posso') {
+                            motivo = 'Indisponibilidade declarada';
+                        } else if (m.disponibilidade && m.disponibilidade !== 'Todos') {
+                            motivo = `Restrição de turno: ${m.disponibilidade}`;
+                        }
+                        grupoIndisponiveis.push({
+                            id: m.id,
+                            nome: m.nome,
+                            label: `${m.nome} (${motivo})`
+                        });
+                    } else {
+                        grupoDisponiveis.push({
+                            id: m.id,
+                            nome: m.nome,
+                            score: typeof m.scoreConfiabilidade === 'number' ? m.scoreConfiabilidade : -1,
+                            label: `${m.nome}${typeof m.scoreConfiabilidade === 'number' ? ` (${m.scoreConfiabilidade}%)` : ''}`
+                        });
+                    }
+                }
             });
+
+            // Ordenar Disponíveis pelo score desc
+            grupoDisponiveis.sort((a, b) => b.score - a.score);
+
+            let optionsHtml = '';
+            optionsHtml += '<option value="" disabled selected>Escolha o voluntário</option>';
+
+            if (grupoDisponiveis.length > 0) {
+                optionsHtml += '<optgroup label="Disponíveis">';
+                grupoDisponiveis.forEach(m => {
+                    optionsHtml += `<option value="${m.id}" data-nome="${m.nome}">${m.label}</option>`;
+                });
+                optionsHtml += '</optgroup>';
+            }
+
+            if (grupoIndisponiveis.length > 0) {
+                optionsHtml += '<optgroup label="Indisponíveis / Restrição">';
+                grupoIndisponiveis.forEach(m => {
+                    optionsHtml += `<option value="${m.id}" data-nome="${m.nome}">${m.label}</option>`;
+                });
+                optionsHtml += '</optgroup>';
+            }
+
+            if (grupoAfastados.length > 0) {
+                optionsHtml += '<optgroup label="Afastados / Licença">';
+                grupoAfastados.forEach(m => {
+                    optionsHtml += `<option value="${m.id}" data-nome="${m.nome}">${m.label}</option>`;
+                });
+                optionsHtml += '</optgroup>';
+            }
+
+            mSelect.innerHTML = optionsHtml;
+
+            // Se currentMemberId estiver definido, selecioná-lo
+            if (currentMemberId) {
+                mSelect.value = currentMemberId;
+            }
+
         } catch (e) {
             console.error("Error fetching members for scale select:", e);
         }
@@ -8672,9 +8757,18 @@ const App = {
 
                 candidatos.sort((a, b) => b.scoreTotal - a.scoreTotal);
                 const recomendado = candidatos[0];
-                results[pendencia.id] = recomendado;
+                results[pendencia.id] = {
+                    membro: recomendado.membro,
+                    scoreTotal: recomendado.scoreTotal,
+                    motivo: recomendado.motivo,
+                    alternativas: candidatos.slice(1, 4).map(c => ({
+                        membro: c.membro,
+                        scoreTotal: c.scoreTotal,
+                        motivo: c.motivo
+                    }))
+                };
                 
-                console.log(`[IA SUBSTITUIÇÃO] Recomendado: ${recomendado.membro.nome} | motivo: ${recomendado.motivo}\n`);
+                console.log(`[IA SUBSTITUIÇÃO] Recomendado: ${recomendado.membro.nome} | alternativas: ${results[pendencia.id].alternativas.length}\n`);
             }
         } catch (e) {
             console.error('[IA SUBSTITUIÇÃO] Erro no motor lógico da IA:', e);
@@ -8752,11 +8846,47 @@ const App = {
                             `;
                         } else {
                             const recMotivosHtml = recommendation.motivo.split(', ').map(m => `<li style="margin-bottom: 2px;">${escapeHtml(m.charAt(0).toUpperCase() + m.slice(1))}</li>`).join('');
+                            
+                            const score = recommendation.membro.scoreConfiabilidade;
+                            let badgeText = 'Sem Classificação';
+                            let badgeColor = '#6b7280';
+                            if (typeof score === 'number' && score >= 0) {
+                                if (score >= 80) { badgeText = 'Excelente'; badgeColor = '#10b981'; }
+                                else if (score >= 60) { badgeText = 'Bom'; badgeColor = '#3b82f6'; }
+                                else if (score >= 40) { badgeText = 'Regular'; badgeColor = '#f59e0b'; }
+                                else { badgeText = 'Crítico'; badgeColor = '#ef4444'; }
+                            }
+                            
+                            let alternativesHtml = '';
+                            if (recommendation.alternativas && recommendation.alternativas.length > 0) {
+                                alternativesHtml += `<div style="margin-top: 10px; font-size: 0.72rem; color: #4b5563; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Alternativas Secundárias:</div><div style="display:flex; gap:6px; flex-wrap:wrap;">`;
+                                recommendation.alternativas.forEach(alt => {
+                                    const altScore = alt.membro.scoreConfiabilidade;
+                                    let altBadge = '';
+                                    if (typeof altScore === 'number' && altScore >= 0) {
+                                        altBadge = `(${altScore}%)`;
+                                    }
+                                    alternativesHtml += `
+                                        <button class="btn-secondary btn-ia-alt" style="padding: 4px 8px; font-size: 0.7rem; width: auto; border: 1px solid #d1d5db; background: #f9fafb; display: flex; align-items: center; gap: 4px;" data-escala-id="${escala.id}" data-membro-id="${alt.membro.id}" data-membro-nome="${escapeHtml(alt.membro.nome)}">
+                                            <i class="fa-solid fa-user-plus"></i> ${escapeHtml(alt.membro.nome)} ${altBadge}
+                                        </button>
+                                    `;
+                                });
+                                alternativesHtml += `</div>`;
+                            }
+
                             container.innerHTML = `
                                 <div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 10px;">
                                     <div style="font-size: 0.75rem; color: #8b5cf6; font-weight: 700; margin-bottom: 5px; text-transform: uppercase;"><i class="fa-solid fa-robot" style="margin-right: 4px;"></i>Sugestão da IA</div>
-                                    <div style="font-size: 0.85rem; color: var(--navy-dark); font-weight: 700; margin-bottom: 4px;">${escapeHtml(recommendation.membro.nome)}</div>
+                                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                        <span style="font-size: 0.85rem; color: var(--navy-dark); font-weight: 700;">${escapeHtml(recommendation.membro.nome)}</span>
+                                        <span style="font-size: 0.7rem; color: ${badgeColor}; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.05);">${badgeText}</span>
+                                    </div>
                                     <ul style="margin: 0; padding-left: 18px; font-size: 0.78rem; color: #4b5563;">${recMotivosHtml}</ul>
+                                    <button class="btn-primary btn-ia-direct" style="margin-top: 8px; font-size: 0.78rem; padding: 6px 12px; background-color: #8b5cf6; border: none; display: flex; align-items: center; gap: 4px; height: 32px; width: auto;" data-escala-id="${escala.id}" data-membro-id="${recommendation.membro.id}" data-membro-nome="${escapeHtml(recommendation.membro.nome)}">
+                                        <i class="fa-solid fa-bolt"></i> Substituir por ${escapeHtml(recommendation.membro.nome)}
+                                    </button>
+                                    ${alternativesHtml}
                                 </div>
                             `;
                         }
@@ -8778,6 +8908,22 @@ const App = {
             
             container.style.display = 'block';
             listContainer.innerHTML = '';
+
+            // Adicionar Listener Delegado para os botões de substituição com IA
+            if (!listContainer.dataset.listenerAdded) {
+                listContainer.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.btn-ia-direct, .btn-ia-alt');
+                    if (btn) {
+                        const escalaId = btn.getAttribute('data-escala-id');
+                        const membroId = btn.getAttribute('data-membro-id');
+                        const membroNome = btn.getAttribute('data-membro-nome');
+                        if (escalaId && membroId && membroNome) {
+                            App.applyDirectSubstitution(escalaId, membroId, membroNome);
+                        }
+                    }
+                });
+                listContainer.dataset.listenerAdded = 'true';
+            }
             
             // Render Rejections
             rejections.forEach(escala => {
@@ -12128,13 +12274,83 @@ const App = {
         try {
             await DbService.updateTarefaStatus(id, newStatus);
             document.getElementById('modal-atualizar-tarefa').style.display = 'none';
-            this.showToast('Tarefa atualizada com sucesso!', 'success');
+            this.showToast('Tarefa updated com sucesso!', 'success');
             if (this.currentView === 'member') {
                 this.loadAndRenderMemberTarefas();
             }
         } catch (e) {
             this.showAlert('Erro ao atualizar tarefa.');
             console.error(e);
+        }
+    },
+
+    async applyDirectSubstitution(escalaId, novoMembroId, novoMembroNome) {
+        this.showLoading();
+        try {
+            // 1. Obter informações da escala e membro anterior para auditoria/log
+            let membroAnteriorNome = 'Desconhecido';
+            try {
+                const escalaSnap = await db.collection('escalas').doc(escalaId).get();
+                if (escalaSnap.exists) {
+                    membroAnteriorNome = escalaSnap.data().membroNome || 'Desconhecido';
+                }
+            } catch (err) {
+                console.warn("Erro ao buscar membro anterior para log:", err);
+            }
+
+            // 2. Atualizar escala no Firestore de forma atômica
+            await DbService.saveEscala(escalaId, {
+                membroId: novoMembroId,
+                membroNome: novoMembroNome,
+                statusPresenca: 'Pendente',
+                statusServico: 'Aguardando',
+                rejeicaoResolvida: true,
+                notificado: false
+            });
+
+            // 3. Registrar no Histórico de Substituições
+            try {
+                await DbService.addSubstituicaoLog({
+                    escalaId,
+                    membroAnterior: membroAnteriorNome,
+                    membroNovo: novoMembroNome,
+                    executadoPor: this.currentUser ? this.currentUser.nome : 'Supervisor',
+                    tipo: 'IA_Direta'
+                });
+            } catch (err) {
+                console.warn("Falha ao registrar log de substituição:", err);
+            }
+
+            // 4. Disparar notificação FCM em bloco isolado try/catch
+            let fcmSuccess = true;
+            try {
+                await DbService.addNotificacao({
+                    paraUsuarioId: novoMembroId,
+                    paraUsuarioNome: novoMembroNome,
+                    titulo: "Nova Escala Designada",
+                    mensagem: `Você foi escalado para um novo serviço. Por favor, confirme sua presença no aplicativo.`,
+                    tipo: "escala_nova"
+                });
+            } catch (err) {
+                console.error("Falha ao enviar notificação FCM:", err);
+                fcmSuccess = false;
+            }
+
+            if (fcmSuccess) {
+                this.showToast(`Substituição concluída: ${novoMembroNome} escalado!`, 'success');
+            } else {
+                this.showToast('Substituição gravada com sucesso (notificação pendente)', 'warning');
+            }
+
+            // 5. Invalidar cache e atualizar os alertas do supervisor
+            DbService.limparCache('escalas');
+            await this.loadAndRenderSupervisorAlerts();
+            
+        } catch (e) {
+            console.error("Erro na substituição direta:", e);
+            this.showToast("Falha ao realizar a substituição direta.", "danger");
+        } finally {
+            this.hideLoading();
         }
     }
 };

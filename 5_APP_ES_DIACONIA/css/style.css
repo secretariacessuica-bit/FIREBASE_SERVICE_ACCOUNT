@@ -3,29 +3,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 :root {
-    /* Color Palette */
-    --teal-primary: #127369;  /* Principal */
-    --teal-light: #1A9285;    /* Lighter version of principal for hovers */
-    --cyan-accent: #8AA6A3;   /* Sage accent */
-    --navy-dark: #10403B;     /* Secundária */
-    --navy-darker: #010101;   /* Fundo */
-    --slate-gray: #64748B;    /* Modern slate grey */
-    --bg-light: #F8FAFC;      /* Light surface background (slate-50) */
-    --white: #FFFFFF;
-    --mono-gray: #BFBFBF;     /* Mono */
+    /* Design Tokens - Harmonização Visual Módulo 5 */
+    --bg-main: #0e1726;          /* Fundo geral limpo */
+    --bg-surface: #172130;       /* Fundo dos cards */
+    --bg-elevated: #1f2d40;      /* Modais e popups */
+    --border-subtle: #2d3b50;    /* Bordas finas de 1px */
+
+    /* Identidade & Ações Operacionais */
+    --color-primary: #0d9488;    /* Verde corporativo institucional (Botão Confirmar) */
+    --color-success: #10b981;    /* Indicador de 'Confirmado / Disponível' */
+    --color-warning: #f59e0b;    /* Indicadores de 'Pendente / Alerta' */
+    --color-error: #ef4444;      /* Indicadores de 'Recusado / Ausente' */
+
+    /* Toque Institucional / Liderança (1% da Tela) */
+    --color-gold: #d97706;       /* Restrito a badges de Supervisor/Admin/Celebração */
+
+    /* Tipografia */
+    --text-primary: #f8fafc;     /* Texto principal de alto contraste */
+    --text-secondary: #94a3b8;   /* Legendas e rótulos secundários */
+
+    /* Compatibilidade Reversa */
+    --teal-primary: var(--color-primary);
+    --teal-light: #0f766e;
+    --navy-dark: var(--text-primary);
+    --slate-gray: var(--text-secondary);
+    --theme-color: var(--color-primary);
     
-    /* Sector Specific Colors */
-    --color-diaconia: #127369;
-    --color-acolhimento: #D9A752;  /* Gold details */
-    --color-limpeza: #4C5958;      /* Slate-teal */
-    --color-manutencao: #8AA6A3;   /* Sage */
-
-    /* Theme Active Colors (Dynamically Overridden) */
-    --theme-color: var(--teal-primary);
-    --theme-color-light: var(--teal-light);
-    --theme-color-glow: rgba(18, 115, 105, 0.15);
-    --theme-gradient: linear-gradient(135deg, var(--teal-primary), var(--teal-light));
-
     /* Fonts and Shadows */
     --font-primary: 'Inter', sans-serif;
     --shadow-sm: 0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
@@ -48,8 +51,8 @@
 }
 
 body {
-    background-color: #010101;
-    color: var(--navy-dark);
+    background-color: var(--bg-main);
+    color: var(--text-primary);
     line-height: 1.5;
     overflow-x: hidden;
     height: 100vh;
@@ -82,7 +85,7 @@ body {
     position: relative;
     width: 100%;
     height: 100%;
-    background-color: #010101;
+    background-color: var(--bg-main);
 }
 
 .view-section {

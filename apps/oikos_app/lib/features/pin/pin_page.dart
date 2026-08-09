@@ -10,6 +10,8 @@ import '../home/home_page.dart';
 import '../presentation/providers/di_providers.dart';
 import '../avatar/domain/avatar.dart';
 import '../avatar/presentation/avatar_renderer.dart';
+import '../companion/presentation/widgets/lumo_renderer.dart';
+import '../companion/domain/lumo_variant.dart';
 
 class PinPage extends ConsumerStatefulWidget {
   final FamilyMember member;
@@ -128,117 +130,107 @@ class _PinPageState extends ConsumerState<PinPage> with SingleTickerProviderStat
                 onPressed: () => Navigator.pop(context),
               ),
             ),
-            
             Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
-                child: Row(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 64.0),
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Avatar and Speech Bubble
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Speech Bubble
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 24),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(color: themeColor.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                title,
-                                style: AppTypography.heading2.copyWith(color: themeColor, fontSize: isChild ? 28 : 24),
-                                textAlign: TextAlign.center,
-                              ),
-                              if (isChild) ...[
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.volume_up_rounded, color: Colors.grey),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      "Ouvir",
-                                      style: AppTypography.bodySmall.copyWith(color: Colors.grey),
-                                    ),
-                                  ],
+                        const LumoRenderer(
+                          variant: LumoVariant.listening,
+                          size: 72,
+                        ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 340),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24).copyWith(topLeft: Radius.zero),
+                              boxShadow: [
+                                BoxShadow(color: themeColor.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 6)),
+                              ],
+                              border: Border.all(color: Colors.black.withOpacity(0.02)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  title,
+                                  style: AppTypography.heading2.copyWith(color: themeColor, fontSize: isChild ? 20 : 18, fontWeight: FontWeight.bold),
                                 ),
-                              ] else ...[
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 4),
                                 Text(
                                   subtitle,
-                                  style: AppTypography.bodyMedium,
-                                  textAlign: TextAlign.center,
+                                  style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary, fontSize: 14),
                                 ),
-                              ]
-                            ],
+                              ],
+                            ),
                           ),
-                        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
-                        
-                        // Avatar Image
-                        SizedBox(
-                          height: 300,
-                          child: () {
-                            // Usa o helper centralizado (suporta { e %7B)
-                            final customAvatar = OikosAvatar.tryFromAvatarAsset(widget.member.avatarAsset);
-                            if (customAvatar != null) {
-                              return Center(
-                                child: SizedBox(
-                                  width: 200,
-                                  height: 300,
-                                  child: OikosAvatarRenderer(avatar: customAvatar),
-                                ),
-                              );
-                            }
-
-                            // Asset est\u00e1tico (PNG): s\u00f3 se n\u00e3o for JSON
-                            final String? assetPath = (!OikosAvatar.isAvatarJson(widget.member.avatarAsset) &&
-                                widget.member.avatarAsset != null && 
-                                widget.member.avatarAsset!.isNotEmpty) 
-                                ? widget.member.avatarAsset 
-                                : _assetFromEmoji(widget.member.emoji);
-                            return assetPath != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(24),
-                                  child: Image.asset(assetPath, fit: BoxFit.contain),
-                                )
-                              : Container(
-                                  width: 150,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    color: themeColor.withOpacity(0.2),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(child: Text(widget.member.emoji, style: const TextStyle(fontSize: 80))),
-                                );
-                          }(),
-                        ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.8, 0.8)),
+                        ),
                       ],
-                    ),
+                    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
                     
-                    const SizedBox(width: 80),
+                    const SizedBox(height: 28),
+
+                    SizedBox(
+                      height: 180,
+                      child: () {
+                        final customAvatar = OikosAvatar.tryFromAvatarAsset(widget.member.avatarAsset);
+                        if (customAvatar != null) {
+                          return Center(
+                            child: SizedBox(
+                              width: 140,
+                              height: 180,
+                              child: OikosAvatarRenderer(avatar: customAvatar),
+                            ),
+                          );
+                        }
+
+                        final String? assetPath = (!OikosAvatar.isAvatarJson(widget.member.avatarAsset) &&
+                            widget.member.avatarAsset != null && 
+                            widget.member.avatarAsset!.isNotEmpty) 
+                            ? widget.member.avatarAsset 
+                            : _assetFromEmoji(widget.member.emoji);
+                        return assetPath != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(24),
+                              child: Image.asset(assetPath, fit: BoxFit.contain),
+                            )
+                          : Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: themeColor.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(child: Text(widget.member.emoji, style: const TextStyle(fontSize: 60))),
+                            );
+                      }(),
+                    ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.9, 0.9)),
                     
-                    // Pin Pad Area
+                    const SizedBox(height: 28),
+                    
                     Container(
-                      width: 380, // Larger area for kids
-                      padding: const EdgeInsets.all(32),
+                      width: 360,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(40),
+                        color: Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(32),
                         border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // PIN Dots
                           AnimatedBuilder(
                             animation: _shakeController,
                             builder: (context, child) {
@@ -255,36 +247,36 @@ class _PinPageState extends ConsumerState<PinPage> with SingleTickerProviderStat
                                 bool isFilled = index < _pin.length;
                                 return AnimatedContainer(
                                   duration: const Duration(milliseconds: 150),
-                                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                                  width: 32,
-                                  height: 32,
+                                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                                  width: 24,
+                                  height: 24,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: isFilled ? themeColor : AppColors.surface,
                                     border: Border.all(
                                       color: _hasError ? Colors.red : (isFilled ? themeColor : themeColor.withOpacity(0.3)),
-                                      width: 3,
+                                      width: 2.5,
                                     ),
                                   ),
                                 );
                               }),
                             ),
-                          ).animate().fadeIn(delay: 400.ms),
+                          ).animate().fadeIn(delay: 200.ms),
                           
                           if (_hasError)
                             Padding(
-                              padding: const EdgeInsets.only(top: 16.0),
+                              padding: const EdgeInsets.only(top: 12.0),
                               child: Text(
                                 isChild ? 'Ops! Tente novamente!' : 'PIN Incorreto',
-                                style: AppTypography.bodyMedium.copyWith(color: Colors.red, fontWeight: FontWeight.bold, fontSize: isChild ? 20 : 16),
+                                style: AppTypography.bodyMedium.copyWith(color: Colors.red, fontWeight: FontWeight.bold, fontSize: isChild ? 18 : 15),
                               ).animate().fadeIn(),
                             ),
                           
-                          const SizedBox(height: 48),
+                          const SizedBox(height: 36),
                           PinKeyboard(
                             onDigitPressed: _onDigitPressed,
                             themeColor: themeColor,
-                          ).animate().slideY(begin: 0.2, duration: 400.ms, curve: Curves.easeOutQuad),
+                          ).animate().slideY(begin: 0.15, duration: 400.ms, curve: Curves.easeOutQuad),
                         ],
                       ),
                     ),
@@ -298,5 +290,3 @@ class _PinPageState extends ConsumerState<PinPage> with SingleTickerProviderStat
     );
   }
 }
-
-

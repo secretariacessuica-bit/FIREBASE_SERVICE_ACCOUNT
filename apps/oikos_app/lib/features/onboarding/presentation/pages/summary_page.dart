@@ -92,7 +92,7 @@ class _SummaryPageState extends ConsumerState<SummaryPage> {
                       ),
                     ),
                     child: const Text(
-                      'Entrar no Life',
+                      'Entrar no Oikos',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -104,13 +104,15 @@ class _SummaryPageState extends ConsumerState<SummaryPage> {
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              colors: const [Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple],
+          IgnorePointer(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                colors: const [Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple],
+              ),
             ),
           ),
         ],

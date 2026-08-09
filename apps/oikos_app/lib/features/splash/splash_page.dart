@@ -6,7 +6,7 @@ import '../avatar/avatar_page.dart';
 import '../presentation/providers/app_bootstrap_provider.dart';
 
 import '../onboarding/presentation/pages/welcome_page.dart';
-import '../onboarding/presentation/pages/onboarding_flow_page.dart';
+import '../onboarding/presentation/pages/age_selection_page.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -57,8 +57,8 @@ class _SplashPageState extends ConsumerState<SplashPage> with SingleTickerProvid
         if (mounted) {
           Widget nextPage;
           if (state == AppBootstrapState.needsOnboarding) {
-            print("SPLASH_PAGE: navigating to OnboardingFlowPage");
-            nextPage = const OnboardingFlowPage();
+            print("SPLASH_PAGE: navigating to AgeSelectionPage");
+            nextPage = const AgeSelectionPage();
           } else {
             print("SPLASH_PAGE: navigating to AvatarPage");
             nextPage = const AvatarPage();

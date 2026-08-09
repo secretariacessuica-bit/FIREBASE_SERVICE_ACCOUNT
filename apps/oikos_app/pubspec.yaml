@@ -80,6 +80,17 @@ flutter:
     - assets/animations/
     - assets/sounds/
     - assets/images/avatars/
+    - assets/images/avatar/bases/
+    - assets/images/avatar/hairs/
+    - assets/images/avatar/shirts/
+    - assets/images/avatar/faces/
+    - assets/images/avatar/pants/
+    - assets/images/lumo/body/
+    - assets/images/lumo/glow/
+    - assets/images/lumo/shadow/
+    - assets/images/lumo/arms/
+    - assets/images/lumo/eyes/
+    - assets/images/lumo/mouths/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

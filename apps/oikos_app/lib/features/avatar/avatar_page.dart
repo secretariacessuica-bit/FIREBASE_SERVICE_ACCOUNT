@@ -6,6 +6,8 @@ import '../../app/theme/app_typography.dart';
 import '../pin/pin_page.dart';
 import '../presentation/providers/family_members_provider.dart';
 import '../../features/domain/entities/family_member.dart';
+import '../companion/presentation/widgets/lumo_renderer.dart';
+import '../companion/domain/lumo_variant.dart';
 import 'domain/avatar.dart';
 import 'presentation/avatar_renderer.dart';
 
@@ -21,47 +23,100 @@ class AvatarPage extends ConsumerWidget {
       body: SafeArea(
         child: membersAsyncValue.when(
           data: (members) {
-            return Center(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Oikos Logo
-                    Row(
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final bool isMobile = constraints.maxWidth < 600;
+                
+                return Center(
+                  child: SingleChildScrollView(
+                    scrollDirection: isMobile ? Axis.vertical : Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: isMobile ? 24.0 : 48.0, vertical: 24.0),
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.eco_rounded, color: AppColors.lumoGreen, size: 40),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Oikos',
-                          style: AppTypography.heading1.copyWith(
-                            color: AppColors.primary,
-                            fontSize: 48,
-                          ),
-                        ),
-                      ],
-                    ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
-                    
-                    const SizedBox(height: 64),
-                    
-                    // Family + Lumo
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        ...members.map((member) => _FamilyAvatarItem(
-                          member: member,
-                          onTap: () => _navigateToPin(context, member),
-                        )),
-                        // Lumo mascot
-                        _LumoMascot(),
+                        // Oikos Logo
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.eco_rounded, color: AppColors.lumoGreen, size: 40),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Oikos',
+                              style: AppTypography.heading1.copyWith(
+                                color: AppColors.primary,
+                                fontSize: 48,
+                              ),
+                            ),
+                          ],
+                        ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
+                        
+                        const SizedBox(height: 32),
+
+                        // Lumo Anfitrião Vetorial com Balão de Fala
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const LumoRenderer(
+                              variant: LumoVariant.listening,
+                              size: 80,
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24).copyWith(topLeft: Radius.zero),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                                border: Border.all(color: Colors.black.withOpacity(0.02)),
+                              ),
+                              child: const Text(
+                                "Quem vai aprender hoje?",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ).animate().fadeIn(duration: 800.ms, delay: 200.ms).slideY(begin: -0.1),
+
+                        SizedBox(height: isMobile ? 32 : 48),
+                        
+                        // Family Avatars only (Lumo mascot removed from list)
+                        isMobile 
+                          ? Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.end,
+                              spacing: 16,
+                              runSpacing: 32,
+                              children: members.map((member) => _FamilyAvatarItem(
+                                member: member,
+                                isMobile: true,
+                                onTap: () => _navigateToPin(context, member),
+                              )).toList(),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: members.map((member) => _FamilyAvatarItem(
+                                member: member,
+                                isMobile: false,
+                                onTap: () => _navigateToPin(context, member),
+                              )).toList(),
+                            ),
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -86,9 +141,10 @@ class AvatarPage extends ConsumerWidget {
 
 class _FamilyAvatarItem extends StatefulWidget {
   final FamilyMember member;
+  final bool isMobile;
   final VoidCallback onTap;
 
-  const _FamilyAvatarItem({required this.member, required this.onTap});
+  const _FamilyAvatarItem({required this.member, required this.isMobile, required this.onTap});
 
   @override
   State<_FamilyAvatarItem> createState() => _FamilyAvatarItemState();
@@ -120,9 +176,9 @@ class _FamilyAvatarItemState extends State<_FamilyAvatarItem> {
         : _getAssetFromEmoji(widget.member.emoji);
     
     // Determine size based on role to create a nice stagger
-    double baseHeight = 350;
-    if (widget.member.name.toLowerCase() == 'lorenzo') baseHeight = 280;
-    if (widget.member.name.toLowerCase() == 'sofia') baseHeight = 220;
+    double baseHeight = widget.isMobile ? 160 : 350;
+    if (widget.member.name.toLowerCase() == 'lorenzo') baseHeight = widget.isMobile ? 130 : 280;
+    if (widget.member.name.toLowerCase() == 'sofia') baseHeight = widget.isMobile ? 110 : 220;
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -172,25 +228,6 @@ class _FallbackEmoji extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _LumoMascot extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // Open Settings/Admin
-      },
-      child: Container(
-        margin: const EdgeInsets.only(left: 32),
-        height: 180, // Lumo is the smallest
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Image.asset('assets/images/avatars/lumo_mascot.png', fit: BoxFit.contain),
-        ),
-      ),
-    ).animate().fadeIn(duration: 500.ms, delay: 600.ms).slideY(begin: 0.1);
   }
 }
 

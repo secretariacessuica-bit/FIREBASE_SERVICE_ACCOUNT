@@ -63,6 +63,16 @@
                 memberId: memberId
             }, '*');
         };
+
+        // Escuta mensagens do Flutter
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'FLUTTER_UPDATE_AVATARS') {
+                if (window.unityInstance) {
+                    var avatarsJson = JSON.stringify(event.data.avatars);
+                    window.unityInstance.SendMessage('AvatarManager', 'UpdateAvatarsFromFlutter', avatarsJson);
+                }
+            }
+        });
     </script>
 </body>
 </html>

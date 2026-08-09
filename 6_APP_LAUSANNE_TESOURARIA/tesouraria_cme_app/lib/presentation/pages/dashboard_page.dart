@@ -28,6 +28,37 @@ class DashboardView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const AppSidebarDrawer(activeRoute: 'dashboard'),
+      appBar: AppBar(
+        backgroundColor: AppTheme.primaryGreen,
+        foregroundColor: Colors.white,
+        title: const Text(
+          'Tesouraria CME Lausanne',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final shouldReload = await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WizardPage()),
+                );
+                if (shouldReload == true && context.mounted) {
+                  context.read<HistoryBloc>().add(LoadHistoryEvent());
+                }
+              },
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Novo Fechamento'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppTheme.primaryGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: BlocConsumer<HistoryBloc, HistoryState>(
         listener: (context, state) {
           if (state is HistoryError && state.isUnauthorized) {

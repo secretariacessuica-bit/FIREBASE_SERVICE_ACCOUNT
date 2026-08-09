@@ -1,0 +1,8 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Left Eye -->
+  <circle cx="38" cy="50" r="6" fill="#1C2833" />
+  <circle cx="39.5" cy="48" r="2.5" fill="#FFFFFF" />
+  <!-- Right Eye -->
+  <circle cx="62" cy="50" r="6" fill="#1C2833" />
+  <circle cx="63.5" cy="48" r="2.5" fill="#FFFFFF" />
+</svg>

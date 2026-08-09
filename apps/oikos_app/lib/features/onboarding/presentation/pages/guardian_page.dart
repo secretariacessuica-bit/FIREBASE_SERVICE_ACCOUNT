@@ -65,7 +65,7 @@ class _GuardianPageState extends ConsumerState<GuardianPage> {
   Widget build(BuildContext context) {
     return OnboardingScaffold(
       title: 'Responsável',
-      subtitle: 'Quem vai gerenciar a conta da família?',
+      subtitle: 'Quem vai cuidar desta comunidade?',
       progress: 0.30,
       onBack: () => ref.read(onboardingWizardProvider.notifier).previousStep(),
       onNext: _onNext,

@@ -17,7 +17,7 @@ class AvatarTheme {
 
   factory AvatarTheme.defaultTheme() {
     return const AvatarTheme(
-      skinColor: Color(0xFFFFE0BD), // Tom de pele claro padrão
+      skinColor: Color(0xFFFFCD94), // Tom de pele claro padrão
       hairColor: Color(0xFF4A3B32), // Castanho escuro
       shirtColor: Color(0xFF88B04B), // Verde Oikos
       pantsColor: Color(0xFF333333), // Cinza escuro

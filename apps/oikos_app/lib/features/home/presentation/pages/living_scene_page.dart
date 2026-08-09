@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'dart:async';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:ui_web' as ui_web;
+
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_typography.dart';
 import '../../../presentation/providers/family_members_provider.dart';
@@ -13,24 +9,20 @@ import '../../../presentation/providers/di_providers.dart';
 import '../../../domain/entities/age_experience_mode.dart';
 import '../../../domain/entities/family_member.dart';
 import '../../domain/entities/home_scene_state.dart';
-import '../../domain/entities/scene_object.dart';
-import '../widgets/personal_companion.dart';
 import '../widgets/family_ranking_panel.dart';
 import '../providers/xp_provider.dart';
 import '../../domain/xp_repository.dart';
 import '../../../../features/learning/domain/adaptive_study_tool.dart';
-import '../../../../features/learning/data/horizon_gateway.dart';
-import '../../../../features/profiles/domain/entities/profile_theme.dart';
 import '../../../../features/brain/presentation/providers/brain_provider.dart';
 import '../../../../features/brain/domain/entities/learning_decision.dart';
-import '../../../../features/brain/domain/entities/learning_event.dart';
 import '../../../../features/avatar/presentation/avatar_renderer.dart';
 import '../../../../features/avatar/domain/avatar.dart';
 import '../../../../features/avatar/domain/avatar_expression.dart';
 import '../../../../features/avatar/presentation/pages/avatar_editor_page.dart';
-import '../../../../features/companion/domain/lumo_appearance_factory.dart';
-import 'package:uuid/uuid.dart';
+import '../../../../features/companion/domain/lumo_variant.dart';
+import '../../../../features/companion/presentation/widgets/lumo_renderer.dart';
 import 'dart:convert';
+import 'package:hive/hive.dart';
 
 class LivingScenePage extends ConsumerStatefulWidget {
   final String userId;
@@ -49,73 +41,26 @@ class LivingScenePage extends ConsumerStatefulWidget {
 class _LivingScenePageState extends ConsumerState<LivingScenePage> {
   HomeSceneState _currentState = HomeSceneState.firstVisit;
   int? _lastXpGained;
-  StreamSubscription? _messageSubscription;
+  bool _isLausanneCompleted = false;
 
   @override
   void initState() {
     super.initState();
-    // Registra a fábrica do iframe do Unity WebGL
-    ui_web.platformViewRegistry.registerViewFactory(
-      'unity-avatar-view',
-      (int viewId) => html.IFrameElement()
-        ..src = 'unity_avatar.html'
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%',
-    );
+    _updateMissionStatus();
+  }
 
-    // Escuta cliques vindos do Unity WebGL
-    _messageSubscription = html.window.onMessage.listen((event) {
-      if (event.data is Map) {
-        final data = event.data as Map;
-        if (data['type'] == 'UNITY_MEMBER_SELECTED') {
-          final memberId = data['memberId'] as String;
-          debugPrint('Unity WebGL: selecionado $memberId');
-
-          final membersAsync = ref.read(familyMembersProvider);
-          final decisionAsync = ref.read(learningDecisionProvider(widget.userId));
-
-          membersAsync.whenData((members) {
-            final currentUser = members.firstWhere((m) => m.id == widget.userId, orElse: () => members.first);
-            decisionAsync.whenData((decision) {
-              _handleUnityClick(memberId, currentUser, decision);
-            });
-          });
-        }
+  void _updateMissionStatus() {
+    try {
+      if (Hive.isBoxOpen('missionProgressBox')) {
+        final box = Hive.box<Map>('missionProgressBox');
+        _isLausanneCompleted = box.get('ch_numbers_nonante_001') != null;
       }
-    });
+    } catch (_) {}
   }
 
   @override
   void dispose() {
-    _messageSubscription?.cancel();
     super.dispose();
-  }
-
-  void _handleUnityClick(String targetId, FamilyMember currentUser, LearningDecision decision) {
-    if (targetId.toLowerCase() == 'lumo') {
-      if (decision.sceneObjects.isNotEmpty) {
-        final spec = decision.sceneObjects.first;
-        _handleObjectTap(spec.id, currentUser.experienceMode, decision, spec);
-      } else {
-        final greeting = ref.read(lumoServiceProvider).getGreeting();
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Lumo 🐾'),
-            content: Text(greeting),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Ok'),
-              ),
-            ],
-          ),
-        );
-      }
-    } else {
-      _showAvatarMenu(context, currentUser);
-    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -146,7 +91,7 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
   // ──────────────────────────────────────────────────────────────────────────
   // Navegação Adaptativa de Aprendizado
   // ──────────────────────────────────────────────────────────────────────────
-  void _handleObjectTap(String objectId, AgeExperienceMode mode, LearningDecision decision, SceneObjectSpec spec) {
+  void _handleObjectTap(String objectId, AgeExperienceMode mode, LearningDecision decision, SceneObjectSpec spec) async {
     setState(() => _currentState = HomeSceneState.celebrating);
 
     // Oikos Philosophy: Adapt the experience to the user's cognitive style.
@@ -154,7 +99,11 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
 
     if (isAdult) {
       // Adultos: Preferem uma visão direta e clara do seu currículo.
-      Navigator.pushNamed(context, '/learning');
+      await Navigator.pushNamed(context, '/learning');
+      if (!mounted) return;
+      setState(() {
+        _updateMissionStatus();
+      });
     } else {
       // Crianças/Exploradores: Aprendem explorando o ambiente. 
       // Abre a ferramenta adaptativa direto no cenário (imersão).
@@ -178,8 +127,8 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
             },
             onSessionFinished: (result) async {
               // 1. Gravar SessionFinished no TrajectoryRepository
-              final session = result as SessionFinished;
-              debugPrint('Horizon Trajectory Session Finished. Accuracy: ${session.accuracy}');
+              // Gravar sessão no TrajectoryRepository
+              debugPrint('Horizon Trajectory Session Finished.');
               
               Navigator.pop(context);
               await ref.read(xpProvider(widget.userId).notifier).addXp(20);
@@ -199,75 +148,6 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
     }
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Lumo Interactive Menu
-  // ──────────────────────────────────────────────────────────────────────────
-  void _showLumoMenu(BuildContext context, LearningDecision decision, AgeExperienceMode mode) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5))
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text('O que vamos fazer?', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(decision.motivationLine, style: const TextStyle(fontSize: 16, color: Colors.black54)),
-            const SizedBox(height: 32),
-            Expanded(
-              child: ListView.separated(
-                itemCount: decision.sceneObjects.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 16),
-                itemBuilder: (context, index) {
-                  final spec = decision.sceneObjects[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context); // fecha o menu
-                      _handleObjectTap(spec.id, mode, decision, spec);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(spec.emoji, style: const TextStyle(fontSize: 32)),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Text(spec.semanticLabel, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                          ),
-                          const Icon(Icons.chevron_right, color: AppColors.primary),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // Menu do Livro e Progresso
@@ -277,78 +157,99 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: DefaultTabController(
-          length: 2,
-          child: Column(
-            children: [
-              const SizedBox(height: 16),
-              Container(
-                width: 40,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const TabBar(
-                labelColor: AppColors.primary,
-                unselectedLabelColor: Colors.black54,
-                indicatorColor: AppColors.primary,
-                tabs: [
-                  Tab(icon: Icon(Icons.map_outlined), text: 'Progresso'),
-                  Tab(icon: Icon(Icons.emoji_events_outlined), text: 'Ranking'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    // Aba 1: Progresso Contextual
-                    ListView(
-                      padding: const EdgeInsets.all(24),
+      builder: (_) => FutureBuilder<Box<Map>>(
+        future: Hive.openBox<Map>('missionProgressBox'),
+        builder: (context, snapshot) {
+          final box = snapshot.data;
+          final bool isLausanneCompleted = box?.get('ch_numbers_nonante_001') != null;
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
+                  Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const TabBar(
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: Colors.black54,
+                    indicatorColor: AppColors.primary,
+                    tabs: [
+                      Tab(icon: Icon(Icons.map_outlined), text: 'Progresso'),
+                      Tab(icon: Icon(Icons.emoji_events_outlined), text: 'Ranking'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
                       children: [
-                        const Text(
-                          'Progresso por Cenários',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        // Aba 1: Progresso Contextual Reativo
+                        ListView(
+                          padding: const EdgeInsets.all(24),
+                          children: [
+                            const Text(
+                              'Progresso por Cenários',
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildScenarioProgressItem(
+                              '🛒', 
+                              'Mercado', 
+                              isLausanneCompleted ? 1.0 : 0.0, 
+                              const Color(0xFF10B981),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildScenarioProgressItem('🏫', 'Escola', 0.0, Colors.blue),
+                            const SizedBox(height: 16),
+                            _buildScenarioProgressItem('🏥', 'Médico', 0.0, Colors.orange),
+                            const SizedBox(height: 16),
+                            _buildScenarioProgressItem('✈️', 'Aeroporto', 0.00, Colors.grey),
+                            const Divider(height: 48),
+                            const Text(
+                              'Missões Concluídas',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 12),
+                            if (isLausanneCompleted)
+                              _buildCompletedMissionItem('Entender o preço no caixa (Lausanne)'),
+                            if (!isLausanneCompleted)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8.0),
+                                child: Text(
+                                  'Nenhuma missão concluída nesta jornada. Explore a cidade para começar!',
+                                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                                ),
+                              ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        _buildScenarioProgressItem('🛒', 'Mercado', 0.75, const Color(0xFF10B981)),
-                        const SizedBox(height: 16),
-                        _buildScenarioProgressItem('🏫', 'Escola', 0.40, Colors.blue),
-                        const SizedBox(height: 16),
-                        _buildScenarioProgressItem('🏥', 'Médico', 0.15, Colors.orange),
-                        const SizedBox(height: 16),
-                        _buildScenarioProgressItem('✈️', 'Aeroporto', 0.00, Colors.grey),
-                        const Divider(height: 48),
-                        const Text(
-                          'Missões Concluídas',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        // Aba 2: Ranking Familiar
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: FamilyRankingPanel(
+                            members: members,
+                            currentUserId: widget.userId,
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        _buildCompletedMissionItem('Comprar Pão na Padaria'),
-                        _buildCompletedMissionItem('Pedir Direções na Estação'),
                       ],
                     ),
-                    // Aba 2: Ranking Familiar
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: FamilyRankingPanel(
-                        members: members,
-                        currentUserId: widget.userId,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        }
       ),
     );
   }
@@ -771,7 +672,21 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Cenário Principal: Unity WebGL ou Fallback Reativo
+  // Converte HomeSceneState → LumoVariant
+  // ──────────────────────────────────────────────────────────────────────────
+  LumoVariant _lumoVariant() {
+    switch (_currentState) {
+      case HomeSceneState.celebrating:
+        return LumoVariant.celebrating;
+      case HomeSceneState.suggestingActivity:
+        return LumoVariant.listening;
+      default:
+        return LumoVariant.idle;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Cenário Principal: Lumo + Avatares da Família
   // ──────────────────────────────────────────────────────────────────────────
   Widget _buildUnityOrFallbackScene(
     FamilyMember currentUser,
@@ -780,24 +695,13 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
     XpState xpState,
     bool isToddler,
   ) {
-    // Flag de controle para ativar a integração Unity WebGL
-    // Configure como true após carregar a build WebGL do Unity na pasta: web/unity_build/
-    const bool useUnityWebGL = true;
 
-    if (useUnityWebGL) {
-      return const SizedBox(
-        width: 600,
-        height: 380,
-        child: HtmlElementView(viewType: 'unity-avatar-view'),
-      );
-    }
-
-    // Retorno do layout reativo original
+    // Layout da cena com Lumo no centro
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Avatar à esquerda
+        // Avatar do usuário atual à esquerda
         Flexible(
           child: Padding(
             padding: const EdgeInsets.only(bottom: 20),
@@ -817,7 +721,7 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
             ),
           ),
         ),
-        // Livro no meio
+        // Livro no meio com affordance de pulsação
         Flexible(
           child: Padding(
             padding: const EdgeInsets.only(bottom: 20),
@@ -834,11 +738,17 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 12,
+                        color: _isLausanneCompleted 
+                            ? Colors.black.withOpacity(0.08)
+                            : AppColors.primary.withOpacity(0.35),
+                        blurRadius: _isLausanneCompleted ? 12 : 18,
+                        spreadRadius: _isLausanneCompleted ? 0 : 2,
                         offset: const Offset(0, 4),
                       ),
                     ],
+                    border: _isLausanneCompleted 
+                        ? null 
+                        : Border.all(color: AppColors.primary, width: 2),
                   ),
                   child: const Center(
                     child: Text(
@@ -851,13 +761,14 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
             ),
           ),
         ),
-        // Lumo à direita
+        // Lumo no centro — mascote principal
         Flexible(
+          flex: 2,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Se for criança pequena, mostra o botão Play flutuante grande no lugar do balão de fala
+              // Balão de fala (ou botão Play para toddlers)
               if (isToddler) ...[
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -899,12 +810,12 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
                 ).scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 800.ms),
                 const SizedBox(height: 12),
               ] else ...[
-                // Balão de fala ancorado diretamente acima do Lumo
                 _buildSpeechBubble(_lumoMessage(xpState.xp, xpState.level, _lastXpGained, decision)),
                 const SizedBox(height: 8),
               ],
+              // Lumo animado com SVG
               Padding(
-                padding: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.only(bottom: 8),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
@@ -913,13 +824,14 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
                       _handleObjectTap(spec.id, currentUser.experienceMode, decision, spec);
                     } else {
                       final greeting = ref.read(lumoServiceProvider).getGreeting();
-                      setState(() {
-                        _currentState = HomeSceneState.suggestingActivity;
-                      });
+                      setState(() => _currentState = HomeSceneState.suggestingActivity);
                       showDialog(
                         context: context,
                         builder: (_) => AlertDialog(
-                          title: const Text('Lumo 🐾'),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: const Row(children: [
+                            Text('Lumo ', style: TextStyle(fontSize: 24)),
+                          ]),
                           content: Text(greeting),
                           actions: [
                             TextButton(
@@ -931,32 +843,10 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
                       );
                     }
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: isToddler
-                        ? PersonalCompanion(
-                            experienceMode: currentUser.experienceMode,
-                            size: 130, // Proporcional e contido
-                            level: xpState.level,
-                            expression: _currentState == HomeSceneState.celebrating
-                                ? LumoExpression.cheering
-                                : LumoExpression.happy,
-                          ).animate(
-                            onPlay: (controller) => controller.repeat(reverse: true),
-                          ).slideY(
-                            begin: 0.0,
-                            end: -0.15,
-                            duration: 700.ms,
-                            curve: Curves.easeInOut,
-                          )
-                        : PersonalCompanion(
-                            experienceMode: currentUser.experienceMode,
-                            size: 130, // Proporcional e contido
-                            level: xpState.level,
-                            expression: _currentState == HomeSceneState.celebrating
-                                ? LumoExpression.cheering
-                                : LumoExpression.happy,
-                          ),
+                  // Lumo — animações internas geridas pelo próprio widget
+                  child: LumoRenderer(
+                    variant: _lumoVariant(),
+                    size: 160,
                   ),
                 ),
               ),
@@ -1023,21 +913,7 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
                         color: Color(0xFF1F2937),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.achievementOrange.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'Nv.${xp.level}  ✦  ${xp.xp} Missões',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.achievementOrange,
-                        ),
-                      ),
-                    ),
+                    MissionStatusLabel(isCompleted: _isLausanneCompleted),
                   ],
                 ),
                 const SizedBox(height: 5),
@@ -1159,5 +1035,21 @@ class _LivingScenePageState extends ConsumerState<LivingScenePage> {
       ),
     );
   }
+}
 
+class MissionStatusLabel extends StatelessWidget {
+  final bool isCompleted;
+  const MissionStatusLabel({super.key, required this.isCompleted});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      isCompleted ? '1 missão concluída' : '1 missão disponível',
+      style: const TextStyle(
+        fontSize: 14,
+        color: Colors.grey, // Cinza
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
 }

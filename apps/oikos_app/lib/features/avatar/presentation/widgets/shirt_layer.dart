@@ -16,7 +16,7 @@ class ShirtLayer extends StatelessWidget {
     final path = 'assets/avatars/shirts/shirt_basic.svg';
     return SvgPicture.asset(
       path,
-      colorFilter: ColorFilter.mode(theme.shirtColor, BlendMode.srcATop),
+      theme: SvgTheme(currentColor: theme.shirtColor),
     );
   }
 }

@@ -13,7 +13,10 @@ class PantsLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     if (pantsType == PantsType.none) return const SizedBox.shrink();
     
-    // Fallback if we don't have pants SVG created yet
-    return const SizedBox.shrink();
+    final path = 'assets/avatars/pants/pants_basic.svg';
+    return SvgPicture.asset(
+      path,
+      theme: SvgTheme(currentColor: theme.pantsColor),
+    );
   }
 }
