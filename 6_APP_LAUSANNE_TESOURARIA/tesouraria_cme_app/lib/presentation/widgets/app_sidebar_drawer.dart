@@ -4,6 +4,7 @@ import '../../services/auth_api_service.dart';
 import '../pages/login_page.dart';
 import '../pages/wizard_page.dart';
 import '../pages/dashboard_page.dart';
+import '../pages/placeholder_page.dart';
 
 class AppSidebarDrawer extends StatelessWidget {
   final String activeRoute;
@@ -78,19 +79,52 @@ class AppSidebarDrawer extends StatelessWidget {
                     context: context,
                     icon: Icons.receipt_long_rounded,
                     title: 'Movimentos',
-                    isActive: false,
+                    isActive: activeRoute == 'movimentos',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (_) => const PlaceholderPage(
+                          title: 'Movimentos',
+                          route: 'movimentos',
+                          icon: Icons.receipt_long_rounded,
+                          description: 'Visualize entradas e saídas\nde cada culto.',
+                        ),
+                      ));
+                    },
                   ),
                   _buildMenuItem(
                     context: context,
                     icon: Icons.people_outline_rounded,
                     title: 'Contribuintes',
-                    isActive: false,
+                    isActive: activeRoute == 'contribuintes',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (_) => const PlaceholderPage(
+                          title: 'Contribuintes',
+                          route: 'contribuintes',
+                          icon: Icons.people_outline_rounded,
+                          description: 'Gerencie os membros\ncontribuintes da tesouraria.',
+                        ),
+                      ));
+                    },
                   ),
                   _buildMenuItem(
                     context: context,
                     icon: Icons.account_balance_wallet_outlined,
                     title: 'Despesas',
-                    isActive: false,
+                    isActive: activeRoute == 'despesas',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (_) => const PlaceholderPage(
+                          title: 'Despesas',
+                          route: 'despesas',
+                          icon: Icons.account_balance_wallet_outlined,
+                          description: 'Registe e acompanhe\nas despesas da congregação.',
+                        ),
+                      ));
+                    },
                   ),
                   _buildMenuItem(
                     context: context,
@@ -100,7 +134,7 @@ class AppSidebarDrawer extends StatelessWidget {
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const WizardPage()),
+                        MaterialPageRoute(builder: (_) => const DashboardScreen()),
                       );
                     },
                   ),
@@ -108,13 +142,35 @@ class AppSidebarDrawer extends StatelessWidget {
                     context: context,
                     icon: Icons.bar_chart_rounded,
                     title: 'Relatórios',
-                    isActive: false,
+                    isActive: activeRoute == 'relatorios',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (_) => const PlaceholderPage(
+                          title: 'Relatórios',
+                          route: 'relatorios',
+                          icon: Icons.bar_chart_rounded,
+                          description: 'Relatórios consolidados\npor período e tipo de oferta.',
+                        ),
+                      ));
+                    },
                   ),
                   _buildMenuItem(
                     context: context,
                     icon: Icons.settings_outlined,
                     title: 'Configurações',
-                    isActive: false,
+                    isActive: activeRoute == 'configuracoes',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (_) => const PlaceholderPage(
+                          title: 'Configurações',
+                          route: 'configuracoes',
+                          icon: Icons.settings_outlined,
+                          description: 'Personalize o sistema\nde acordo com as necessidades.',
+                        ),
+                      ));
+                    },
                   ),
                 ],
               ),
