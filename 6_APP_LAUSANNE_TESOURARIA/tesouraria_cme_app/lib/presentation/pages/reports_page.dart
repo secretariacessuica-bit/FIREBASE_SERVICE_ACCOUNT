@@ -66,6 +66,16 @@ class _ReportsPageState extends State<ReportsPage> {
     } catch (e) {
       if (mounted) {
         if (e.toString().contains('UNAUTHORIZED')) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Sessão expirada. Faça login novamente.'),
+                backgroundColor: Color(0xFFDC2626),
+                duration: Duration(seconds: 2),
+              ),
+            );
+            await Future.delayed(const Duration(seconds: 2));
+          }
           AuthApiService().logout().then((_) {
             if (mounted) {
               Navigator.of(context).pushReplacement(

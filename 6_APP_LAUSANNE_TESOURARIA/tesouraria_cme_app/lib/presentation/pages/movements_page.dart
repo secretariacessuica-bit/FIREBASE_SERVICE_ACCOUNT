@@ -117,13 +117,21 @@ class _MovementsPageState extends State<MovementsPage> {
     } catch (e) {
       if (mounted) {
         if (e.toString().contains('UNAUTHORIZED')) {
-          AuthApiService().logout().then((_) {
-            if (mounted) {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-              );
-            }
-          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Sessão expirada. Faça login novamente.'),
+                backgroundColor: Color(0xFFDC2626),
+                duration: Duration(seconds: 2),
+              ),
+            );
+            await Future.delayed(const Duration(seconds: 2));
+            await AuthApiService().logout();
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+          }
+          return;
         } else {
           setState(() {
             _errorMessage = 'Falha ao carregar movimentos: ${e.toString()}';

@@ -52,6 +52,14 @@ class _MembersPageState extends State<MembersPage> {
       });
     } catch (e) {
       if (e.toString().contains('UNAUTHORIZED') && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sessão expirada. Faça login novamente.'),
+            backgroundColor: Color(0xFFDC2626),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        await Future.delayed(const Duration(seconds: 2));
         await AuthApiService().logout();
         if (mounted) {
           Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage()));

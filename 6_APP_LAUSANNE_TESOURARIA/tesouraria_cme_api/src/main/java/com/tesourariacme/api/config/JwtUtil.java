@@ -18,7 +18,7 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secretString.getBytes());
     }
     
-    private final long expirationTime = 86400000; // 24 hours
+    private final long expirationTime = 604800000; // 7 days
 
     public String generateToken(String username) {
         return Jwts.builder()
