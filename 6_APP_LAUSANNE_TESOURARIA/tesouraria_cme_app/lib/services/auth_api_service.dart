@@ -14,7 +14,7 @@ class AuthApiService {
           'username': username,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

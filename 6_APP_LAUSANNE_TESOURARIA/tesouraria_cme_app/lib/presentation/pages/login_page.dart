@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/auth_api_service.dart';
 import '../../core/theme.dart';
@@ -16,30 +17,72 @@ class _LoginPageState extends State<LoginPage> {
   final _authService = AuthApiService();
   bool _isLoading = false;
   bool _rememberMe = false;
+  bool _showColdStartNotice = false;
   String? _errorMessage;
+  Timer? _coldStartTimer;
+
+  @override
+  void dispose() {
+    _coldStartTimer?.cancel();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   void _login() async {
+    if (_isLoading) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _showColdStartNotice = false;
     });
 
-    final success = await _authService.login(
-      _usernameController.text,
-      _passwordController.text,
-    );
+    _coldStartTimer?.cancel();
+    _coldStartTimer = Timer(const Duration(seconds: 6), () {
+      if (mounted && _isLoading) {
+        setState(() {
+          _showColdStartNotice = true;
+        });
+      }
+    });
 
-    setState(() { _isLoading = false; });
-
-    if (success) {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+    try {
+      final success = await _authService.login(
+        _usernameController.text,
+        _passwordController.text,
       );
-    } else {
-      setState(() {
-        _errorMessage = 'Credenciais invalidas. Tente novamente.';
-      });
+
+      _coldStartTimer?.cancel();
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _showColdStartNotice = false;
+        });
+      }
+
+      if (success) {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      } else {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Credenciais inválidas ou tempo esgotado. Tente novamente.';
+          });
+        }
+      }
+    } catch (_) {
+      _coldStartTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _showColdStartNotice = false;
+          _errorMessage = 'Falha ao conectar com o servidor. Tente novamente.';
+        });
+      }
     }
   }
 
@@ -276,6 +319,18 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                       ),
                     ),
+                    if (_showColdStartNotice) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Conectando ao servidor. A primeira conexão pode levar alguns segundos...',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ],
                 ),
               ),
