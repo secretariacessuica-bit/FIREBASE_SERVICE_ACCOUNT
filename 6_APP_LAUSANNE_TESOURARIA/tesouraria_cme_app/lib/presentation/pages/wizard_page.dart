@@ -1029,15 +1029,18 @@ class _WizardPageState extends State<WizardPage> {
       showDialog(
         context: context,
         builder: (dialogContext) {
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            child: StatefulBuilder(
-              builder: (context, setDialogState) {
-                return Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: selectorContent(setDialogState),
-                );
-              },
+          return BlocProvider.value(
+            value: _bloc,
+            child: Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              child: StatefulBuilder(
+                builder: (context, setDialogState) {
+                  return Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: selectorContent(setDialogState),
+                  );
+                },
+              ),
             ),
           );
         },
@@ -1048,19 +1051,22 @@ class _WizardPageState extends State<WizardPage> {
         isScrollControlled: true,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
         builder: (sheetContext) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-            ),
-            child: StatefulBuilder(
-              builder: (context, setDialogState) {
-                return SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: selectorContent(setDialogState),
-                  ),
-                );
-              },
+          return BlocProvider.value(
+            value: _bloc,
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: StatefulBuilder(
+                builder: (context, setDialogState) {
+                  return SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: selectorContent(setDialogState),
+                    ),
+                  );
+                },
+              ),
             ),
           );
         },
@@ -1409,7 +1415,9 @@ class _WizardPageState extends State<WizardPage> {
     showDialog(
       context: context,
       builder: (dlgContext) {
-        return StatefulBuilder(
+        return BlocProvider.value(
+          value: _bloc,
+          child: StatefulBuilder(
           builder: (context, setDlgState) {
             void dlgKeyPress(String val) {
               setDlgState(() {
@@ -1580,6 +1588,7 @@ class _WizardPageState extends State<WizardPage> {
               ),
             );
           }
+        ),
         );
       }
     );
@@ -1623,7 +1632,9 @@ class _WizardPageState extends State<WizardPage> {
     showDialog(
       context: context,
       builder: (dlgContext) {
-        return Dialog(
+        return BlocProvider.value(
+          value: _bloc,
+          child: Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Container(
             width: 600,
@@ -1703,6 +1714,7 @@ class _WizardPageState extends State<WizardPage> {
               ],
             ),
           ),
+        ),
         );
       },
     );
