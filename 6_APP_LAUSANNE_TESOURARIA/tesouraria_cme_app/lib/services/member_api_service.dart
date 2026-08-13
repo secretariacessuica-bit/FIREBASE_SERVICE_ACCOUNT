@@ -40,7 +40,7 @@ class MemberApiService {
     if (response.statusCode == 200) {
       final List<dynamic> body = jsonDecode(response.body);
       return body.map((e) => MemberDetail.fromJson(e as Map<String, dynamic>)).toList();
-    } else if (response.statusCode == 401 || response.statusCode == 403) {
+    } else if (response.statusCode == 401) {
       throw Exception('UNAUTHORIZED');
     } else {
       throw Exception('Erro ao buscar contribuintes: ${response.statusCode}');
@@ -58,7 +58,7 @@ class MemberApiService {
     if (response.statusCode == 400) {
       throw Exception(response.body.isNotEmpty ? response.body : 'Nome inválido.');
     }
-    if (response.statusCode == 401 || response.statusCode == 403) {
+    if (response.statusCode == 401) {
       throw Exception('UNAUTHORIZED');
     }
     throw Exception('Erro ao renomear contribuinte: ${response.statusCode}');
@@ -71,7 +71,7 @@ class MemberApiService {
       headers: headers,
     );
     if (response.statusCode == 204 || response.statusCode == 200) return;
-    if (response.statusCode == 401 || response.statusCode == 403) {
+    if (response.statusCode == 401) {
       throw Exception('UNAUTHORIZED');
     }
     throw Exception('Erro ao excluir contribuinte: ${response.statusCode}');

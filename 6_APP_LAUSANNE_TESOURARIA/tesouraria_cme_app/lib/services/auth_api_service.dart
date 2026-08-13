@@ -22,6 +22,7 @@ class AuthApiService {
         
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('jwt_token', token);
+        await prefs.setString('username', username);
         return true;
       }
       return false;

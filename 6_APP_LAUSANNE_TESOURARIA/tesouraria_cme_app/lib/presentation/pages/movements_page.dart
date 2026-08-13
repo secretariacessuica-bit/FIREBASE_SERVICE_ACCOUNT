@@ -127,9 +127,11 @@ class _MovementsPageState extends State<MovementsPage> {
             );
             await Future.delayed(const Duration(seconds: 2));
             await AuthApiService().logout();
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const LoginPage()),
-            );
+            if (mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+            }
           }
           return;
         } else {

@@ -57,10 +57,12 @@ class FechamentoApiService {
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => ServiceClosingSummary.fromJson(json)).toList();
-    } else if (response.statusCode == 401 || response.statusCode == 403) {
+    } else if (response.statusCode == 401) {
       throw Exception('UNAUTHORIZED');
+    } else if (response.statusCode == 403) {
+      throw Exception('Acesso negado (403)');
     } else {
-      throw Exception('Falha ao carregar historico');
+      throw Exception('Falha ao carregar historico (${response.statusCode})');
     }
   }
 
@@ -102,10 +104,12 @@ class FechamentoApiService {
     if (response.statusCode == 200) {
       final dynamic data = jsonDecode(response.body);
       return ServiceClosingDetail.fromJson(data);
-    } else if (response.statusCode == 401 || response.statusCode == 403) {
+    } else if (response.statusCode == 401) {
       throw Exception('UNAUTHORIZED');
+    } else if (response.statusCode == 403) {
+      throw Exception('Acesso negado (403)');
     } else {
-      throw Exception('Falha ao carregar detalhes do fechamento');
+      throw Exception('Falha ao carregar detalhes do fechamento (${response.statusCode})');
     }
   }
 
@@ -122,7 +126,7 @@ class FechamentoApiService {
     );
 
     if (response.statusCode != 204 && response.statusCode != 200) {
-      if (response.statusCode == 401 || response.statusCode == 403) {
+      if (response.statusCode == 401) {
         throw Exception('UNAUTHORIZED');
       }
       throw Exception('Erro ao deletar fechamento: ${response.statusCode}');
@@ -161,7 +165,7 @@ class FechamentoApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         return ServiceClosingState.fromJson(data);
-      } else if (response.statusCode == 401 || response.statusCode == 403) {
+      } else if (response.statusCode == 401) {
         throw Exception('UNAUTHORIZED');
       }
       return null;
