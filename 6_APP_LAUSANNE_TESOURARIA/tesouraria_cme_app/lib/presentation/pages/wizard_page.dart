@@ -235,88 +235,92 @@ class _WizardPageState extends State<WizardPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 800;
 
-    Widget bodyContent = BlocBuilder<ServiceClosingBloc, ServiceClosingState>(
-      builder: (context, state) {
-        switch (_phase) {
-          case ClosingPhase.setup:
-            return _buildSetupPhase(context, state, isDesktop);
-          case ClosingPhase.counting:
-            return _buildCountingPhase(context, state);
-          case ClosingPhase.review:
-            return _buildReviewPhase(context, state);
-        }
-      },
-    );
-
-    // If we are on desktop and in the setup or counting phase, show sidebar side-by-side
-    if (isDesktop && (_phase == ClosingPhase.setup || _phase == ClosingPhase.counting)) {
-      bodyContent = Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AppSidebarDrawer(activeRoute: 'fechamento', permanent: true),
-          Expanded(child: bodyContent),
-        ],
-      );
-    }
-
     return BlocProvider.value(
       value: _bloc,
-      child: BlocListener<ServiceClosingBloc, ServiceClosingState>(
-        listenWhen: (prev, curr) =>
-            (curr.isSuccess && !prev.isSuccess) ||
-            (curr.error != null && curr.error != prev.error),
-        listener: (context, state) {
-          if (state.isSuccess) {
-            _syncTimer?.cancel();
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      child: Builder(
+        builder: (context) {
+          Widget bodyContent = BlocBuilder<ServiceClosingBloc, ServiceClosingState>(
+            builder: (context, state) {
+              switch (_phase) {
+                case ClosingPhase.setup:
+                  return _buildSetupPhase(context, state, isDesktop);
+                case ClosingPhase.counting:
+                  return _buildCountingPhase(context, state);
+                case ClosingPhase.review:
+                  return _buildReviewPhase(context, state);
+              }
+            },
+          );
+
+          // If we are on desktop and in the setup or counting phase, show sidebar side-by-side
+          if (isDesktop && (_phase == ClosingPhase.setup || _phase == ClosingPhase.counting)) {
+            bodyContent = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const AppSidebarDrawer(activeRoute: 'fechamento', permanent: true),
+                Expanded(child: bodyContent),
+              ],
             );
-          } else if (state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('Erro ao enviar: ${state.error}'),
-              backgroundColor: AppTheme.excludeRed,
-              behavior: SnackBarBehavior.floating,
-            ));
           }
+
+          return BlocListener<ServiceClosingBloc, ServiceClosingState>(
+            listenWhen: (prev, curr) =>
+                (curr.isSuccess && !prev.isSuccess) ||
+                (curr.error != null && curr.error != prev.error),
+            listener: (context, state) {
+              if (state.isSuccess) {
+                _syncTimer?.cancel();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                );
+              } else if (state.error != null) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Erro ao enviar: ${state.error}'),
+                  backgroundColor: AppTheme.excludeRed,
+                  behavior: SnackBarBehavior.floating,
+                ));
+              }
+            },
+            child: Scaffold(
+            backgroundColor: const Color(0xFFFAFAFA),
+            appBar: (isDesktop && (_phase == ClosingPhase.setup || _phase == ClosingPhase.counting))
+                ? null // Hide AppBar on desktop setup/counting phase to match dashboard and mock
+                : AppBar(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF0F172A),
+                    elevation: 0,
+                    shape: const Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+                    title: Text(
+                      _getAppBarTitle(),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
+                    ),
+                    leading: _phase != ClosingPhase.setup
+                        ? IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () {
+                              setState(() {
+                                if (_phase == ClosingPhase.review) {
+                                  _phase = ClosingPhase.counting;
+                                  _startSyncTimer();
+                                } else if (_phase == ClosingPhase.counting) {
+                                  _syncTimer?.cancel();
+                                  _phase = ClosingPhase.setup;
+                                }
+                              });
+                            },
+                          )
+                        : null,
+                  ),
+            drawer: (isDesktop || _phase != ClosingPhase.setup)
+                ? null
+                : const AppSidebarDrawer(activeRoute: 'fechamento'),
+            body: bodyContent,
+            bottomNavigationBar: _phase == ClosingPhase.counting
+                ? _buildCustomBottomBar()
+                : null,
+          ),
+          );
         },
-        child: Scaffold(
-        backgroundColor: const Color(0xFFFAFAFA),
-        appBar: (isDesktop && (_phase == ClosingPhase.setup || _phase == ClosingPhase.counting))
-            ? null // Hide AppBar on desktop setup/counting phase to match dashboard and mock
-            : AppBar(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF0F172A),
-                elevation: 0,
-                shape: const Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
-                title: Text(
-                  _getAppBarTitle(),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
-                ),
-                leading: _phase != ClosingPhase.setup
-                    ? IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () {
-                          setState(() {
-                            if (_phase == ClosingPhase.review) {
-                              _phase = ClosingPhase.counting;
-                              _startSyncTimer();
-                            } else if (_phase == ClosingPhase.counting) {
-                              _syncTimer?.cancel();
-                              _phase = ClosingPhase.setup;
-                            }
-                          });
-                        },
-                      )
-                    : null,
-              ),
-        drawer: (isDesktop || _phase != ClosingPhase.setup)
-            ? null
-            : const AppSidebarDrawer(activeRoute: 'fechamento'),
-        body: bodyContent,
-        bottomNavigationBar: _phase == ClosingPhase.counting
-            ? _buildCustomBottomBar()
-            : null,
-      ),
       ),
     );
   }
